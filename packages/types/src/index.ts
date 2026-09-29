@@ -673,3 +673,235 @@ export interface RuntimeSettings {
   counts: Record<string, number>;
   lab_network: Record<string, string>;
 }
+
+// ── v0.2: detection tests, quality and the playground ────────────────────────────────────────
+export interface QualityCheck {
+  id: string;
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface RuleQuality {
+  slug: string;
+  title: string;
+  level: string;
+  technique_ids: string[];
+  passed: number;
+  total: number;
+  checks: QualityCheck[];
+  positive_tests: number;
+  negative_tests: number;
+  failing_tests: number;
+}
+
+export interface DetectionCoverage {
+  rules: number;
+  tested: number;
+  percent: number;
+  tests: number;
+  failing: number;
+}
+
+export interface QualityResponse {
+  coverage: DetectionCoverage;
+  checks_passed: number;
+  checks_total: number;
+  rules: RuleQuality[];
+}
+
+export interface RuleTestCaseResult {
+  name: string;
+  expected: boolean;
+  passed: boolean;
+  message: string;
+  matched_events: number[];
+  hits: number;
+  definition: Record<string, unknown>;
+}
+
+export interface RuleTests {
+  slug: string;
+  tests_path: string | null;
+  source: string | null;
+  errors: string[];
+  cases: RuleTestCaseResult[];
+  quality: RuleQuality | null;
+}
+
+export interface PlaygroundDataset {
+  slug: string;
+  name: string;
+  description: string;
+  source_type: string;
+  kind: "events" | "files";
+  difficulty: string;
+  item_count: number;
+  mitre: { id: string; name: string | null }[];
+  expected_rules: { slug: string; title: string; format: RuleFormat }[];
+  try_this: string[];
+}
+
+export interface PlaygroundItem {
+  index: number;
+  kind: "event" | "file";
+  title: string;
+  offset_seconds: number;
+  timestamp: string | null;
+  category: string | null;
+  source: string | null;
+  host: string | null;
+  user: string | null;
+  raw: string;
+  fields: Record<string, unknown>;
+  note: string | null;
+  size: number | null;
+}
+
+export interface PlaygroundDatasetDetail extends PlaygroundDataset {
+  items: PlaygroundItem[];
+}
+
+export type Verdict = "matched" | "no_match" | "not_applicable";
+
+export interface PlaygroundRule {
+  title: string;
+  level: string;
+  status: string | null;
+  description: string;
+  logsource: Record<string, string>;
+  techniques: string[];
+  falsepositives: string[];
+  references: string[];
+  is_correlation: boolean;
+  fields: string[];
+}
+
+export interface CorrelationSummary {
+  type: string;
+  timespan_seconds: number;
+  group_by: string[];
+  base_rules: { rule: string; title: string; matching_events: number[] }[];
+  hits: {
+    event_indexes: number[];
+    group: Record<string, unknown> | null;
+    details: Record<string, unknown>;
+    first: string;
+    last: string;
+  }[];
+}
+
+export interface PlaygroundRun {
+  format: RuleFormat;
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  item_count: number;
+  matched_count: number;
+  meta?: PlaygroundRule;
+  mitre?: { id: string; name: string | null; known: boolean }[];
+  results: { index: number; verdict: Verdict; matched_fields: string[] }[];
+  correlation: CorrelationSummary | null;
+}
+
+export interface TraceValue {
+  pattern: string;
+  text: string;
+  matched: boolean;
+}
+
+export interface TraceItem {
+  kind: "item";
+  field: string | null;
+  modifiers: string[];
+  operator: string;
+  linking: "and" | "or";
+  matched: boolean;
+  actual: unknown;
+  values: TraceValue[];
+}
+
+export interface TraceSelection {
+  kind: "selection" | "group";
+  name: string;
+  matched: boolean;
+  linking: "and" | "or";
+  children: (TraceItem | TraceSelection)[];
+}
+
+export interface TraceCondition {
+  op: "and" | "or" | "not" | "selection" | "any_of" | "all_of";
+  label: string;
+  matched: boolean;
+  children: TraceCondition[];
+}
+
+export interface SigmaExplanation {
+  matched: boolean;
+  outcome: "matched" | "not_matched" | "logsource_mismatch";
+  summary: string;
+  logsource: {
+    rule: Record<string, string>;
+    event: Record<string, string>;
+    compatible: boolean;
+  };
+  selections: TraceSelection[];
+  condition: TraceCondition | null;
+  condition_text: string;
+  hints: string[];
+}
+
+export interface YaraExplanation {
+  rule: string;
+  matched: boolean;
+  condition_text: string;
+  filesize: number;
+  unsupported: string | null;
+  strings: {
+    name: string;
+    kind: "text" | "regex";
+    pattern: string;
+    modifiers: string[];
+    count: number;
+    offsets: number[];
+    excerpt: string | null;
+    matched: boolean;
+  }[];
+  terms: { label: string; matched: boolean; detail: string }[];
+}
+
+export interface SuricataExplanation {
+  action: string;
+  protocol: string;
+  source: string;
+  direction: string;
+  destination: string;
+  msg: string;
+  sid: string;
+  classtype: string | null;
+  metadata: string | null;
+  options: { name: string; value: string }[];
+  checks: {
+    label: string;
+    buffer: string;
+    kind: "content" | "pcre";
+    pattern: string;
+    modifiers: string[];
+    matched: boolean;
+    actual: string | null;
+  }[];
+  not_evaluated: string[];
+  matched: boolean | null;
+  summary: string;
+}
+
+export interface PlaygroundExplain {
+  format: RuleFormat;
+  kind: "event" | "file" | "correlation";
+  item: PlaygroundItem;
+  matched: boolean;
+  explanation?: SigmaExplanation | YaraExplanation | SuricataExplanation;
+  correlation?: CorrelationSummary;
+  member_of?: number[];
+  bases?: (SigmaExplanation & { rule: string })[];
+}

@@ -28,6 +28,7 @@ EXPENSIVE_PREFIXES = (
     "/api/v1/detections/validate",
     "/api/v1/detections/translate",
     "/api/v1/detections/test",
+    "/api/v1/playground/run",
     "/api/v1/ai/analyze-alert",
     "/api/v1/lab-runs",
     "/api/v1/demo",

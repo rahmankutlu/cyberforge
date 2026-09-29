@@ -29,6 +29,7 @@ from cyberforge.content.schemas import (
     IncidentDoc,
     IndicatorDoc,
     LabDoc,
+    PlaygroundDataset,
     ScenarioEvent,
     ThirtyDaysDoc,
     TrackDoc,
@@ -369,6 +370,20 @@ def _load_datasets(root: Path, bundle: ContentBundle) -> None:
         bundle.datasets[f"{path.parent.name}/{path.stem}"] = _load_jsonl(path, root, bundle.issues)
 
 
+def _load_playground_datasets(root: Path, bundle: ContentBundle) -> None:
+    for path in sorted((root / "datasets" / "playground").glob("*.yaml")):
+        dataset = _load_model(PlaygroundDataset, path, root, bundle.issues)
+        if dataset is None:
+            continue
+        rel = _rel(root, path)
+        if dataset.slug != path.stem:
+            bundle.issues.append(ContentIssue(rel, f"slug {dataset.slug!r} must match the file name"))
+        for i, ev in enumerate(dataset.events):
+            if not known_category(ev.category):
+                bundle.issues.append(ContentIssue(rel, f"event {i}: unknown category {ev.category!r}"))
+        bundle.playground_datasets.append(dataset)
+
+
 def _load_yaml_list(path: Path, model: type[T], root: Path, issues: list[ContentIssue]) -> list[T]:
     if not path.is_file():
         return []
@@ -418,6 +433,7 @@ def load_bundle(root: Path) -> ContentBundle:
     )
     _load_mitre(root, bundle)
     _load_datasets(root, bundle)
+    _load_playground_datasets(root, bundle)
 
     content_pkg = root / "packages" / "security-content"
     for path in sorted((content_pkg / "learning" / "tracks").glob("*.yaml")):
@@ -460,6 +476,19 @@ def cross_validate(bundle: ContentBundle) -> None:
         for tid in rule.technique_ids:
             if tid not in technique_ids:
                 issues.append(ContentIssue(rule.path, f"unknown MITRE identifier {tid}"))
+
+    slugs_seen: set[str] = set()
+    for ds in bundle.playground_datasets:
+        where = f"datasets/playground/{ds.slug}.yaml"
+        if ds.slug in slugs_seen:
+            issues.append(ContentIssue(where, "duplicate dataset slug"))
+        slugs_seen.add(ds.slug)
+        for slug in ds.expected_rules:
+            if slug not in rule_slugs:
+                issues.append(ContentIssue(where, f"unknown expected rule {slug!r}"))
+        for tid in ds.mitre:
+            if tid not in technique_ids:
+                issues.append(ContentIssue(where, f"unknown MITRE identifier {tid}"))
 
     lab_slugs: set[str] = set()
     numbers: set[int] = set()

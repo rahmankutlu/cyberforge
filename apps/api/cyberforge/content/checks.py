@@ -47,3 +47,21 @@ def check_scenarios(bundle: ContentBundle, issues: list[ContentIssue]) -> None:
 def check_stories(bundle: ContentBundle) -> list[ContentIssue]:
     """Story checks arrive with story mode; until then there is nothing to report."""
     return []
+
+
+def check_datasets(bundle: ContentBundle) -> list[ContentIssue]:
+    """Each playground dataset must trigger every rule it lists in `expected_rules`."""
+    from cyberforge.services import playground
+
+    issues: list[ContentIssue] = []
+    for ds in bundle.playground_datasets:
+        where = f"datasets/playground/{ds.slug}.yaml"
+        try:
+            fired = playground.rules_fired(bundle.rules, ds)
+        except playground.PlaygroundError as exc:
+            issues.append(ContentIssue(where, str(exc)))
+            continue
+        for slug in ds.expected_rules:
+            if slug not in fired:
+                issues.append(ContentIssue(where, f"dataset does not trigger expected rule {slug!r}"))
+    return issues

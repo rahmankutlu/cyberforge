@@ -1,0 +1,80 @@
+slug: dns-anomalies
+name: DNS anomalies
+description: >
+  Resolver query logs from one office network: hundreds of ordinary lookups, then a workstation
+  that starts generating algorithm-like names, a burst of failed lookups, and TXT queries
+  carrying encoded labels. Learn what tunnelling and domain-generation look like at the resolver.
+source_type: DNS resolver query log (BIND-style)
+difficulty: intermediate
+mitre: [T1071.004, T1568.002, T1572]
+expected_rules:
+  - dns-nxdomain-burst
+  - dns-long-random-subdomain-query
+  - dns-txt-query-with-encoded-label
+  - suricata-9000003
+try_this:
+  - The NXDOMAIN burst rule groups by src_ip. Which host is it, and how many failures did it produce?
+  - Why does the encoded-label rule also require record_type TXT? Remove it and see what else matches.
+  - Compare the Sigma rule with Suricata 9000003, which reads the same query with a regex.
+events:
+  # Baseline: two hundred ordinary lookups from ten clients
+  - t: 0
+    repeat: 200
+    every: 12
+    category: dns_query
+    fields:
+      src_ip: '10.20.0.{i*1}'
+      query: 'www{i}.example.org'
+      record_type: A
+      rcode: NOERROR
+  - t: 5
+    repeat: 20
+    every: 100
+    category: dns_query
+    fields:
+      src_ip: 10.20.0.31
+      query: 'updates.vendor.example'
+      record_type: A
+      rcode: NOERROR
+  - t: 8
+    repeat: 10
+    every: 200
+    category: dns_query
+    fields:
+      src_ip: 10.20.0.31
+      query: example.org
+      record_type: TXT
+      rcode: NOERROR
+    note: A plain TXT lookup (SPF, verification). The encoded-label rule ignores it.
+
+  # A workstation begins algorithmic lookups: most fail
+  - t: 900
+    repeat: 26
+    every: 2
+    category: dns_query
+    fields:
+      src_ip: 10.20.0.57
+      query: 'q{i}x8v2k1m9zt4b7w3c6n5j0hp.cdn-lab.example'
+      record_type: A
+      rcode: NXDOMAIN
+    note: Long random-looking names that do not exist. Typical of malware searching for its server.
+
+  # One of the guesses resolves, then the host talks over TXT
+  - t: 1000
+    category: dns_query
+    fields:
+      src_ip: 10.20.0.57
+      query: k3j9x0qz7m2v8b1n4c6w5t9ra.cdn-lab.example
+      record_type: A
+      rcode: NOERROR
+    note: The guess that worked.
+  - t: 1010
+    repeat: 6
+    every: 20
+    category: dns_query
+    fields:
+      src_ip: 10.20.0.57
+      query: 'nbswy3dpeblw64tmmqqhg5dsnfxgo3zu{i}.t.tunnel-lab.example'
+      record_type: TXT
+      rcode: NOERROR
+    note: A TXT query whose first label looks like base32 data. Data smuggled in DNS.

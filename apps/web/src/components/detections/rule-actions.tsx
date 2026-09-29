@@ -33,11 +33,9 @@ export function RuleActions({ rule }: { rule: RuleDetail }) {
 
   return (
     <>
-      {rule.format === "sigma" ? (
-        <Button asChild variant="outline">
-          <Link href={`/detections/playground?rule=${rule.slug}`}><FlaskConical /> Open in playground</Link>
-        </Button>
-      ) : null}
+      <Button asChild variant="outline">
+        <Link href={`/detections/playground?rule=${rule.slug}`}><FlaskConical /> Open in playground</Link>
+      </Button>
       {rule.format === "sigma" ? (
         <Button variant="outline" onClick={() => toggle.mutate()} disabled={toggle.isPending} data-testid="toggle-rule">
           <Power /> {rule.enabled ? "Disable" : "Enable"}

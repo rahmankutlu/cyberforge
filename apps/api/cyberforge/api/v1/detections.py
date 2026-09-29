@@ -12,7 +12,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from cyberforge.api.deps import BundleDep, PageDep, SessionDep, escape_like
-from cyberforge.content.loader import _SURICATA, _suricata_options
+from cyberforge.content.loader import _SURICATA, ContentBundle, _suricata_options
 from cyberforge.content.schemas import ScenarioEvent
 from cyberforge.db import utcnow
 from cyberforge.models import Alert, DetectionRule, Lab, MitreTechnique, lab_rules
@@ -154,6 +154,25 @@ def _health(request: Request, bundle: BundleDep) -> tuple[rule_tests.RunSummary,
     return cached
 
 
+def _quality_row(
+    q: rule_quality.RuleQuality, bundle: ContentBundle, summary: rule_tests.RunSummary
+) -> RuleQualityOut:
+    rule = bundle.rule(q.slug)
+    report = summary.report_for(q.slug)
+    return RuleQualityOut(
+        slug=q.slug,
+        title=q.title,
+        level=rule.level if rule else "medium",
+        technique_ids=rule.technique_ids if rule else [],
+        passed=q.passed,
+        total=q.total,
+        checks=[QualityCheckOut(**c.__dict__) for c in q.checks],
+        positive_tests=report.positives if report else 0,
+        negative_tests=report.negatives if report else 0,
+        failing_tests=len(report.failures) if report else 0,
+    )
+
+
 @router.get(
     "/detections/quality",
     response_model=QualityResponse,
@@ -161,24 +180,7 @@ def _health(request: Request, bundle: BundleDep) -> tuple[rule_tests.RunSummary,
 )
 def detection_quality(request: Request, bundle: BundleDep) -> QualityResponse:
     summary, quality = _health(request, bundle)
-    by_slug = {r.slug: r for r in bundle.rules}
-    rows = []
-    for q in quality:
-        report = summary.report_for(q.slug)
-        rows.append(
-            RuleQualityOut(
-                slug=q.slug,
-                title=q.title,
-                level=by_slug[q.slug].level,
-                technique_ids=by_slug[q.slug].technique_ids,
-                passed=q.passed,
-                total=q.total,
-                checks=[QualityCheckOut(**c.__dict__) for c in q.checks],
-                positive_tests=report.positives if report else 0,
-                negative_tests=report.negatives if report else 0,
-                failing_tests=len(report.failures) if report else 0,
-            )
-        )
+    rows = [_quality_row(q, bundle, summary) for q in quality]
     return QualityResponse(
         coverage=CoverageOut(
             rules=summary.rule_count,
@@ -202,8 +204,9 @@ def get_rule_tests(slug: str, request: Request, bundle: BundleDep) -> RuleTestsO
     rule = bundle.rule(slug)
     if rule is None:
         raise HTTPException(404, "Rule not found")
-    summary, _ = _health(request, bundle)
+    summary, quality = _health(request, bundle)
     report = summary.report_for(slug)
+    q = next((x for x in quality if x.slug == slug), None)
     source = None
     if rule.tests_path:
         source = (bundle.root / rule.tests_path).read_text(encoding="utf-8")
@@ -224,6 +227,7 @@ def get_rule_tests(slug: str, request: Request, bundle: BundleDep) -> RuleTestsO
             )
             for c in (report.cases if report else [])
         ],
+        quality=_quality_row(q, bundle, summary) if q else None,
     )
 
 

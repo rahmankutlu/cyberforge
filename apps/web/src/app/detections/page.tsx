@@ -1,4 +1,4 @@
-import type { Page, RuleSummary } from "@cyberforge/types";
+import type { Page, QualityResponse, RuleSummary } from "@cyberforge/types";
 import { SEVERITIES } from "@cyberforge/types";
 import { Badge, Button, EmptyState, Table, TBody, TD, TH, THead, TR } from "@cyberforge/ui";
 import { Crosshair, FlaskConical, Plus } from "lucide-react";
@@ -9,6 +9,7 @@ import { FormatBadge, SeverityBadge, TechniqueChip } from "@/components/badges";
 import { Pagination } from "@/components/data/pagination";
 import { SortTh } from "@/components/data/sort-th";
 import { ClearFilters, PersistFilters, UrlChips, UrlSearch, UrlSelect } from "@/components/data/url-filters";
+import { QualityBadge } from "@/components/detections/rule-quality";
 import { PageHeader } from "@/components/page-header";
 import { apiGet } from "@/lib/api";
 import { SEVERITY_LABEL, titleCase } from "@/lib/format";
@@ -34,6 +35,9 @@ export default async function DetectionsPage({ searchParams }: { searchParams: P
     origin: first(sp.origin) === "user" ? "user" : undefined,
   });
   const sorting = { path: "/detections", params: sp, sort, order } as const;
+  const quality = await apiGet<QualityResponse>("/detections/quality");
+  const qualityBySlug = new Map(quality.rules.map((q) => [q.slug, q] as const));
+  const { coverage } = quality;
 
   return (
     <>
@@ -51,6 +55,23 @@ export default async function DetectionsPage({ searchParams }: { searchParams: P
           </>
         }
       />
+      <p
+        className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-card px-3 py-2 text-xs"
+        data-testid="coverage-summary"
+      >
+        <span className="font-medium">Detection test coverage</span>
+        <span className="text-muted-foreground">
+          <span className="font-semibold tabular-nums text-foreground">{coverage.tested}</span> of {coverage.rules} Sigma rules tested
+          ({coverage.percent}%)
+        </span>
+        <span className="text-muted-foreground">
+          <span className="font-semibold tabular-nums text-foreground">{coverage.tests}</span> tests,{" "}
+          {coverage.failing === 0 ? "all passing" : `${coverage.failing} failing`}
+        </span>
+        <span className="text-muted-foreground">
+          <span className="font-semibold tabular-nums text-foreground">{quality.checks_passed}</span> of {quality.checks_total} quality checks passed
+        </span>
+      </p>
       <Suspense>
         <PersistFilters storageKey="detections" />
         <div className="mb-4 space-y-2.5">
@@ -80,6 +101,7 @@ export default async function DetectionsPage({ searchParams }: { searchParams: P
               <SortTh label="Format" column="format" className="w-24" {...sorting} />
               <SortTh label="Level" column="level" className="w-28" {...sorting} />
               <TH>MITRE</TH>
+              <TH className="w-20">Checks</TH>
               <TH className="w-16 text-right">Labs</TH>
               <TH className="w-16 text-right">Alerts</TH>
               <SortTh label="Status" column="status" className="w-28" {...sorting} />
@@ -110,6 +132,7 @@ export default async function DetectionsPage({ searchParams }: { searchParams: P
                     {rule.techniques.length === 0 ? <span className="text-muted-foreground">—</span> : null}
                   </div>
                 </TD>
+                <TD><QualityBadge quality={qualityBySlug.get(rule.slug)} /></TD>
                 <TD className="text-right tabular-nums">{rule.lab_count}</TD>
                 <TD className="text-right tabular-nums">{rule.alert_count}</TD>
                 <TD className="text-xs capitalize text-muted-foreground">{rule.status}</TD>

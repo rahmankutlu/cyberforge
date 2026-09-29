@@ -84,11 +84,55 @@ Nested JSON (CloudTrail) is flattened to dotted keys (`userIdentity.arn`) for ma
 
 ## The playground
 
-`/detections/playground` (and `POST /api/v1/detections/{validate,translate,test}`):
+`/detections/playground` is a three-pane tool for writing a rule, running it over realistic telemetry and understanding the result.
 
-- **Validate** reports syntax and condition errors, pySigma lint warnings, the fields the rule reads, its logsource, MITRE identifiers (flagging any not in CyberForge's dataset), and the documented false positives. YARA and Suricata rules are validated for syntax/structure.
-- **Translate** produces Elastic (Lucene), Splunk SPL, Microsoft Sentinel (KQL), OpenSearch (Lucene) and a generic SQL-like form. Field names are passed through unchanged because the correct field mapping depends on your data model (ECS, CIM, ASIM…); apply the matching [pySigma processing pipeline](https://sigmahq.io/docs/digging-deeper/pipelines.html) before running a query in production. Some backends do not support every construct (notably correlations); the response says which and why instead of failing.
-- **Test** runs the real engine against custom JSON events (each may name a `category`) or a lab scenario, and shows which events matched, the matched fields and patterns, and correlation hits.
+|            | Pane                             | What it does                                                                                                                        |
+| ---------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Left**   | Rule, Notes                      | Edit Sigma, YARA or Suricata. Run with the button or `Ctrl/⌘ + Enter`. Notes shows the description, false positives and references. |
+| **Centre** | Test Data                        | Pick a curated dataset (or paste custom events), filter matched and unmatched items, move with the arrow keys.                      |
+| **Right**  | Match Trace, Translations, MITRE | Explains the selected event, translates the rule, and shows its ATT&CK mapping.                                                     |
+
+### Match trace
+
+For any event, matched or not, the trace answers _why_:
+
+- **Why it matched:** each selector, the field, the operator and rule value that hit, and the event's actual value (highlighted).
+- **Selections:** every named selection with a ✓ or ✗, every value that was checked, and alternatives for list-of-maps selections. Exclusion filters are labelled.
+- **Condition:** the condition as written and an indented evaluation path (`selection_image AND selection_flag AND NOT filter_management`), then the result.
+- **Logsource:** whether the event's source was compatible with the rule.
+- **False-positive hints:** the rule's documented false positives and which exclusions did or did not apply.
+
+The trace is produced from the same pySigma objects and matching functions as the engine, and a test checks that it never disagrees with a real match. For correlation rules it shows the window, grouping, hits and which events are members.
+
+### Datasets
+
+Eleven curated, synthetic datasets in `datasets/playground/*.yaml`. Each lists its name, description, source type, event count, MITRE relevance, the rules it is **expected to trigger** (checked in CI), and things to try:
+
+| Dataset                          | Source                        | Try it with                                                              |
+| -------------------------------- | ----------------------------- | ------------------------------------------------------------------------ |
+| Windows process execution        | Sysmon EID 1                  | Office spawning shells, certutil downloads, WMI, LSASS dump command line |
+| Authentication failures          | Windows Security 4624/4625    | Brute-force burst, password spraying, RDP from a public address          |
+| DNS anomalies                    | Resolver query log            | NXDOMAIN bursts, random subdomains, encoded TXT labels, Suricata 9000003 |
+| HTTP access logs                 | Web access log                | SQLi, XSS, scanners, exposed files, credential stuffing, enumeration     |
+| Linux auth logs                  | auth.log                      | SSH brute force then login, new user, sudo root shell                    |
+| Cloud audit logs                 | CloudTrail                    | Root login, foreign login, key for another user, public bucket           |
+| Suspicious PowerShell simulation | Sysmon + script-block logging | Encoded command, download cradle, decode-and-execute, Run key            |
+| Web shell telemetry              | IIS log + Sysmon              | Request, file write and process chain for one intrusion                  |
+| Admin account creation           | Windows, Linux, CloudTrail    | The same goal in three logs                                              |
+| Lateral movement simulation      | Sysmon, Security, System      | WMI, service and scheduled-task persistence                              |
+| File samples for YARA            | Synthetic files               | The five shipped YARA rules                                              |
+
+To add one, see the [contributor backlog](contributor-backlog.md) and copy an existing file; `pnpm validate:content` fails if a dataset does not trigger the rules it lists.
+
+### Sigma, YARA and Suricata
+
+- **Sigma** runs on the real engine, including correlations.
+- **YARA** runs on a small teaching evaluator (no libyara): text and regex strings with `nocase`, `wide`, `ascii` and `fullword`, `filesize`, integer reads such as `uint32be(0)`, `and`/`or`/`not` and `any|all|N of`. Hex strings, modules and loops are reported as unsupported rather than guessed.
+- **Suricata** shows a structured breakdown of the rule and previews `content`, `pcre`, `nocase`, `startswith` and `endswith` against HTTP and DNS telemetry (URI, user agent, method, DNS query). Options that need packets or state (`flags`, `threshold`, `flow`) are listed as not evaluated.
+
+### API
+
+`GET /api/v1/playground/datasets`, `GET /api/v1/playground/datasets/{slug}`, `POST /api/v1/playground/run` and `POST /api/v1/playground/explain`; plus the existing `POST /api/v1/detections/{validate,translate,test}`. Translations are generated by pySigma for Elastic (Lucene), Splunk SPL, Microsoft Sentinel (KQL) and OpenSearch, plus a generic SQL-like form. Field names are passed through unchanged because the correct mapping depends on your data model (ECS, CIM, ASIM…); apply the matching [pySigma processing pipeline](https://sigmahq.io/docs/digging-deeper/pipelines.html) before running a query in production. Some backends do not support every construct (notably correlations); the response says which and why instead of failing.
 
 ## Writing a good detection
 
@@ -97,8 +141,8 @@ Nested JSON (CloudTrail) is flattened to dotted keys (`userIdentity.arn`) for ma
 3. **Pick the right window and grouping** for correlations. `group-by` defines "the same actor"; `timespan` should match how fast the behaviour happens.
 4. **Document false positives** honestly and add a near-miss event to a dataset so the tests prove the rule stays quiet.
 5. **Map to the most specific technique** and put it first in `tags`.
-6. **Test both ways:** the rule fires on the lab scenario, and does not on `datasets/**` baselines. `pnpm validate:content` and the API tests enforce the first; add to the second when you add a near-miss.
+6. **Test both ways:** ship a `<slug>.tests.yml` with events that must match and events that must not ([Testing detections](testing-detections.md)); the rule also fires on its lab scenario and does not on `datasets/**` baselines. `pnpm test:detections` and `pnpm validate:content` enforce it.
 
 ## YARA and Suricata
 
-YARA rules are one rule per `.yar` file with `meta` (`title`, `description`, `severity`, `mitre_attack`, `false_positives`). Suricata rules are one per line in `detections/suricata/*.rules` with `metadata:mitre_technique_id Txxxx, severity …;` and a `sid` in CyberForge's reserved range `9000000-9000099`. They are documented and validated but not executed by the in-app engine; run them with YARA and Suricata themselves.
+YARA rules are one rule per `.yar` file with `meta` (`title`, `description`, `severity`, `mitre_attack`, `false_positives`). Suricata rules are one per line in `detections/suricata/*.rules` with `metadata:mitre_technique_id Txxxx, severity …;` and a `sid` in CyberForge's reserved range `9000000-9000099`. They are validated, and previewed in the playground with the teaching evaluators described above; run them with YARA and Suricata themselves for real scanning.
