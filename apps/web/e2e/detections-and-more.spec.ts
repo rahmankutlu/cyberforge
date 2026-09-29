@@ -86,7 +86,9 @@ test.describe("detection engineering", () => {
 
     await page.goto("/detections/user-e2e-test-rule-for-certutil-downloads");
     await main(page).getByRole("button", { name: "Delete rule" }).click();
-    await expect(page).toHaveURL(/\/detections$/);
+    // The saved "origin=user" filter from the visit above may be restored onto the list URL.
+    await expect(page).toHaveURL(/\/detections(\?origin=user)?$/);
+    await expect(main(page).getByText("E2E Test Rule For Certutil Downloads")).toHaveCount(0);
   });
 
   test("lists 65 rules across Sigma, YARA and Suricata", async ({ page }) => {
