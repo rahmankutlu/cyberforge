@@ -59,6 +59,20 @@ flowchart LR
 - **`content/loader.py`** loads everything and cross-validates references: every MITRE identifier exists, every rule a lab declares exists, learning modules reference real labs, and so on. The API refuses to start on any error.
 - **`services/seed.py`** upserts reference data on every start (safe to repeat, preserves user-created rules) and seeds demo activity once, when the database has no alerts.
 
+Since v0.2 some content is served straight from files instead of the database, because it needs no persistence and reads better as a reviewable diff:
+
+| Content             | Where                                  | How it is used                                                                                  |
+| ------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Rule tests          | `detections/sigma/**/<slug>.tests.yml` | Run by `services/rule_tests.py`; results, coverage and quality are computed once per process.   |
+| Attack stories      | `stories/*.yaml`                       | `services/stories.py` runs the shipped rules over a story's telemetry to build its view.        |
+| Playground datasets | `datasets/playground/*.yaml`           | `services/playground.py` materialises events or files and evaluates a rule with an explanation. |
+| Demo scenarios      | `demos/*.yaml`                         | `services/demo.py` derives alerts, severity, MITRE, process chain and summary from telemetry.   |
+| Lab-local rules     | `labs/<domain>/<lab>/detections/`      | Loaded with the shared rules and synced to the database like them.                              |
+
+Progress in stories and the demo lives in the browser only. There is no server-side "run" entity.
+
+`cyberforge.cli` (`python -m cyberforge`) is the small command line over these modules: `detections test`, `detections quality`, `content stats`, `story validate`, `lab create`, `lab validate` and `validate`. `scripts/export_schemas.py` writes JSON Schema for the file types to `schemas/`.
+
 ## Telemetry and detection
 
 ```mermaid
@@ -110,7 +124,7 @@ Schema changes ship as Alembic migrations (`cyberforge/migrations`), run automat
 
 ## API
 
-`/api/v1` is versioned and documented at `/docs`. Routers are grouped by domain: `labs`, `events`, `alerts`, `investigations`, `detections`, `mitre`, `intel`, `learning`, `ai`, `meta` (dashboard, search, docs, demo mode, settings). Conventions: pagination through `page`/`page_size` and a `Page` envelope, explicit sort whitelists, LIKE-escaped search, Pydantic request and response models, `422` for validation, `404` for missing resources.
+`/api/v1` is versioned and documented at `/docs`. Routers are grouped by domain: `labs`, `events`, `alerts`, `investigations`, `detections` (including `/detections/quality` and `/detections/{slug}/tests`), `playground`, `stories`, `showcase` (demo scripts and the SSE event stream), `mitre`, `intel`, `learning`, `ai`, `meta` (dashboard, search, docs, seeded demo data, settings). Conventions: pagination through `page`/`page_size` and a `Page` envelope, explicit sort whitelists, LIKE-escaped search, Pydantic request and response models, `422` for validation, `404` for missing resources.
 
 Cross-cutting concerns live in `security.py` middleware: security headers, the Origin/CSRF check, a body-size limit and rate limiting (Redis when reachable, memory otherwise). Health (`/health`) and readiness (`/ready`) are unauthenticated.
 
@@ -127,7 +141,9 @@ Cross-cutting concerns live in `security.py` middleware: security headers, the O
 | To add…               | Do this                                                                                                                                                                                                             |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | A lab                 | Add `labs/<domain>/<slug>/` with `lab.yaml` and `telemetry/scenario.jsonl`; run `pnpm content:labs` and `pnpm validate:content`.                                                                                    |
-| A Sigma rule          | Add a `.yml` under `detections/sigma/`; `python scripts/assign_rule_ids.py` for the id.                                                                                                                             |
+| A Sigma rule          | Add a `.yml` and its `.tests.yml` under `detections/sigma/`; `python scripts/assign_rule_ids.py` for the id; `pnpm test:detections`. See [Creating a detection](creating-a-detection.md).                           |
+| A story or a dataset  | Add `stories/<slug>.yaml` or `datasets/playground/<slug>.yaml`; `pnpm validate:content` proves the rules it lists really fire. See [Stories](stories.md).                                                           |
+| A demo scenario       | Add `demos/<slug>.yaml`; alerts, severity, MITRE and the summary are derived. See [Demo mode](demo-mode.md).                                                                                                        |
 | A telemetry category  | Add a `CategorySpec` in `services/telemetry.py` (logsource, renderer, summary).                                                                                                                                     |
 | A translation target  | Add a pySigma backend to `sigma_service._pysigma_targets()` and `TARGET_IDS`.                                                                                                                                       |
 | An AI provider        | Subclass `AIProvider` in `ai/providers.py` and register it in `provider_status`.                                                                                                                                    |
@@ -139,6 +155,7 @@ Cross-cutting concerns live in `security.py` middleware: security headers, the O
 | Layer        | Tool       | What it proves                                                                                                                                                       |
 | ------------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Content      | Pytest     | Every shipped file validates; every lab triggers exactly its declared rules; near-miss datasets stay quiet.                                                          |
+| Detections   | Pytest     | Every Sigma rule's positive and negative tests pass; the match trace never disagrees with the engine; datasets, stories and demos fire the rules they declare.       |
 | Engine       | Pytest     | Sigma semantics: modifiers, conditions, correlation windows, translation.                                                                                            |
 | API          | Pytest     | Every endpoint and workflow, guardrails, hardening headers, the AI analyst's constraints, the vulnerable lab app and its telemetry path.                             |
 | UI logic     | Vitest     | Formatting, URL state, highlighting, progress, the lifecycle component, tables and filters.                                                                          |

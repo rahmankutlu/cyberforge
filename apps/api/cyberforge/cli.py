@@ -240,7 +240,19 @@ def cmd_detections_quality(args: argparse.Namespace) -> int:
 def cmd_content_stats(args: argparse.Namespace) -> int:
     from cyberforge.content import stats
 
-    data = stats.collect(find_root(args.root))
+    root = find_root(args.root)
+    if args.write_readme or args.check_readme:
+        try:
+            current = stats.update_readme(root, check=args.check_readme)
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        if args.check_readme and not current:
+            print("README.md counts are out of date. Run: pnpm content:readme", file=sys.stderr)
+            return 1
+        print("README.md counts are up to date." if args.check_readme else "README.md counts updated.")
+        return 0
+    data = stats.collect(root)
     if args.json:
         print(json.dumps(data, indent=2))
     elif args.markdown:
@@ -383,6 +395,8 @@ def build_parser() -> argparse.ArgumentParser:
     stats = content.add_parser("stats", help="counts generated from the repository")
     stats.add_argument("--json", action="store_true")
     stats.add_argument("--markdown", action="store_true")
+    stats.add_argument("--write-readme", action="store_true", help="rewrite the counts block in README.md")
+    stats.add_argument("--check-readme", action="store_true", help="fail if the README counts are stale")
     stats.set_defaults(func=cmd_content_stats)
 
     story = sub.add_parser("story", help="attack story tooling").add_subparsers(

@@ -2,6 +2,43 @@
 
 All notable changes to CyberForge are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - Unreleased
+
+The release theme is _understanding and trusting detections_: see why a rule matched, prove it with tests, follow whole incidents, and make it easy to contribute.
+
+### Added
+
+- **Detection playground** (`/detections/playground`): a three-pane tool (rule, test data, explanation) for Sigma, YARA and Suricata. The **match trace** shows every selection, field, value and the condition path for any event, matched or not, with false-positive hints, translations, the MITRE mapping and notes. Eleven curated synthetic datasets, each listing the rules it is expected to trigger (checked in CI).
+- **Rule test framework:** `<rule>.tests.yml` beside every Sigma rule (or `tests.yml` beside `rule.yml`) with positive, negative, multi-event and correlation cases. `pnpm test:detections` / `python -m cyberforge detections test` discovers, validates and runs them with the engine the SOC uses, prints per-case results, writes a CI summary and exits non-zero on failure. 204 tests cover all 56 Sigma rules.
+- **CI detection gate:** a pull request fails if a rule or its tests are invalid, a positive test does not match, a negative test matches, a MITRE identifier is unknown, or a rule has no positive and negative test.
+- **Coverage and quality:** detection test coverage and seven deterministic quality checks per rule (schema, MITRE, description, false-positive notes, positive tests, negative tests, translation verified), calculated from the repository and shown in the README, the dashboard, the rule pages and the CI summary.
+- **Attack stories** (`/stories`): five complete synthetic incidents (compromised developer workstation, suspicious admin account activity, web application intrusion, credential abuse and lateral movement, AI agent tool abuse) with progressive evidence reveal, findings, questions, analyst decisions, containment, a post-incident explanation, a live pipeline strip and an investigation graph. CI proves each declared detection fires on its step and that all data is synthetic.
+- **Demo mode** (`/demo`): a deterministic 80-second incident with Start, Pause, Reset and 1x/2x/4x speed: telemetry ingestion, detections, alerts, escalating severity, a MITRE heatmap, the process chain, analyst notes, containment and a generated summary. No external service and no AI provider.
+- **Live event stream:** a Server-Sent Events feed of synthetic events on the dashboard (`GET /api/v1/stream/events`).
+- **Community lab SDK:** `pnpm create:lab <domain> <slug>` scaffolds a lab that already validates (manifest, README, scenario, lab-local rule with tests, lab tests, optional isolated docker-compose). Labs may ship their own `detections/`, and `tests/lab.tests.yml` asserts what the scenario must and must not trigger. JSON Schema for lab, story, dataset, demo and test files in `schemas/`.
+- **CLI:** `python -m cyberforge` with `detections test`, `detections quality`, `content stats`, `validate`, `lab create`, `lab validate` and `story validate`.
+- **MITRE coverage:** what labs, detections, stories and tests cover, techniques lacking a tested rule, and a platform filter (Windows, Linux, Network, Web, Cloud, AI security). Adds T1021.002, T1098.001 and T1195.
+- **Search:** stories and datasets are indexed; a technique id finds everything mapped to it (and to its sub-techniques), a tactic name finds its techniques and their content, and `sigma`, `yara`, `suricata` and log-source words find rules.
+- **New Sigma rule:** administrative share accessed over the network by a user account (T1021.002).
+- **Contributor experience:** guides for creating a lab and a detection and for testing detections; a contributor backlog; issue templates for good first issues, Sigma rules, datasets, labs, stories and documentation; `examples/custom-detection` and `examples/custom-lab`.
+- **Visuals:** `pnpm screenshots` regenerates the README screenshots and a demo GIF from a seeded instance ([Demo assets](docs/demo-assets.md)); README counts are generated from the repository and checked in CI.
+
+### Changed
+
+- The README leads with the attack-to-investigation flow, a demo, and generated counts.
+- `/detections/playground` is now the three-pane tool above; the older validate, translate and test flows live on in its tabs. `/detections/new` is unchanged.
+- The API's security headers keep an endpoint's own `Cache-Control` for event streams so proxies do not buffer them.
+
+### Security
+
+- YARA and Suricata previews use small teaching evaluators that report what they cannot run instead of guessing; user regular expressions in them are refused when they are long or have nested quantifiers (a linear check), and the Suricata rule parser has no backtracking regular expressions.
+- Stories, demos and datasets may only use RFC 1918 and RFC 5737 addresses and reserved host names (enforced by validation).
+- The live stream is bounded (at most 20 concurrent streams, ten minutes each) and rate-limited like other expensive endpoints.
+
+### Compatibility
+
+- Every v0.1 lab, rule and dataset continues to validate unchanged; no schema was changed incompatibly. New file types and directories (`stories/`, `demos/`, `datasets/playground/`, `schemas/`) are additive.
+
 ## [0.1.0]
 
 First release.
@@ -31,3 +68,4 @@ First release.
 - GitHub Actions for CI (lint, type checks, Vitest, Pytest, build, content validation, PostgreSQL migrations, container build), Playwright end-to-end tests, CodeQL, dependency review and tagged releases; Dependabot.
 
 [0.1.0]: https://github.com/rahmankutlu/cyberforge/releases/tag/v0.1.0
+[0.2.0]: https://github.com/rahmankutlu/cyberforge/compare/v0.1.0...v0.2.0

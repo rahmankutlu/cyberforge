@@ -1,0 +1,48 @@
+name: Good first issue
+description: A small, well-scoped task that a first-time contributor can finish (maintainers use this to file them)
+labels: [good first issue]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A good first issue names the exact files to touch and how to know it is done. If you
+        would like to work on an idea from the [contributor backlog](../blob/main/docs/contributor-backlog.md),
+        say so in a comment instead of opening a new issue.
+  - type: input
+    id: title
+    attributes:
+      label: One-line goal
+      placeholder: Add tests for win-security-log-cleared
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Detection tests, Sigma rule, Dataset, Lab, Story, Documentation, UI, Tooling]
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Files to touch
+      description: Paths, and the closest existing example to copy.
+      placeholder: |
+        - detections/sigma/windows/win-security-log-cleared.tests.yml (copy the shape of win-wmi-spawned-shell.tests.yml)
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: How to know it is done
+      description: The command that must pass, and what it should print.
+      placeholder: "`pnpm test:detections` passes and the rule scores 7/7 in `python -m cyberforge detections quality`."
+    validations:
+      required: true
+  - type: dropdown
+    id: size
+    attributes:
+      label: Rough size
+      options: [Under an hour, An evening, A weekend]
+    validations:
+      required: true

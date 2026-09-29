@@ -1,0 +1,76 @@
+name: New Sigma rule
+description: Propose a Sigma rule, with the tests that prove it works
+labels: [detection, sigma, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every Sigma rule ships with tests: events that must match and events that must not.
+        The shortest path is [Creating a detection](../blob/main/docs/creating-a-detection.md).
+  - type: input
+    id: title
+    attributes:
+      label: Rule title
+      placeholder: Sudoers File Edited Through Sudo
+    validations:
+      required: true
+  - type: input
+    id: technique
+    attributes:
+      label: MITRE technique(s)
+      placeholder: T1548.003
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Log source
+      options:
+        [
+          Windows process creation,
+          Windows Security,
+          Sysmon (other),
+          Linux auth,
+          Linux process,
+          Web access log,
+          DNS,
+          Firewall,
+          Cloud audit (CloudTrail),
+          AI gateway,
+          Other,
+        ]
+    validations:
+      required: true
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: Behaviour to detect
+      description: What the activity looks like in the log and why it is suspicious.
+    validations:
+      required: true
+  - type: textarea
+    id: positive
+    attributes:
+      label: An event that must match
+      description: Synthetic only. Field names follow the Sigma vocabulary.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: negative
+    attributes:
+      label: A near miss that must not match
+      description: The most useful negative differs from the positive in exactly the field the rule keys on.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: fp
+    attributes:
+      label: Expected false positives
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to write this rule myself

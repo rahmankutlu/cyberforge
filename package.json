@@ -1,6 +1,6 @@
 {
   "name": "cyberforge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "CyberForge: The Open Cybersecurity Lab. Learn. Simulate. Detect. Investigate. Defend.",
   "license": "MIT",
@@ -47,13 +47,18 @@
     "schemas": "node scripts/py.mjs scripts/export_schemas.py",
     "schemas:check": "node scripts/py.mjs scripts/export_schemas.py --check",
     "content:stats": "node scripts/py.mjs -m cyberforge content stats",
+    "content:readme": "node scripts/py.mjs -m cyberforge content stats --write-readme",
+    "content:readme:check": "node scripts/py.mjs -m cyberforge content stats --check-readme",
     "openapi": "node scripts/py.mjs scripts/export_openapi.py",
     "content:mitre": "node scripts/py.mjs scripts/build_mitre_data.py",
     "content:labs": "node scripts/py.mjs scripts/generate_lab_readmes.py",
+    "screenshots": "node scripts/screenshots.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml,css}\" --log-level warn",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml,css}\" --log-level warn"
   },
   "devDependencies": {
+    "gifenc": "^1.0.3",
+    "pngjs": "^7.0.0",
     "prettier": "^3.6.2"
   },
   "pnpm": {

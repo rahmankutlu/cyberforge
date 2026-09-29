@@ -1,0 +1,51 @@
+name: New dataset
+description: Propose a synthetic dataset for the detection playground
+labels: [dataset, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Datasets are curated, **synthetic** telemetry in `datasets/playground/`. Each one lists the
+        rules it is expected to trigger, and CI proves it. See the
+        [playground docs](../blob/main/docs/detections.md#datasets).
+  - type: input
+    id: title
+    attributes:
+      label: Dataset name
+      placeholder: AWS CloudTrail access-key abuse
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source type
+      placeholder: AWS CloudTrail management events
+    validations:
+      required: true
+  - type: input
+    id: technique
+    attributes:
+      label: MITRE relevance
+      placeholder: T1078.004, T1098.001
+  - type: textarea
+    id: story
+    attributes:
+      label: What the dataset teaches
+      description: The normal traffic, the suspicious sequence, and what a learner should notice.
+    validations:
+      required: true
+  - type: textarea
+    id: rules
+    attributes:
+      label: Expected matching rules
+      description: Existing rule slugs, or rules you plan to add.
+      placeholder: cloud-access-key-created-for-another-user
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Synthetic data
+      options:
+        - label: It uses only RFC 5737 / RFC 1918 addresses and `*.example` names, and no real victim data
+          required: true

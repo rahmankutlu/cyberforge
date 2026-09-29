@@ -88,6 +88,43 @@ test.describe("MITRE explorer", () => {
   });
 });
 
+test.describe("MITRE coverage from content", () => {
+  test("shows what labs, detections and stories cover, and what lacks tests", async ({ page }) => {
+    await page.goto("/mitre?view=content");
+    const m = main(page);
+    for (const id of ["labs", "detections", "stories", "lacking"]) {
+      await expect(m.getByTestId(`coverage-${id}`)).toBeVisible();
+    }
+    await expect(m.getByTestId("coverage-stories")).toContainText("OS Credential Dumping");
+    await expect(m.getByTestId("coverage-detections")).toContainText("T1059.001");
+    await expect(m.getByTestId("coverage-lacking")).toContainText(/of \d+/);
+  });
+
+  test("filters the matrix by platform", async ({ page }) => {
+    await page.goto("/mitre");
+    const m = main(page);
+    await expect(m.locator("[data-technique=T1059]")).toBeVisible();
+    await m.getByTestId("domain-web").click();
+    await expect(page).toHaveURL(/domain=Web/);
+    await expect(m.getByTestId("matrix").locator("[data-technique=T1190]")).toBeVisible();
+    await expect(m.getByTestId("matrix").locator("[data-technique=T1547]")).toHaveCount(0);
+    await m.getByTestId("domain-cloud").click();
+    await expect(m.getByTestId("matrix").locator("[data-technique=T1078]")).toBeVisible();
+    await expect(m.getByTestId("domain-filters").getByRole("link", { name: "All" })).toBeVisible();
+  });
+
+  test("adds story and test columns to the technique table, with a lacking-tests filter", async ({
+    page,
+  }) => {
+    await page.goto("/mitre?view=techniques");
+    const m = main(page);
+    await expect(m.getByRole("columnheader", { name: /Stories/ })).toBeVisible();
+    await expect(m.getByRole("columnheader", { name: /Tested/ })).toBeVisible();
+    await page.goto("/mitre?view=techniques&domain=AI%20Security&fw=atlas");
+    await expect(main(page).getByRole("link", { name: "AML.T0051" }).first()).toBeVisible();
+  });
+});
+
 test.describe("AI security", () => {
   test("explains the trust-boundary chain and its findings", async ({ page }) => {
     await page.goto("/ai-security");

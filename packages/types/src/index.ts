@@ -454,6 +454,13 @@ export interface TechniqueCoverage {
   rules: number;
   alerts: number;
   investigations: number;
+  /** Attack stories that teach the technique. */
+  stories: number;
+  /** Mapped Sigma rules that have positive and negative tests. */
+  tested_rules: number;
+  /** Something covers the technique (a lab, rule or story) but no tested rule does. */
+  lacking_tests: boolean;
+  domains: ("Windows" | "Linux" | "Network" | "Web" | "Cloud" | "AI Security")[];
 }
 
 export interface TechniqueDetail extends TechniqueCoverage {
@@ -473,7 +480,15 @@ export interface Matrix {
   version: string;
   notice: string;
   columns: { tactic: Tactic; techniques: TechniqueCoverage[] }[];
-  totals: { techniques: number; covered: number; with_labs: number; with_alerts: number };
+  totals: {
+    techniques: number;
+    covered: number;
+    with_labs: number;
+    with_alerts: number;
+    with_stories: number;
+    with_tested_rules: number;
+    lacking_tests: number;
+  };
 }
 
 // ── threat intel ───────────────────────────────────────────────────────────────────────────
@@ -646,7 +661,8 @@ export interface AIFinding {
 
 // ── search / docs / settings ───────────────────────────────────────────────────────────────
 export interface SearchHit {
-  kind: "lab" | "rule" | "technique" | "alert" | "doc" | "learning" | "indicator";
+  kind:
+    "lab" | "story" | "rule" | "dataset" | "technique" | "alert" | "doc" | "learning" | "indicator";
   id: string;
   title: string;
   subtitle: string | null;

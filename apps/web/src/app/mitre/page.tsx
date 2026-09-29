@@ -24,7 +24,14 @@ import { MatrixLegend, MatrixView } from "@/components/mitre/matrix";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { apiGet } from "@/lib/api";
-import { METRICS, coverageSummary, type Metric } from "@/lib/mitre";
+import {
+  DOMAINS,
+  METRICS,
+  contentCoverage,
+  coverageSummary,
+  isDomain,
+  type Metric,
+} from "@/lib/mitre";
 import { first, hrefWith, type SearchParams } from "@/lib/params";
 
 export const metadata = { title: "MITRE ATT&CK explorer" };
@@ -32,6 +39,7 @@ export const metadata = { title: "MITRE ATT&CK explorer" };
 const VIEWS = [
   { value: "matrix", label: "Coverage map" },
   { value: "coverage", label: "Detection coverage" },
+  { value: "content", label: "Content coverage" },
   { value: "techniques", label: "Techniques" },
   { value: "tactics", label: "Tactics" },
 ] as const;
@@ -47,11 +55,16 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
     ? (first(sp.metric) as Metric)
     : "rules";
   const showSub = first(sp.sub) === "1";
+  const domain = isDomain(first(sp.domain))
+    ? (first(sp.domain) as (typeof DOMAINS)[number])
+    : undefined;
 
   const [matrix, techniques] = await Promise.all([
-    apiGet<Matrix>("/mitre/matrix", { framework }),
+    apiGet<Matrix>("/mitre/matrix", { framework, domain }),
     apiGet<TechniqueCoverage[]>("/mitre/techniques", {
       framework,
+      domain,
+      lacking_tests: first(sp.tests) === "lacking" ? true : undefined,
       tactic: first(sp.tactic),
       q: first(sp.q),
       covered: first(sp.covered) === "yes" ? true : first(sp.covered) === "no" ? false : undefined,
@@ -99,7 +112,7 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
         }
       />
 
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <StatCard
           label="Techniques (top-level)"
           value={summary.total}
@@ -113,10 +126,48 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
         />
         <StatCard label="Taught by a lab" value={matrix.totals.with_labs} hint="Hands-on labs" />
         <StatCard
+          label="Taught by a story"
+          value={matrix.totals.with_stories}
+          hint="Attack stories"
+        />
+        <StatCard
+          label="Lacking tests"
+          value={matrix.totals.lacking_tests}
+          tone={matrix.totals.lacking_tests === 0 ? "ok" : "high"}
+          hint="Covered, but no tested rule"
+        />
+        <StatCard
           label="Seen in alerts"
           value={matrix.totals.with_alerts}
           hint="Raised on this instance"
         />
+      </div>
+
+      <div
+        className="mb-3 flex flex-wrap items-center gap-2"
+        role="group"
+        aria-label="Filter by platform"
+        data-testid="domain-filters"
+      >
+        <span className="text-xs text-muted-foreground">Platform</span>
+        <Link
+          href={link({ domain: null })}
+          aria-current={domain ? undefined : "true"}
+          className={tabClass(!domain)}
+        >
+          All
+        </Link>
+        {(framework === "atlas" ? (["AI Security"] as const) : DOMAINS).map((d) => (
+          <Link
+            key={d}
+            href={link({ domain: d })}
+            aria-current={domain === d ? "true" : undefined}
+            className={tabClass(domain === d)}
+            data-testid={`domain-${d.replace(" ", "-").toLowerCase()}`}
+          >
+            {d}
+          </Link>
+        ))}
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -228,6 +279,8 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
         </div>
       ) : null}
 
+      {view === "content" ? <ContentCoverage techniques={unique} /> : null}
+
       {view === "tactics" ? (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {matrix.columns.map(({ tactic, techniques: ts }) => {
@@ -296,7 +349,13 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
                 ]}
                 className="w-48"
               />
-              <ClearFilters keys={["q", "tactic", "covered"]} />
+              <UrlSelect
+                param="tests"
+                label="Tests"
+                options={[{ value: "lacking", label: "Lacking tests" }]}
+                className="w-44"
+              />
+              <ClearFilters keys={["q", "tactic", "covered", "tests"]} />
             </div>
           </Suspense>
           <TechniquesTable techniques={techniques} params={sp} />
@@ -313,9 +372,16 @@ function TechniquesTable({
   techniques: TechniqueCoverage[];
   params: SearchParams;
 }) {
-  const sort = ["id", "name", "labs", "rules", "alerts", "investigations"].includes(
-    first(params.sort) ?? "",
-  )
+  const sort = [
+    "id",
+    "name",
+    "labs",
+    "rules",
+    "tested_rules",
+    "stories",
+    "alerts",
+    "investigations",
+  ].includes(first(params.sort) ?? "")
     ? (first(params.sort) as string)
     : "id";
   const order = first(params.order) === "desc" ? "desc" : "asc";
@@ -352,6 +418,20 @@ function TechniquesTable({
             {...sorting}
           />
           <SortTh
+            label="Tested"
+            column="tested_rules"
+            className="w-20 text-right"
+            defaultOrder="desc"
+            {...sorting}
+          />
+          <SortTh
+            label="Stories"
+            column="stories"
+            className="w-20 text-right"
+            defaultOrder="desc"
+            {...sorting}
+          />
+          <SortTh
             label="Alerts"
             column="alerts"
             className="w-16 text-right"
@@ -383,11 +463,85 @@ function TechniquesTable({
             <TD className={cn("text-right tabular-nums", t.rules === 0 && "text-muted-foreground")}>
               {t.rules}
             </TD>
+            <TD
+              className={cn(
+                "text-right tabular-nums",
+                t.lacking_tests && "font-medium text-sev-medium",
+              )}
+              title={t.lacking_tests ? "Covered, but no rule with tests" : undefined}
+            >
+              {t.tested_rules}
+            </TD>
+            <TD className="text-right tabular-nums">{t.stories}</TD>
             <TD className="text-right tabular-nums">{t.alerts}</TD>
             <TD className="text-right tabular-nums">{t.investigations}</TD>
           </TR>
         ))}
       </TBody>
     </Table>
+  );
+}
+
+function ContentCoverage({ techniques }: { techniques: TechniqueCoverage[] }) {
+  const c = contentCoverage(techniques);
+  const blocks = [
+    {
+      id: "labs",
+      title: "Covered by labs",
+      note: "Hands-on labs teach these techniques.",
+      items: c.labs,
+    },
+    {
+      id: "detections",
+      title: "Covered by detections",
+      note: "At least one enabled rule maps to them.",
+      items: c.detections,
+    },
+    {
+      id: "stories",
+      title: "Covered by stories",
+      note: "An attack story walks through them.",
+      items: c.stories,
+    },
+    {
+      id: "lacking",
+      title: "Lacking tests",
+      note: "Covered by something, but no rule with positive and negative tests. Write tests, or a tested rule.",
+      items: c.lackingTests,
+    },
+  ];
+  return (
+    <div className="grid gap-4 lg:grid-cols-2" data-testid="content-coverage">
+      {blocks.map((b) => (
+        <Card key={b.id} data-testid={`coverage-${b.id}`}>
+          <CardContent className="space-y-3 p-4">
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold">{b.title}</h2>
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {b.items.length} of {c.total}
+              </span>
+            </div>
+            <Progress
+              value={b.items.length}
+              max={Math.max(c.total, 1)}
+              label={`${b.title}: ${b.items.length} of ${c.total} techniques`}
+            />
+            <p className="text-xs text-muted-foreground">{b.note}</p>
+            <ul className="grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
+              {b.items.map((t) => (
+                <li key={t.id} className="min-w-0">
+                  <TechniqueChip id={t.id} name={t.name} />
+                </li>
+              ))}
+              {b.items.length === 0 ? (
+                <li className="text-xs text-muted-foreground">
+                  {b.id === "lacking" ? "Every covered technique has a tested rule." : "None."}
+                </li>
+              ) : null}
+            </ul>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }
