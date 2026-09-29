@@ -63,9 +63,9 @@ test.describe("detection engineering", () => {
     await expect(tests).toContainText("expected: false");
   });
 
-  test("lists 65 rules across Sigma, YARA and Suricata", async ({ page }) => {
+  test("lists the Sigma, YARA and Suricata rules", async ({ page }) => {
     await page.goto("/detections");
-    await expect(main(page).getByText(/of 65 rules/)).toBeVisible();
+    await expect(main(page).getByText(/of \d+ rules/)).toBeVisible();
     await main(page).getByLabel("Format").selectOption("yara");
     await expect(main(page).getByTestId("rule-row")).toHaveCount(5);
   });

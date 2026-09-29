@@ -293,6 +293,7 @@ def cmd_story_validate(args: argparse.Namespace) -> int:
     bundle = load_bundle(find_root(args.root))
     issues = [i for i in bundle.issues if i.path.startswith("stories/")]
     issues += checks.check_stories(bundle)
+    issues += checks.check_demos(bundle)
     errors = [i for i in issues if i.level == "error"]
     for issue in issues:
         print(issue)

@@ -9,6 +9,7 @@ import {
   Grid3x3,
   LayoutDashboard,
   Library,
+  MonitorPlay,
   Radar,
   Search,
   Settings,
@@ -36,6 +37,12 @@ export const NAV: NavGroup[] = [
     label: "Overview",
     items: [
       { label: "Dashboard", href: "/", icon: LayoutDashboard, shortcut: "d" },
+      {
+        label: "Live demo",
+        href: "/demo",
+        icon: MonitorPlay,
+        keywords: "showcase simulate playback presentation",
+      },
       {
         label: "Lifecycle",
         href: "/lifecycle",

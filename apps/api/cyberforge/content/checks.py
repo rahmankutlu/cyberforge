@@ -161,3 +161,32 @@ def check_datasets(bundle: ContentBundle) -> list[ContentIssue]:
         for bad in find_non_synthetic(ds.model_dump_json()):
             issues.append(ContentIssue(where, f"non-synthetic address or host {bad!r}"))
     return issues
+
+
+def check_demos(bundle: ContentBundle) -> list[ContentIssue]:
+    """Demo scenarios must fit their duration, fire real detections and stay synthetic."""
+    from cyberforge.content.synthetic import find_non_synthetic
+    from cyberforge.services import demo as demo_service
+
+    issues: list[ContentIssue] = []
+    for demo in bundle.demos:
+        where = f"demos/{demo.slug}.yaml"
+        last_event = max((t for t, _ in simulation.expand(demo.events)), default=0)
+        if last_event >= demo.duration_seconds - 8:
+            issues.append(
+                ContentIssue(where, "the last event must leave at least 8 seconds for the summary")
+            )
+        if any(n.t >= demo.duration_seconds for n in demo.notes):
+            issues.append(ContentIssue(where, "a note is scheduled after the demo ends"))
+        if any(c.t >= demo.duration_seconds for c in demo.containment):
+            issues.append(ContentIssue(where, "a containment step is scheduled after the demo ends"))
+        if demo.containment[0].t != 0:
+            issues.append(ContentIssue(where, "the first containment state must start at t=0"))
+        script = demo_service.build_script(demo, bundle)
+        if len(script["alerts"]) < 3:
+            issues.append(ContentIssue(where, "a demo needs at least three alerts to tell a story"))
+        if not script["techniques"]:
+            issues.append(ContentIssue(where, "no ATT&CK technique is observed"))
+        for bad in find_non_synthetic(demo.model_dump_json()):
+            issues.append(ContentIssue(where, f"non-synthetic address or host {bad!r}"))
+    return issues

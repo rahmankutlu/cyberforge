@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from cyberforge.content.loader import _SURICATA
+from cyberforge.services import regex_guard
 
 # Telemetry field -> Suricata sticky buffer. First non-empty source wins.
 BUFFERS = {
@@ -81,30 +81,65 @@ class SuricataExplanation:
 
 
 def _options(body: str) -> list[tuple[str, str]]:
+    """Split `key:value; key2:value2;` on `;` outside double quotes. One pass, no backtracking."""
+    tokens: list[str] = []
+    current: list[str] = []
+    in_quote = False
+    escaped = False
+    for ch in body:
+        if escaped:
+            current.append(ch)
+            escaped = False
+        elif ch == "\\":
+            current.append(ch)
+            escaped = True
+        elif ch == '"':
+            current.append(ch)
+            in_quote = not in_quote
+        elif ch == ";" and not in_quote:
+            tokens.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    tokens.append("".join(current))
     out: list[tuple[str, str]] = []
-    for token in re.findall(r'(?:[^;"\\]|\\.|"(?:[^"\\]|\\.)*")+', body):
+    for token in tokens:
         key, _, value = token.strip().partition(":")
         if key.strip():
             out.append((key.strip(), value.strip()))
     return out
 
 
+MAX_RULE_CHARS = 8192
+_ACTIONS = {"alert", "drop", "pass", "reject", "rejectsrc", "rejectdst", "rejectboth"}
+
+
 def parse(rule: str) -> SuricataExplanation:
     line = next(
         (ln.strip() for ln in rule.splitlines() if ln.strip() and not ln.lstrip().startswith("#")), ""
     )
-    match = _SURICATA.match(line)
-    if not match:
-        raise SuricataError("Not a Suricata rule. Expected: action proto src -> dst (options;)")
-    header = re.match(r"^(\w+)\s+(\S+)\s+(.+?)\s+->\s+(.+?)\s+\(", line)
-    assert header
-    action, proto, source, destination = header.groups()
-    opts = _options(match.group(5))
+    fail = "Not a Suricata rule. Expected: action proto src -> dst (options;)"
+    if len(line) > MAX_RULE_CHARS:
+        raise SuricataError(f"Rule is longer than {MAX_RULE_CHARS} characters")
+    head, paren, tail = line.partition("(")
+    if not paren or not tail.rstrip().endswith(")"):
+        raise SuricataError(fail)
+    parts = head.split(None, 2)
+    if len(parts) < 3 or parts[0] not in _ACTIONS:
+        raise SuricataError(fail)
+    action, proto, rest = parts
+    source, arrow, destination = rest.partition("->")
+    if not arrow or not source.strip() or not destination.strip():
+        raise SuricataError(fail)
+    opts = _options(tail.rstrip()[:-1])
     first = dict(reversed(opts))
+    if not first.get("msg") or not first.get("sid"):
+        raise SuricataError("Rule needs both msg and sid")
     return SuricataExplanation(
-        action=action, protocol=proto, source=source, direction="->", destination=destination,
-        msg=first.get("msg", "").strip('"'), sid=first.get("sid", ""), classtype=first.get("classtype"),
-        metadata=first.get("metadata"), options=[{"name": k, "value": v} for k, v in opts],
+        action=action, protocol=proto, source=source.strip(), direction="->",
+        destination=destination.strip(), msg=first.get("msg", "").strip('"'),
+        sid=first.get("sid", ""), classtype=first.get("classtype"), metadata=first.get("metadata"),
+        options=[{"name": k, "value": v} for k, v in opts],
     )  # fmt: skip
 
 
@@ -148,11 +183,16 @@ def _content_check(needle: str, haystack: str, mods: list[str]) -> bool:
     return (not found) if negate else found
 
 
+MAX_HAYSTACK_CHARS = regex_guard.MAX_HAYSTACK_CHARS
+
+
 def _pcre_check(spec: str, haystack: str) -> bool:
-    m = re.match(r"^/(.*)/([a-zA-Z]*)$", spec, re.DOTALL)
-    if not m:
-        raise SuricataError(f"unsupported pcre: {spec}")
-    body, flag_text = m.groups()
+    if not spec.startswith("/") or spec.rfind("/") == 0:
+        raise SuricataError(f"unsupported pcre: {spec[:60]}")
+    end = spec.rfind("/")
+    body, flag_text = spec[1:end], spec[end + 1 :]
+    if (reason := regex_guard.check_pattern(body)) is not None:
+        raise SuricataError(f"this pcre is too complex for the preview: {reason}")
     flags = 0
     if "i" in flag_text:
         flags |= re.IGNORECASE
@@ -160,7 +200,7 @@ def _pcre_check(spec: str, haystack: str) -> bool:
         flags |= re.DOTALL
     if "m" in flag_text:
         flags |= re.MULTILINE
-    return bool(re.search(body.replace("\\/", "/"), haystack, flags))
+    return bool(re.search(body.replace("\\/", "/"), haystack[:MAX_HAYSTACK_CHARS], flags))
 
 
 def evaluate(rule: str, fields: dict[str, Any]) -> SuricataExplanation:
