@@ -11,7 +11,9 @@ from cyberforge.config import Settings, get_settings
 from cyberforge.content.loader import ContentBundle
 from cyberforge.db import get_session
 
-SessionDep = Annotated[Session, Depends(get_session)]
+# scope="function" commits before the response is sent, so a client that reads right after a write
+# never races the commit (the default "request" scope runs the commit after the response).
+SessionDep = Annotated[Session, Depends(get_session, scope="function")]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 

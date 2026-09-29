@@ -68,3 +68,13 @@ def test_demo_seed_runs_once_and_reset_clears_activity(tmp_path: Path) -> None:
         seed.reset_demo(session)
         assert session.scalar(select(func.count()).select_from(Alert)) == 0
         assert session.scalar(select(func.count()).select_from(Lab)) == 20  # reference data kept
+
+
+def test_session_commits_before_the_response_is_sent() -> None:
+    """A client that reads right after a write must see it: the commit cannot run after the response."""
+    from fastapi.params import Depends
+
+    from cyberforge.api.deps import SessionDep
+
+    dependency = next(m for m in SessionDep.__metadata__ if isinstance(m, Depends))
+    assert dependency.scope == "function"
