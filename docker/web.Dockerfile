@@ -2,7 +2,7 @@
 # CyberForge web app (Next.js standalone output). Build context: the repository root.
 #   docker build -f docker/web.Dockerfile -t cyberforge-web .
 
-FROM node:22-alpine AS base
+FROM node:26-alpine AS base
 RUN corepack enable
 WORKDIR /repo
 
@@ -25,7 +25,7 @@ ENV API_INTERNAL_URL=${API_INTERNAL_URL} \
     NEXT_OUTPUT=standalone
 RUN pnpm --filter @cyberforge/web build
 
-FROM node:22-alpine AS runtime
+FROM node:26-alpine AS runtime
 LABEL org.opencontainers.image.title="CyberForge Web" \
       org.opencontainers.image.description="CyberForge web app: cyber range, mini SOC and detection workbench" \
       org.opencontainers.image.source="https://github.com/rahmankutlu/cyberforge" \
