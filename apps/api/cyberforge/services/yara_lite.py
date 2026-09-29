@@ -21,7 +21,10 @@ from typing import Any
 
 import plyara
 
+from cyberforge.services import regex_guard
+
 MAX_SAMPLE_BYTES = 256 * 1024
+
 _UNITS = {"KB": 1024, "MB": 1024 * 1024}
 _CMP = {
     "<": lambda a, b: a < b,
@@ -106,6 +109,8 @@ def _compile_string(spec: dict[str, Any]) -> tuple[str, str, str, list[re.Patter
     if spec["type"] == "regex":
         body = value[1 : value.rfind("/")]
         trailing = value[value.rfind("/") + 1 :]
+        if (reason := regex_guard.check_pattern(body)) is not None:
+            raise YaraUnsupported(f"{name}: regular expression too complex for the preview ({reason})")
         if "i" in trailing:
             flags |= re.IGNORECASE
         patterns = [re.compile(body.encode("latin-1", "replace"), flags)]

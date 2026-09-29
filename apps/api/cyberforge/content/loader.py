@@ -24,6 +24,7 @@ from typing import Any, TypeVar
 import yaml
 from pydantic import BaseModel, ValidationError
 
+from cyberforge.content.demos import DemoScenario
 from cyberforge.content.schemas import (
     AnalystDoc,
     IncidentDoc,
@@ -105,6 +106,7 @@ class ContentBundle:
     docs: list[DocPage] = field(default_factory=list)
     ai_security: dict[str, Any] = field(default_factory=dict)
     stories: list[StoryDoc] = field(default_factory=list)
+    demos: list[DemoScenario] = field(default_factory=list)
     playground_datasets: list[Any] = field(default_factory=list)  # PlaygroundDataset
     issues: list[ContentIssue] = field(default_factory=list)
 
@@ -397,6 +399,23 @@ def _load_stories(root: Path, bundle: ContentBundle) -> None:
         bundle.stories.append(story)
 
 
+def _load_demos(root: Path, bundle: ContentBundle) -> None:
+    for path in sorted((root / "demos").glob("*.yaml")):
+        demo = _load_model(DemoScenario, path, root, bundle.issues)
+        if demo is None:
+            continue
+        if demo.slug != path.stem:
+            bundle.issues.append(
+                ContentIssue(_rel(root, path), f"slug {demo.slug!r} must match the file name")
+            )
+        for i, ev in enumerate(demo.events):
+            if not known_category(ev.category):
+                bundle.issues.append(
+                    ContentIssue(_rel(root, path), f"event {i}: unknown category {ev.category!r}")
+                )
+        bundle.demos.append(demo)
+
+
 def _load_yaml_list(path: Path, model: type[T], root: Path, issues: list[ContentIssue]) -> list[T]:
     if not path.is_file():
         return []
@@ -448,6 +467,7 @@ def load_bundle(root: Path) -> ContentBundle:
     _load_datasets(root, bundle)
     _load_playground_datasets(root, bundle)
     _load_stories(root, bundle)
+    _load_demos(root, bundle)
 
     content_pkg = root / "packages" / "security-content"
     for path in sorted((content_pkg / "learning" / "tracks").glob("*.yaml")):

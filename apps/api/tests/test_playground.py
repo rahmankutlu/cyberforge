@@ -376,3 +376,41 @@ def test_playground_rejects_bad_input(client: TestClient) -> None:
     assert client.post("/api/v1/playground/run", json=bad).status_code == 422
     too_many = {"content": "title: x", "events": [{"fields": {}}] * 501}
     assert client.post("/api/v1/playground/run", json=too_many).status_code == 422
+
+
+# --- regex guard --------------------------------------------------------------------------------
+
+
+def test_regex_guard_refuses_catastrophic_shapes_and_accepts_normal_patterns() -> None:
+    from cyberforge.services import regex_guard
+
+    assert regex_guard.has_nested_quantifier("(a+)+$")
+    assert regex_guard.has_nested_quantifier("(a|b*)*c")
+    assert regex_guard.has_nested_quantifier("((ab)+c)*")
+    assert regex_guard.has_nested_quantifier("(x{2,})+")
+    assert not regex_guard.has_nested_quantifier(r"^[a-z0-9+/=_-]{30,}\.")
+    assert not regex_guard.has_nested_quantifier(r"eval\s*\(\s*\$_(POST|REQUEST|GET)\s*\[")
+    assert not regex_guard.has_nested_quantifier(r"(abc)+def")
+    assert regex_guard.check_pattern("a" * 600) is not None
+    assert regex_guard.check_pattern("[a-z]+") is None
+
+
+def test_previews_refuse_a_catastrophic_regex_without_hanging() -> None:
+    import time
+
+    started = time.monotonic()
+    yara = 'rule R { strings: $a = /(a+)+$/ condition: $a }'
+    result = yara_lite.evaluate(yara, "a" * 5000 + "!")
+    assert result.unsupported and "too complex" in result.unsupported
+    suricata = 'alert http any any -> any any (msg:"x"; http.uri; pcre:"/(a+)+$/"; sid:1;)'
+    with pytest.raises(suricata_lite.SuricataError, match="too complex"):
+        suricata_lite.evaluate(suricata, {"cs-uri-stem": "a" * 5000 + "!"})
+    assert time.monotonic() - started < 2
+
+
+def test_suricata_parser_rejects_malformed_rules_and_oversized_input() -> None:
+    for bad in ["", "alert http any any", "alert http any any -> any any", "bogus http any any -> any any (msg:\"m\"; sid:1;)", 'alert http any any -> any any (content:"x";)']:
+        with pytest.raises(suricata_lite.SuricataError):
+            suricata_lite.parse(bad)
+    with pytest.raises(suricata_lite.SuricataError, match="longer than"):
+        suricata_lite.parse('alert http any any -> any any (msg:"' + "a" * 9000 + '"; sid:1;)')

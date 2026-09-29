@@ -965,21 +965,10 @@ export interface StoryDecision {
 }
 
 export type GraphNodeType =
-  | "user"
-  | "host"
-  | "process"
-  | "ip"
-  | "domain"
-  | "detection"
-  | "alert"
-  | "technique";
+  "user" | "host" | "process" | "ip" | "domain" | "detection" | "alert" | "technique";
 
 export type GraphRelation =
-  | "executed"
-  | "connected to"
-  | "triggered"
-  | "mapped to"
-  | "associated with";
+  "executed" | "connected to" | "triggered" | "mapped to" | "associated with";
 
 export interface StoryGraphNode {
   id: string;
@@ -1063,4 +1052,113 @@ export interface Story extends StorySummary {
     detections_to_add: string[];
     lessons: string[];
   };
+}
+
+// ── v0.2: demo mode and the live event stream ────────────────────────────────────────────────
+export interface DemoScenarioSummary {
+  slug: string;
+  title: string;
+  summary: string;
+  duration_seconds: number;
+  host: string;
+}
+
+export interface DemoEvent {
+  id: string;
+  t: number;
+  timestamp: string;
+  host: string | null;
+  user: string | null;
+  source: string;
+  category: string;
+  message: string;
+  command_line: string | null;
+  raw: string;
+  fields: Record<string, unknown>;
+  note: string | null;
+  detections: string[];
+  severity: string;
+}
+
+export interface DemoAlert {
+  id: string;
+  t: number;
+  rule: string;
+  title: string;
+  severity: string;
+  event_id: string;
+  host: string | null;
+  technique: string | null;
+}
+
+export interface DemoTechnique {
+  id: string;
+  name: string;
+  tactics: { id: string; name: string }[];
+  t: number;
+  rule: string;
+}
+
+export interface DemoProcessNode {
+  id: string;
+  label: string;
+  host: string | null;
+  t: number;
+  flagged: boolean;
+  in_chain: boolean;
+}
+
+export interface DemoScript {
+  slug: string;
+  title: string;
+  summary: string;
+  duration_seconds: number;
+  start: string;
+  host: string;
+  user: string;
+  events: DemoEvent[];
+  alerts: DemoAlert[];
+  techniques: DemoTechnique[];
+  tactics: { id: string; name: string }[];
+  process_tree: {
+    nodes: DemoProcessNode[];
+    edges: { source: string; target: string; t: number; kind?: string }[];
+  };
+  severity_timeline: { t: number; severity: string }[];
+  notes: { t: number; analyst: string; body: string }[];
+  containment: {
+    t: number;
+    state: "monitoring" | "containing" | "contained";
+    label: string;
+    detail: string;
+  }[];
+  incident_summary: {
+    t: number;
+    headline: string;
+    paragraphs: string[];
+    stats: {
+      events: number;
+      suspicious_events: number;
+      alerts: number;
+      rules: number;
+      techniques: number;
+      tactics: number;
+      peak_severity: string;
+      seconds_to_first_alert: number;
+      seconds_to_containment: number | null;
+    };
+  };
+}
+
+export interface StreamEvent {
+  seq: number;
+  timestamp: string;
+  source: string | null;
+  host: string;
+  event_type: string;
+  message: string;
+  rule: string | null;
+  rule_slug: string | null;
+  severity: string;
+  dataset: string;
 }
