@@ -74,7 +74,7 @@ This checks lab and rule schemas, Sigma syntax, MITRE identifiers, that every la
 
 ## Adding a lab
 
-Follow [Contributing labs](docs/contributing-labs.md). A lab is a directory under `labs/<domain>/<slug>/` with a `lab.yaml` (the source of truth), a `telemetry/scenario.jsonl`, and a README produced by `pnpm content:labs`. The scenario must trigger the detections the lab declares, and it must be entirely synthetic.
+Start with `pnpm create:lab <domain> <slug>` and follow [Creating a lab](docs/creating-a-lab.md); the older [Contributing labs](docs/contributing-labs.md) has the design background. A lab is a directory under `labs/<domain>/<slug>/` with a `lab.yaml` (the source of truth), a `telemetry/scenario.jsonl`, and a README produced by `pnpm content:labs`. The scenario must trigger the detections the lab declares, and it must be entirely synthetic.
 
 ## Adding a Sigma detection
 

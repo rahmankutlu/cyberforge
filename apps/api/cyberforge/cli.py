@@ -3,6 +3,7 @@
     python -m cyberforge detections test          run every rule's tests
     python -m cyberforge detections quality       per-rule quality checks
     python -m cyberforge content stats            counts generated from the repository
+    python -m cyberforge lab create web my-lab    scaffold a lab and validate it
     python -m cyberforge story validate           check attack stories
     python -m cyberforge validate                 schemas, MITRE ids, scenarios, rule tests
 
@@ -294,6 +295,7 @@ def cmd_story_validate(args: argparse.Namespace) -> int:
     issues = [i for i in bundle.issues if i.path.startswith("stories/")]
     issues += checks.check_stories(bundle)
     issues += checks.check_demos(bundle)
+    issues += checks.check_todo_markers(bundle)
     errors = [i for i in issues if i.level == "error"]
     for issue in issues:
         print(issue)
@@ -301,6 +303,51 @@ def cmd_story_validate(args: argparse.Namespace) -> int:
         print(f"{Style().ok('✓') if not any(story.slug in i.path for i in errors) else Style().bad('✗')} {story.slug}"
               f" ({len(story.steps)} steps, {len(story.detection_slugs())} detections)")
     print(f"{len(bundle.stories)} {'story' if len(bundle.stories) == 1 else 'stories'} checked, {_plural(len(errors), 'error')}")
+    return 1 if errors else 0
+
+
+# --- lab ---------------------------------------------------------------------------------------
+
+
+def cmd_lab_create(args: argparse.Namespace) -> int:
+    from cyberforge.content import scaffold
+
+    root = find_root(args.root)
+    try:
+        result = scaffold.create_lab(
+            root, args.domain, args.slug, title=args.title, difficulty=args.difficulty, with_compose=args.compose
+        )
+    except scaffold.ScaffoldError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    style = Style()
+    print(f"Created {result.directory.relative_to(root).as_posix()}/")
+    for path in result.files:
+        print(f"  {path.relative_to(result.directory).as_posix()}")
+    print()
+    if result.issues:
+        print(style.bad("The scaffold has problems (this is a bug in the SDK, please report it):"))
+        for issue in result.issues:
+            print(f"  {issue}")
+        return 1
+    print(f"{style.ok('✓')} The scaffold validates: schema, README, scenario, example rule and its tests.")
+    print(f"  {_plural(result.placeholders, 'placeholder')} marked {scaffold.MARKER} to replace. Next:")
+    rel = result.directory.relative_to(root).as_posix()
+    print(f"    1. edit {rel}/lab.yaml and telemetry/scenario.jsonl")
+    print(f"    2. replace the example rule in {rel}/detections/ and its tests")
+    print(f"    3. python -m cyberforge lab validate {args.slug}      (fails while placeholders remain)")
+    print("    4. pnpm content:labs && pnpm validate:content")
+    return 0
+
+
+def cmd_lab_validate(args: argparse.Namespace) -> int:
+    from cyberforge.content import scaffold
+
+    issues = scaffold.validate_lab(find_root(args.root), args.slug)
+    for issue in issues:
+        print(issue)
+    errors = [i for i in issues if i.level == "error"]
+    print(f"lab {args.slug}: {_plural(len(errors), 'error')}")
     return 1 if errors else 0
 
 
@@ -343,6 +390,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     story_validate = story.add_parser("validate", help="validate every story in stories/")
     story_validate.set_defaults(func=cmd_story_validate)
+
+    lab = sub.add_parser("lab", help="lab tooling").add_subparsers(dest="command", required=True)
+    create = lab.add_parser("create", help="scaffold a new lab and validate it")
+    create.add_argument("domain", help="web, api, linux, windows-sim, network, cloud or ai-security")
+    create.add_argument("slug", help="kebab-case lab id, e.g. broken-authentication")
+    create.add_argument("--title", help="display title (default: derived from the id)")
+    create.add_argument("--difficulty", default="beginner", choices=["beginner", "intermediate", "advanced"])
+    create.add_argument("--compose", action="store_true", help="also write an isolated docker-compose.yml")
+    create.set_defaults(func=cmd_lab_create)
+    lab_validate = lab.add_parser("validate", help="validate one lab")
+    lab_validate.add_argument("slug")
+    lab_validate.set_defaults(func=cmd_lab_validate)
 
     validate = sub.add_parser("validate", help="validate all content and run rule tests")
     validate.set_defaults(func=cmd_validate)

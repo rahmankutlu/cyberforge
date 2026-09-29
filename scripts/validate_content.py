@@ -31,6 +31,7 @@ from cyberforge.content.checks import (
     check_demos,
     check_scenarios,
     check_stories,
+    check_todo_markers,
 )
 from cyberforge.content.loader import (
     ContentBundle,
@@ -153,6 +154,7 @@ def main() -> int:
     issues.extend(check_stories(bundle))
     issues.extend(check_datasets(bundle))
     issues.extend(check_demos(bundle))
+    issues.extend(check_todo_markers(bundle))
     issues.extend(check_rule_tests(bundle))
     external = check_markdown_links(issues)
     urls = collect_content_urls(bundle) | external

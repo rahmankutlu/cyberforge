@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from cyberforge.content.loader import ContentBundle, ContentIssue
+from cyberforge.content.loader import ContentBundle, ContentIssue, LoadedLab
 from cyberforge.services import simulation
 from cyberforge.services.sigma_engine import (
     EvalEvent,
@@ -42,6 +42,25 @@ def check_scenarios(bundle: ContentBundle, issues: list[ContentIssue]) -> None:
                     where, f"scenario also triggers undeclared rule {slug!r}", level="warning"
                 )
             )
+        if lab.tests is not None:
+            issues.extend(check_lab_tests(lab, fired, len(events), where))
+
+
+def check_lab_tests(lab: LoadedLab, fired: set[str], events: int, where: str) -> list[ContentIssue]:
+    """The assertions in a lab's tests/lab.tests.yml against what its scenario really triggers."""
+    tests = lab.tests
+    assert tests is not None
+    path = f"{where}/tests/lab.tests.yml"
+    issues = []
+    if events < tests.min_events:
+        issues.append(ContentIssue(path, f"scenario has {events} events, expected at least {tests.min_events}"))
+    issues += [
+        ContentIssue(path, f"must_fire: {slug!r} did not fire") for slug in sorted(set(tests.must_fire) - fired)
+    ]
+    issues += [
+        ContentIssue(path, f"must_not_fire: {slug!r} fired") for slug in sorted(set(tests.must_not_fire) & fired)
+    ]
+    return issues
 
 
 def check_stories(bundle: ContentBundle) -> list[ContentIssue]:
@@ -189,4 +208,21 @@ def check_demos(bundle: ContentBundle) -> list[ContentIssue]:
             issues.append(ContentIssue(where, "no ATT&CK technique is observed"))
         for bad in find_non_synthetic(demo.model_dump_json()):
             issues.append(ContentIssue(where, f"non-synthetic address or host {bad!r}"))
+    return issues
+
+
+TODO_MARKER = "TODO-REPLACE-ME"
+
+
+def check_todo_markers(bundle: ContentBundle) -> list[ContentIssue]:
+    """A lab scaffold marks every placeholder; none may reach the repository."""
+    issues: list[ContentIssue] = []
+    for lab in bundle.labs:
+        base = f"labs/{lab.doc.domain}/{lab.doc.slug}"
+        for path in [lab.path / "lab.yaml", lab.path / lab.doc.telemetry.scenario_file]:
+            if path.is_file() and TODO_MARKER in path.read_text(encoding="utf-8"):
+                issues.append(ContentIssue(f"{base}/{path.name}", f"still contains {TODO_MARKER}: replace the placeholders"))
+    for rule in bundle.rules:
+        if rule.path.startswith("labs/") and TODO_MARKER in rule.content:
+            issues.append(ContentIssue(rule.path, f"still contains {TODO_MARKER}: replace the placeholders"))
     return issues

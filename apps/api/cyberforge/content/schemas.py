@@ -139,6 +139,18 @@ class LabDoc(Strict):
         return values
 
 
+class LabTestsDoc(Strict):
+    """`tests/lab.tests.yml`: extra assertions about what a lab's scenario must (not) trigger."""
+
+    min_events: int = Field(1, ge=1, description="The scenario must contain at least this many events")
+    must_fire: list[str] = Field(
+        default_factory=list, description="Rule slugs that must fire (in addition to lab.yaml)"
+    )
+    must_not_fire: list[str] = Field(
+        default_factory=list, description="Rule slugs that must stay quiet on this scenario"
+    )
+
+
 class ScenarioEvent(Strict):
     """One telemetry event in a lab scenario or dataset. `t` is seconds from scenario start.
 
