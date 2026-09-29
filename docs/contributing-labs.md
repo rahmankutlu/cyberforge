@@ -1,5 +1,7 @@
 # Contributing labs
 
+> **Want the fast path?** `pnpm create:lab <domain> <slug>` scaffolds a lab that already validates. See [Creating a lab](creating-a-lab.md). This page covers the design background.
+
 Adding a lab is adding a folder. The validator tells you what is missing, and the tests prove your lab does what it says.
 
 ## Ground rules

@@ -314,7 +314,8 @@ def run_rule_tests(root: Path, rule: LoadedRule) -> RuleTestReport:
 def find_orphans(root: Path) -> list[str]:
     """Tests files whose rule does not exist (renamed or deleted rule, typo in the file name)."""
     orphans = []
-    for path in sorted((root / "detections" / "sigma").rglob("*.yml")):
+    candidates = [*(root / "detections" / "sigma").rglob("*.yml"), *root.glob("labs/*/*/detections/**/*.yml")]
+    for path in sorted(candidates):
         if not is_tests_file(path):
             continue
         rule_path = (

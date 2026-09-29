@@ -25,12 +25,12 @@ Pick one, open an issue using the matching template (so nobody duplicates it), a
 
 ## Labs and stories
 
-| #   | Idea                                                                                                                          | Type      | Size | Start with                                                                              |
-| --- | ----------------------------------------------------------------------------------------------------------------------------- | --------- | ---- | --------------------------------------------------------------------------------------- |
-| 8   | **Kubernetes audit-log lab.** Anonymous access and a privileged pod, with detections and investigation questions.             | New lab   | L    | `pnpm create:lab cloud kubernetes-audit-log`, [Contributing labs](contributing-labs.md) |
-| 9   | **DNS tunnelling story.** An analyst follows beaconing from a workstation through DNS telemetry to containment.               | New story | M    | the shipped stories in `stories/`, `dns-txt-query-with-encoded-label`                   |
-| 10  | **Phishing triage story.** From a reported email to header analysis, link detonation _in a lab_ and mailbox clean-up.         | New story | M    | `stories/compromised-developer-workstation.yaml`                                        |
-| 11  | **SSRF against the cloud metadata service (lab).** A synthetic web app fetches an internal URL; the detection is the request. | New lab   | L    | `labs/api/`, `labs/cloud/`                                                              |
+| #   | Idea                                                                                                                          | Type      | Size | Start with                                                                        |
+| --- | ----------------------------------------------------------------------------------------------------------------------------- | --------- | ---- | --------------------------------------------------------------------------------- |
+| 8   | **Kubernetes audit-log lab.** Anonymous access and a privileged pod, with detections and investigation questions.             | New lab   | L    | `pnpm create:lab cloud kubernetes-audit-log`, [Creating a lab](creating-a-lab.md) |
+| 9   | **DNS tunnelling story.** An analyst follows beaconing from a workstation through DNS telemetry to containment.               | New story | M    | the shipped stories in `stories/`, `dns-txt-query-with-encoded-label`             |
+| 10  | **Phishing triage story.** From a reported email to header analysis, link detonation _in a lab_ and mailbox clean-up.         | New story | M    | `stories/compromised-developer-workstation.yaml`                                  |
+| 11  | **SSRF against the cloud metadata service (lab).** A synthetic web app fetches an internal URL; the detection is the request. | New lab   | L    | `labs/api/`, `labs/cloud/`                                                        |
 
 ## Documentation and tooling
 

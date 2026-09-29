@@ -30,6 +30,7 @@ from cyberforge.content.schemas import (
     IncidentDoc,
     IndicatorDoc,
     LabDoc,
+    LabTestsDoc,
     PlaygroundDataset,
     ScenarioEvent,
     ThirtyDaysDoc,
@@ -59,6 +60,7 @@ class LoadedLab:
     doc: LabDoc
     scenario: list[ScenarioEvent]
     path: Path
+    tests: LabTestsDoc | None = None  # tests/lab.tests.yml, when the lab ships one
 
 
 @dataclass
@@ -192,7 +194,11 @@ def _load_labs(root: Path, issues: list[ContentIssue]) -> list[LoadedLab]:
             issues.append(
                 ContentIssue(rel, f"scenario file {doc.telemetry.scenario_file} not found")
             )
-        labs.append(LoadedLab(doc=doc, scenario=scenario, path=lab_dir))
+        tests = None
+        tests_file = lab_dir / "tests" / "lab.tests.yml"
+        if tests_file.is_file():
+            tests = _load_model(LabTestsDoc, tests_file, root, issues)
+        labs.append(LoadedLab(doc=doc, scenario=scenario, path=lab_dir, tests=tests))
     return labs
 
 
@@ -217,7 +223,9 @@ def sigma_tests_path(path: Path) -> Path:
 
 def _load_sigma(root: Path, issues: list[ContentIssue]) -> list[LoadedRule]:
     rules: list[LoadedRule] = []
-    for path in sorted((root / "detections" / "sigma").rglob("*.yml")):
+    # Shared rules live in detections/sigma; a lab may also ship its own in labs/<domain>/<lab>/detections.
+    paths = [*(root / "detections" / "sigma").rglob("*.yml"), *root.glob("labs/*/*/detections/**/*.yml")]
+    for path in sorted(paths):
         if is_tests_file(path):
             continue
         text = path.read_text(encoding="utf-8")
