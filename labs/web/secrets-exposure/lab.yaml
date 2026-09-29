@@ -1,0 +1,75 @@
+slug: secrets-exposure
+number: 6
+title: Secrets Exposure
+domain: web
+category: Configuration
+difficulty: beginner
+duration_minutes: 30
+summary: Learn how secrets leak through web-served files and URLs, how scanners find them within minutes, and how to respond when one is exposed.
+tags: [secrets, configuration, owasp-top10]
+objectives:
+  - List the common ways secrets end up on a web server or in logs.
+  - Recognise sensitive-file probes in access logs and judge success from the response.
+  - "Apply the correct response to an exposed secret: rotate first, investigate second."
+architecture:
+  description: >
+    The Acme Portal accidentally serves an environment file and version-control metadata from its
+    web root. The secrets in these files are obviously fake and carry a CyberForge canary marker.
+  diagram: |
+    flowchart LR
+      scanner[Scanner] -->|GET /.env| portal[Acme Portal]
+      portal -->|200 with fake secrets| scanner
+      portal -.->|access events| api[CyberForge API]
+  components:
+    - { name: Acme Portal, role: "Serves files it should not (intentional flaw)", network: lab-internal }
+    - { name: lab-gateway, role: "Localhost-only reverse proxy", network: host-localhost }
+    - { name: CyberForge API, role: "Receives telemetry, evaluates Sigma rules", network: backend }
+scenario: >
+  An internet-wide scanner requests a fixed list of files known to leak secrets. One of them exists.
+  Separately, an internal reporting client passes its API key in the query string. You must decide
+  which exposures matter most and what to do about each.
+setup:
+  requires_containers: true
+  compose_profile: labs
+  steps:
+    - "Start the lab: `docker compose --profile labs up -d lab-vuln-web lab-gateway`."
+    - "Request http://127.0.0.1:8081/.env from your browser and read the canary-marked fake values."
+    - "Or run the simulation in CyberForge to replay the telemetry."
+telemetry:
+  sources:
+    - { name: Portal access log, description: "Requests with status and response size.", log_source: web/webserver }
+attack_simulation:
+  description: >
+    The simulation replays a scanner walking a list of sensitive paths, with one hit on .env and
+    .git/config, and an internal client that places an API key in a URL.
+  steps:
+    - { title: Probe common paths, detail: "Request /robots.txt, /.env and /.git/config. Compare status codes and response sizes." }
+    - { title: Read what leaked, detail: "The fake .env holds canary-marked values that show what a real leak would contain." }
+    - { title: Find secrets in URLs, detail: "Search the log for api_key= and similar parameters." }
+expected_detection:
+  description: >
+    The sensitive-file rule matches requests for well-known leak paths; the URL-secret rule flags
+    credentials sent in query strings. Neither knows if the file existed, so check the status code.
+  rules: [web-sensitive-file-probe, web-secret-in-url-query]
+mitre: [T1552.001, T1595.002]
+investigation_questions:
+  - question: Which probes succeeded and what was the exposure?
+    hint: Look for 200 status and non-trivial response sizes.
+    answer: /.env (412 bytes) and /.git/config (298 bytes) returned 200; /config.php.bak returned 404.
+  - question: What is the first action once you confirm /.env was served?
+    hint: Assume the attacker has already copied it.
+    answer: Rotate every credential in the file immediately, then remove the file, then review access made with those credentials.
+mitigation:
+  - Never deploy dotfiles or backups to the web root; serve only an explicit allow-list of paths.
+  - Keep secrets in a secret manager or runtime environment, not in files inside the application tree.
+  - Send credentials in headers, not URLs.
+  - Add secret scanning to CI and pre-commit hooks.
+cleanup:
+  - "Stop the lab: `docker compose --profile labs down`."
+references:
+  - { title: "MITRE ATT&CK T1552.001 Credentials In Files", url: "https://attack.mitre.org/techniques/T1552/001/" }
+  - { title: "OWASP Secrets Management Cheat Sheet", url: "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html" }
+safety:
+  scope: local-container
+  network: lab-internal
+  allowed_targets: [acme-portal.lab.internal]

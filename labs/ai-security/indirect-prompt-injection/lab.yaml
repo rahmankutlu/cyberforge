@@ -1,0 +1,76 @@
+slug: indirect-prompt-injection
+number: 17
+title: Indirect Prompt Injection
+domain: ai-security
+category: LLM Application Security
+difficulty: intermediate
+duration_minutes: 45
+summary: Follow an injection that arrives inside content an agent was asked to process, and see how outbound allow-lists stop the data leaving even when the model is fooled.
+tags: [llm, indirect-prompt-injection, agents, exfiltration]
+objectives:
+  - Explain why content retrieved by an agent is an untrusted input channel.
+  - Trace an indirect injection from retrieval to attempted tool use.
+  - Explain why the user sees nothing wrong and why logging is the only visibility.
+  - Design controls at the tool boundary that work even when the model is compromised.
+architecture:
+  description: >
+    A synthetic ticket-summarizing agent reads ticket bodies written by outsiders. It has an HTTP post
+    tool guarded by a destination allow-list. The model is a deterministic local mock and every URL uses a
+    reserved example domain, so nothing can leave the lab.
+  diagram: |
+    flowchart LR
+      user[Internal user] -->|summarize ticket| agent[ticket-summarizer]
+      ticket[(Ticket body - untrusted)] --> agent
+      agent --> llm[Mock LLM]
+      llm -->|injected: post data| tool[http_post tool]
+      tool -->|destination check| block[Blocked + logged]
+  components:
+    - { name: ticket-summarizer, role: "Synthetic agent with a read tool and an outbound tool", network: lab-internal }
+    - { name: Destination allow-list, role: "Policy layer in the gateway", network: lab-internal }
+    - { name: CyberForge API, role: "Runs detections on gateway events", network: backend }
+scenario: >
+  An internal user asks for a summary of a support ticket. The ticket, written by an outsider, contains
+  hidden instructions telling the assistant to post customer data to an external address. The model tries
+  to comply; the gateway blocks it. The user receives a normal-looking summary.
+setup:
+  requires_containers: false
+  steps:
+    - "Open this lab in CyberForge and select Run simulation."
+    - "Open the AI Security overview to see where the trust boundary fails in this chain."
+telemetry:
+  sources:
+    - { name: AI gateway log, description: "Prompts, retrievals, tool calls with policy decision, and responses.", log_source: cyberforge/ai_gateway }
+attack_simulation:
+  description: >
+    The simulation replays a legitimate request, a retrieval containing hidden instructions, a blocked
+    outbound tool call, and an innocuous final answer. There is no real external destination.
+  steps:
+    - { title: Legitimate request, detail: "The internal user's prompt is entirely benign." }
+    - { title: Poisoned retrieval, detail: "The ticket body carries text addressed to the assistant." }
+    - { title: Attempted exfiltration, detail: "The model calls http_post with a destination outside the allow-list; policy blocks it." }
+expected_detection:
+  description: >
+    The retrieval rule flags instruction-like text in retrieved content; the outbound rule flags the
+    blocked, non-allow-listed destination. The second is critical because it shows intent to exfiltrate.
+  rules: [ai-retrieved-content-contains-instructions, ai-agent-outbound-transfer-to-unlisted-host]
+mitre: [AML.T0051.001, AML.T0086]
+investigation_questions:
+  - question: Where did the malicious instruction enter the system?
+    hint: The user prompt was benign; look at retrievals.
+    answer: Through the retrieved body of ticket 4821, an untrusted, outsider-authored source.
+  - question: What stopped the data leaving, and is that control sufficient on its own?
+    hint: Read the tool call decision.
+    answer: The destination allow-list blocked the call. It is necessary but not sufficient; also limit what data the agent can read and require approval for sensitive actions.
+mitigation:
+  - Treat all retrieved content as untrusted; separate instructions from data and mark provenance.
+  - Enforce egress allow-lists and per-tool permissions in code outside the model.
+  - Give agents the minimum data access needed for the task and require human approval for sensitive actions.
+  - Log every retrieval and tool call with the policy decision and alert on blocked attempts.
+cleanup:
+  - "Nothing to clean up: this lab runs entirely from telemetry."
+references:
+  - { title: "OWASP LLM01 Prompt Injection", url: "https://genai.owasp.org/llmrisk/llm01-prompt-injection/" }
+  - { title: "MITRE ATLAS AML.T0051.001 Indirect", url: "https://atlas.mitre.org/techniques/AML.T0051.001" }
+safety:
+  scope: simulation-only
+  network: none

@@ -1,0 +1,39 @@
+title: API Request Base Event
+id: 5d21c526-3340-5db7-b1a9-0d846e1ea059
+name: api_request
+status: test
+description: Base rule. A request to the API path prefix.
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs-uri-stem|startswith: '/api/'
+  condition: selection
+level: informational
+---
+title: API Request Flood From One Client
+id: 6e81de1b-1dd4-5fe0-8fde-3c9e4fe01ea6
+status: test
+description: >
+  Detects a single client sending one hundred or more API requests within a minute. Without server-side
+  rate limiting, that volume enables credential guessing, scraping and resource exhaustion. Use the
+  alert to confirm whether throttling is enforced for the endpoint.
+references:
+  - https://attack.mitre.org/techniques/T1499/
+  - https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1499
+correlation:
+  type: event_count
+  rules:
+    - api_request
+  group-by:
+    - c-ip
+  timespan: 1m
+  condition:
+    gte: 100
+falsepositives:
+  - Trusted integrations and load tests (allow-list by address or API key)
+level: medium

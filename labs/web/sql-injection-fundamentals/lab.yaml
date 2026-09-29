@@ -1,0 +1,82 @@
+slug: sql-injection-fundamentals
+number: 2
+title: SQL Injection Fundamentals
+domain: web
+category: Injection
+difficulty: beginner
+duration_minutes: 40
+summary: See how string-built SQL lets input change a query, what that looks like in web logs, and how parameterised queries remove the problem.
+tags: [owasp-top10, injection, sqli]
+objectives:
+  - Explain how concatenating user input into SQL changes the meaning of the query.
+  - Identify tautology, UNION and time-delay probes in access logs.
+  - Use response size and status to judge whether a probe succeeded.
+  - Describe why parameterised queries fix the root cause and WAF rules do not.
+architecture:
+  description: >
+    The Acme Portal search page builds a SQL query by concatenating the search term. The database is
+    an in-memory SQLite instance seeded with fake products and users, so nothing real can be exposed.
+    The portal runs on the isolated lab network and reports its requests to the CyberForge API.
+  diagram: |
+    flowchart LR
+      you[Your browser] -->|127.0.0.1:8081/search| gw[lab-gateway]
+      gw --> portal[Acme Portal]
+      portal --> db[(in-memory SQLite - fake data)]
+      portal -.->|access events| api[CyberForge API]
+  components:
+    - { name: Acme Portal, role: "Search endpoint that concatenates SQL (intentional flaw)", network: lab-internal }
+    - { name: lab-gateway, role: "Localhost-only reverse proxy", network: host-localhost }
+    - { name: CyberForge API, role: "Receives telemetry, evaluates Sigma rules", network: backend }
+scenario: >
+  A retailer's product search is exposed to the internet. An outsider notices that a stray quote in
+  the search box produces an error, then escalates from a tautology to data extraction using an
+  automated tool. You will read the logs from the defender's chair.
+setup:
+  requires_containers: true
+  compose_profile: labs
+  steps:
+    - "Start the lab: `docker compose --profile labs up -d lab-vuln-web lab-gateway`."
+    - "Open http://127.0.0.1:8081/search and try a normal search such as `laptop`."
+    - "Or run the simulation in CyberForge to replay the telemetry without containers."
+telemetry:
+  sources:
+    - { name: Portal access log, description: "Requests including the raw query string.", log_source: web/webserver }
+attack_simulation:
+  description: >
+    The simulation replays a normal search, a boolean tautology, a UNION extraction attempt, and a
+    burst of time-delay probes from an automated scanner. All targets are the lab's fake database.
+  steps:
+    - { title: Break the query, detail: "Enter a single quote in the search box. An error or odd result means input reached the SQL parser." }
+    - { title: Tautology, detail: "Submit a term that makes the WHERE clause always true. Compare the response size with the baseline." }
+    - { title: Extraction, detail: "Append a UNION SELECT against the users table of the fake database and observe how the result page changes." }
+    - { title: Automation, detail: "A scanner user agent and repeated time-delay probes distinguish tooling from a curious human." }
+expected_detection:
+  description: >
+    The SQL injection rule matches tautology, UNION, schema and time-delay strings in raw and
+    URL-encoded form. A scanner user-agent rule adds context when a tool is driving.
+  rules: [web-sql-injection-probe, web-scanner-user-agent]
+mitre: [T1190, T1595.002]
+investigation_questions:
+  - question: Which request most likely returned data it should not have?
+    hint: Compare response sizes across requests to the same path.
+    answer: The tautology request returned 48,213 bytes against a 3,120-byte baseline, so it likely dumped many rows.
+  - question: How can you tell the later probes were automated?
+    hint: Look at the user agent and repetition.
+    answer: The user agent names a well-known scanner and the same time-delay probe repeats at fixed intervals.
+  - question: Does a WAF block fix this vulnerability?
+    hint: Think about what the WAF sees versus what the application does.
+    answer: No. It may block known strings but the flaw remains; parameterised queries remove it.
+mitigation:
+  - Use parameterised queries or an ORM for every database call; never concatenate input into SQL.
+  - Run the application with a least-privilege database account with no access to unrelated tables.
+  - Return generic error messages and log details server-side.
+  - Alert on injection strings as a tripwire, not as the primary control.
+cleanup:
+  - "Stop the lab: `docker compose --profile labs down`."
+references:
+  - { title: "OWASP SQL Injection Prevention Cheat Sheet", url: "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html" }
+  - { title: "MITRE ATT&CK T1190 Exploit Public-Facing Application", url: "https://attack.mitre.org/techniques/T1190/" }
+safety:
+  scope: local-container
+  network: lab-internal
+  allowed_targets: [acme-portal.lab.internal]

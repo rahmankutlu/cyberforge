@@ -1,0 +1,82 @@
+slug: broken-authentication
+number: 1
+title: Broken Authentication
+domain: web
+category: Authentication
+difficulty: beginner
+duration_minutes: 30
+summary: Watch a login form with no lockout or throttling fall to scripted password guessing, then learn what the telemetry looks like and how to detect it.
+tags: [owasp-top10, authentication, brute-force]
+objectives:
+  - Explain why a login endpoint without lockout, throttling or MFA is exposed to online guessing.
+  - Recognise the telemetry pattern of scripted credential guessing in web access logs.
+  - Read a Sigma correlation rule and explain how it turns many weak events into one strong alert.
+  - Propose layered mitigations that do not rely on the attacker being slow.
+architecture:
+  description: >
+    Acme Portal is an intentionally vulnerable web application that runs only on an isolated Docker
+    network. A gateway bound to 127.0.0.1 is the only way to reach it from your machine. The portal
+    sends its access events to the CyberForge API, where the detection engine evaluates Sigma rules.
+  diagram: |
+    flowchart LR
+      you[Your browser] -->|127.0.0.1:8081| gw[lab-gateway]
+      gw --> portal[Acme Portal - intentionally vulnerable]
+      portal -.->|access events| api[CyberForge API]
+      api --> engine[Detection engine] --> alert[SOC alert]
+  components:
+    - { name: Acme Portal, role: "Intentionally vulnerable target application", network: lab-internal }
+    - { name: lab-gateway, role: "Localhost-only reverse proxy into the lab network", network: host-localhost }
+    - { name: CyberForge API, role: "Receives lab telemetry and runs detections", network: backend }
+scenario: >
+  Acme runs a customer portal. Its login page accepts unlimited attempts. A remote client starts
+  guessing passwords for the account jsmith. Your job is to see the attack in the access log, decide
+  when it became a compromise, and design a control that would have stopped it.
+setup:
+  requires_containers: true
+  compose_profile: labs
+  steps:
+    - "Start the lab network: `docker compose --profile labs up -d lab-vuln-web lab-gateway`."
+    - "Open http://127.0.0.1:8081 (bound to localhost only) to see the Acme Portal."
+    - "Prefer not to run containers? Use Run simulation in CyberForge: it replays the same telemetry."
+telemetry:
+  sources:
+    - { name: Portal access log, description: "One record per HTTP request with client address, method, path and status.", log_source: web/webserver }
+attack_simulation:
+  description: >
+    The simulation replays a burst of rejected logins followed by one accepted login from a single
+    client address. In live mode you generate the same pattern yourself against the lab portal only.
+  steps:
+    - { title: Baseline, detail: "Log in once with a wrong password and once correctly. Note the 401 and 200 responses." }
+    - { title: Guess repeatedly, detail: "Submit the login form a dozen times in quick succession with different passwords for the same account. The portal never slows you down." }
+    - { title: Compare with a real user, detail: "A person needs several seconds per attempt; a script needs milliseconds. The spacing in the log is the tell." }
+expected_detection:
+  description: >
+    A Sigma correlation rule counts rejected logins per client address. Ten failures inside a minute
+    raise a high-severity alert mapped to Brute Force: Password Guessing.
+  rules: [web-login-brute-force-burst]
+mitre: [T1110.001, T1078]
+investigation_questions:
+  - question: How many failed attempts preceded the successful login, and over what time span?
+    hint: Filter events to the client address and sort by time.
+    answer: Twelve 401 responses over 24 seconds, then a 200 on the next request.
+  - question: What single log field best distinguishes this client from a normal user?
+    hint: Look at the user agent and the spacing between requests.
+    answer: The python-requests user agent and a two-second, machine-regular cadence.
+  - question: Was the account compromised? What evidence would confirm it?
+    hint: What did the client do after the 200?
+    answer: Yes, likely. The same address read /account/profile with the new session. Confirm by checking for data access and resetting the credential.
+mitigation:
+  - Enforce progressive delays or temporary lockout per account and per source address.
+  - Require multi-factor authentication for all accounts, especially privileged ones.
+  - Reject known-breached passwords at registration and password change.
+  - Alert on failure bursts and on a success that follows them.
+cleanup:
+  - "Stop the lab: `docker compose --profile labs down`."
+  - Delete simulated alerts from the SOC view if you want a clean dashboard (optional).
+references:
+  - { title: "MITRE ATT&CK T1110.001 Password Guessing", url: "https://attack.mitre.org/techniques/T1110/001/" }
+  - { title: "OWASP Authentication Cheat Sheet", url: "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html" }
+safety:
+  scope: local-container
+  network: lab-internal
+  allowed_targets: [acme-portal.lab.internal]

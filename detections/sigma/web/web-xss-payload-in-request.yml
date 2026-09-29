@@ -1,0 +1,29 @@
+title: Cross-Site Scripting Payload In Request
+id: 464b3b1c-2f25-5b2e-bdd2-c03b3482b09f
+status: stable
+description: >
+  Detects script tags, inline event handlers and javascript: URIs in request query strings.
+  Reflected XSS delivers its payload in the request, so the access log records the attempt even when
+  the application's own logging does not.
+references:
+  - https://attack.mitre.org/techniques/T1059/007/
+  - https://owasp.org/www-community/attacks/xss/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1059.007
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs-uri-query|contains:
+      - '<script'
+      - '%3Cscript'
+      - 'onerror='
+      - 'onload='
+      - 'javascript:'
+  condition: selection
+falsepositives:
+  - Developers and security teams testing input handling
+  - Sites that accept HTML in query parameters by design
+level: medium

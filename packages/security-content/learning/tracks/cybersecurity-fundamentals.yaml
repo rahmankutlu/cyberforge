@@ -1,0 +1,62 @@
+slug: cybersecurity-fundamentals
+title: Cybersecurity Fundamentals
+audience: New to security
+summary: The vocabulary and mental models every later track builds on - logs, authentication, the attack lifecycle and defence in depth.
+icon: compass
+modules:
+  - slug: fundamentals-security-logs
+    title: What a Security Log Is
+    summary: Read a log line like an analyst - who, what, where, when and with what result.
+    duration_minutes: 20
+    body: |
+      A **log** is a timestamped record that something happened. Security work starts by learning to read them.
+
+      Every useful log line answers five questions: **when** it happened, **who or what** did it (user, process, address), **what** they did (the action), **where** it happened (host, service, path) and **how it ended** (success, failure, blocked).
+
+      Try it on a real example from the *Brute Force Detection* lab: a Windows Security event 4625 says a logon *failed*, names the account that was tried, and includes the source address. On its own it means little; a dozen of them in a minute from one address means someone is guessing.
+
+      **Takeaway:** a single event is a fact; a pattern of events is a story. Detection is the craft of noticing the story.
+    labs: [brute-force-detection]
+    rules: [win-failed-logon-burst]
+    techniques: [T1110.001]
+  - slug: fundamentals-authentication
+    title: Authentication and Authorisation
+    summary: Prove who you are, then check what you may do - and why confusing the two causes breaches.
+    duration_minutes: 25
+    body: |
+      **Authentication** answers *who are you?* - passwords, keys, tokens and multi-factor prompts. **Authorisation** answers *what may you do?* - roles, permissions and ownership checks.
+
+      Attacks target both. Guessing a password defeats authentication; changing an invoice number in a URL defeats authorisation because the server never asks whether the invoice is yours.
+
+      Good defences layer: strong and unique secrets, multi-factor authentication, rate limits on guessing, and server-side checks on every object access.
+
+      Work through *Broken Authentication* (weak authentication) and *IDOR / Broken Access Control* (weak authorisation) and notice that the logs look different: guessing is a *burst of failures*, IDOR is a *quiet run of successes*.
+    labs: [broken-authentication, idor-broken-access-control]
+    rules: [web-login-brute-force-burst, web-object-id-enumeration]
+    techniques: [T1110.001, T1190]
+  - slug: fundamentals-attack-lifecycle
+    title: The Attack Lifecycle and MITRE ATT&CK
+    summary: Break an intrusion into stages, and speak the shared language defenders use to describe them.
+    duration_minutes: 30
+    body: |
+      Intrusions rarely happen in one step. They move through stages: gaining **initial access**, **executing** code, **persisting**, escalating **privileges**, moving **laterally**, reaching a **goal** such as stealing data.
+
+      **MITRE ATT&CK** catalogues these behaviours as *tactics* (the why) and *techniques* (the how). Each has a stable identifier, such as `T1059.001` for PowerShell. Analysts use the identifiers to describe what they saw and to measure what they can detect.
+
+      In CyberForge every alert maps to a technique, so you can ask two useful questions: *what stage is this attacker in?* and *which stages do we not cover?* The MITRE view shows coverage gaps as blank cells.
+    labs: [linux-authentication-investigation]
+    rules: []
+    techniques: [T1059.001, T1078, T1548.003]
+  - slug: fundamentals-defence-in-depth
+    title: Defence in Depth
+    summary: Why no single control is enough, and how prevention, detection and response fit together.
+    duration_minutes: 20
+    body: |
+      No control is perfect, so security stacks them: **prevent** what you can, **detect** what gets through, **respond** to what you detect, and **recover** afterwards.
+
+      The *API Rate Limit* lab shows the interplay. A gateway that throttles (prevention) turns a flood into `429` responses; the detection rule still counts the attempts so you learn you were targeted. Without throttling, detection is your only line - and it fires *after* the damage began.
+
+      Use this lens on every lab: which control would have prevented it, which detected it, and how quickly could a person act on the alert?
+    labs: [api-rate-limit-misconfiguration]
+    rules: [web-api-request-flood]
+    techniques: [T1499]

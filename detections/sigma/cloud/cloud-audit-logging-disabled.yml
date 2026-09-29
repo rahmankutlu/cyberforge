@@ -1,0 +1,26 @@
+title: Cloud Audit Trail Stopped Or Deleted
+id: 1715b69d-bcef-52fa-ac9e-feeb56cb4f16
+status: stable
+description: >
+  Detects API calls that stop logging or delete a trail. Audit logs are the evidence base for every
+  other cloud detection; disabling them blinds defenders and is a classic step before further
+  malicious activity.
+references:
+  - https://attack.mitre.org/techniques/T1685/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1685
+logsource:
+  product: aws
+  service: cloudtrail
+detection:
+  selection:
+    eventSource: 'cloudtrail.amazonaws.com'
+    eventName:
+      - 'StopLogging'
+      - 'DeleteTrail'
+  condition: selection
+falsepositives:
+  - Planned account decommissioning or trail re-architecture
+level: high

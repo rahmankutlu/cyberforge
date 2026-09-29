@@ -1,0 +1,3 @@
+# CyberForge is a local tool: it should never be indexed.
+User-agent: *
+Disallow: /

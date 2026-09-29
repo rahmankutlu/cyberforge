@@ -1,0 +1,30 @@
+title: PowerShell Script Block Decodes And Executes Content
+id: 5b8c5865-d913-5828-8fe5-26a86fa86062
+status: test
+description: >
+  Detects a PowerShell script block (Event ID 4104) that both decodes Base64 data and evaluates
+  the result with Invoke-Expression. Script block logging records the decoded script even when
+  the process command line was encoded, which makes it a high-value complement to command-line rules.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1140/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1059.001
+  - attack.t1140
+logsource:
+  category: ps_script
+  product: windows
+detection:
+  selection_decode:
+    ScriptBlockText|contains: 'FromBase64String'
+  selection_execute:
+    ScriptBlockText|contains:
+      - 'Invoke-Expression'
+      - 'IEX '
+      - 'iex('
+  condition: selection_decode and selection_execute
+falsepositives:
+  - Legitimate deployment scripts that unpack embedded configuration
+level: high

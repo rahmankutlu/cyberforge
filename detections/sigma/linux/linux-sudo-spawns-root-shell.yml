@@ -1,0 +1,28 @@
+title: Sudo Used To Start An Interactive Root Shell
+id: 425fec46-96d5-5c96-8f7b-0fc53a0f9667
+status: test
+description: >
+  Detects sudo log entries where the permitted command is a shell. Routine administration uses
+  targeted commands; escalating straight to an interactive root shell removes per-command
+  accountability and is a common step after gaining a foothold.
+references:
+  - https://attack.mitre.org/techniques/T1548/003/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1548.003
+logsource:
+  product: linux
+  service: auth
+detection:
+  selection:
+    Program: 'sudo'
+    Message|contains:
+      - 'COMMAND=/bin/bash'
+      - 'COMMAND=/bin/sh'
+      - 'COMMAND=/usr/bin/bash'
+      - 'COMMAND=/usr/bin/su'
+  condition: selection
+falsepositives:
+  - Administrators who routinely use sudo -i (consider allow-listing named administrators)
+level: medium

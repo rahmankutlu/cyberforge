@@ -1,0 +1,31 @@
+title: User Prompt Attempts To Override Agent Instructions
+id: 46d0632c-fd10-5ad6-ac29-fc7c9c2aa602
+status: experimental
+description: >
+  Detects user prompts that contain well-known instruction-override phrases. Phrase matching will
+  never stop a determined attacker, but it is a cheap signal that surfaces low-effort attempts and
+  gives analysts a tag to correlate with later tool activity. Runs against the CyberForge AI gateway
+  log from the synthetic lab agents.
+references:
+  - https://atlas.mitre.org/techniques/AML.T0051.000
+  - https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - atlas.aml.t0051.000
+logsource:
+  product: cyberforge
+  service: ai_gateway
+detection:
+  selection:
+    event_type: 'user_prompt'
+    prompt|contains:
+      - 'ignore previous instructions'
+      - 'ignore all previous'
+      - 'disregard your system prompt'
+      - 'reveal your system prompt'
+      - 'developer mode'
+  condition: selection
+falsepositives:
+  - Security training material or prompts that quote these phrases on purpose
+level: medium

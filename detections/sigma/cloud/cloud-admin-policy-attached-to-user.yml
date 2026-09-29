@@ -1,0 +1,26 @@
+title: Administrator Policy Attached To IAM User
+id: a22b1fb6-17c6-55b2-8967-88689e7dd872
+status: test
+description: >
+  Detects the AdministratorAccess managed policy being attached directly to an IAM user. Direct
+  attachment bypasses role-based, time-limited access patterns and is a typical privilege
+  escalation or persistence step after credentials are compromised.
+references:
+  - https://attack.mitre.org/techniques/T1098/
+  - https://attack.mitre.org/techniques/T1136/003/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1098
+  - attack.t1136.003
+logsource:
+  product: aws
+  service: cloudtrail
+detection:
+  selection:
+    eventName: 'AttachUserPolicy'
+    requestParameters.policyArn|endswith: '/AdministratorAccess'
+  condition: selection
+falsepositives:
+  - Initial account bootstrap performed by the platform team
+level: high

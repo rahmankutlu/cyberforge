@@ -1,0 +1,71 @@
+slug: network-reconnaissance-detection
+number: 11
+title: Network Reconnaissance Detection
+domain: network
+category: Network Defense
+difficulty: beginner
+duration_minutes: 30
+summary: Detect a port scan in firewall logs by counting distinct denied ports per source, and see why counting distinct values beats counting events.
+tags: [network, scanning, firewall, correlation]
+objectives:
+  - Describe what a port scan is and what it looks like in firewall logs.
+  - Explain why a value-count correlation is more reliable than an event-count threshold for scans.
+  - Distinguish reconnaissance from a service simply being retried.
+  - Use the outcome of the scan (which probes were allowed) to gauge exposure.
+architecture:
+  description: >
+    A simulated edge firewall emits allow and deny records. CyberForge evaluates a Sigma correlation
+    rule that counts distinct destination ports denied per source address.
+  diagram: |
+    flowchart LR
+      scanner[203.0.113.77] -->|30 ports| fw[fw-edge-01 - simulated]
+      fw -->|deny x30, allow x2| api[CyberForge API]
+      api --> rule[value_count dst_port >= 15 / 1m] --> alert[SOC alert]
+  components:
+    - { name: fw-edge-01, role: "Simulated perimeter firewall", network: none }
+    - { name: CyberForge API, role: "Runs the correlation rule", network: backend }
+scenario: >
+  Ordinary users reach the DMZ web server on HTTPS. A single external address then probes thirty
+  consecutive ports in thirty seconds, and two probes (SSH and HTTP) get through. Find the scan, size its
+  success, and decide what to tighten.
+setup:
+  requires_containers: false
+  steps:
+    - "Open this lab in CyberForge and select Run simulation."
+    - "Open the port scan alert and inspect the distinct ports in the related events."
+telemetry:
+  sources:
+    - { name: Firewall connection log, description: "Source, destination, port and verdict for each connection.", log_source: network/firewall }
+attack_simulation:
+  description: >
+    The simulation replays baseline HTTPS traffic, a thirty-port sequential scan with every probe denied,
+    and two follow-up probes that reach open services. No packets are sent anywhere.
+  steps:
+    - { title: Baseline, detail: "Repeated HTTPS allows from a normal client." }
+    - { title: Scan, detail: "One source, thirty distinct ports, all denied, one per second." }
+    - { title: Service discovery, detail: "Two probes to SSH and HTTP are allowed: the attacker now knows what is open." }
+expected_detection:
+  description: >
+    The port scan rule alerts when one source is denied on fifteen or more distinct ports within a minute.
+  rules: [net-port-scan-burst]
+mitre: [T1046, T1595.001]
+investigation_questions:
+  - question: How many distinct ports did the scanner probe and how many were allowed?
+    hint: Group the source's events by verdict.
+    answer: Thirty were denied and two (22 and 80) were allowed.
+  - question: Why is the count of distinct ports a better signal than the count of denied events?
+    hint: Imagine a broken client retrying one closed port.
+    answer: A retry loop produces many events but one port; a scan produces many ports. Distinct ports separate the two.
+mitigation:
+  - Expose only required services and restrict administrative ports such as SSH to known ranges or a VPN.
+  - Rate-limit and auto-block sources that trip scan detection at the firewall.
+  - Alert on scans that succeed against any port, not just on scans.
+  - Baseline internal scanners and allow-list them in the rule.
+cleanup:
+  - "Nothing to clean up: this lab runs entirely from telemetry."
+references:
+  - { title: "MITRE ATT&CK T1046 Network Service Discovery", url: "https://attack.mitre.org/techniques/T1046/" }
+  - { title: "Sigma correlation rules", url: "https://sigmahq.io/docs/meta/correlations.html" }
+safety:
+  scope: simulation-only
+  network: none

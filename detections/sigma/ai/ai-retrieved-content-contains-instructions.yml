@@ -1,0 +1,31 @@
+title: Retrieved Content Contains Instructions Aimed At The Model
+id: ddb5b23a-a9a1-59cc-8ae3-99ebb55927d6
+status: experimental
+description: >
+  Detects retrieval results (web pages, documents, tickets, emails) that contain text addressed to
+  the AI assistant rather than to a human reader. Indirect prompt injection hides instructions in
+  content the agent is later asked to process; flagging them at retrieval time is the earliest
+  place to notice.
+references:
+  - https://atlas.mitre.org/techniques/AML.T0051.001
+  - https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - atlas.aml.t0051.001
+logsource:
+  product: cyberforge
+  service: ai_gateway
+detection:
+  selection:
+    event_type: 'retrieval'
+    retrieved_content|contains:
+      - 'ignore previous instructions'
+      - 'do not tell the user'
+      - 'assistant: you must'
+      - 'send the contents'
+      - 'forward this conversation'
+  condition: selection
+falsepositives:
+  - Documents that discuss prompt injection (security blogs, this repository)
+level: high

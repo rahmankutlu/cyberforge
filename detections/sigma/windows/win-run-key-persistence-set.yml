@@ -1,0 +1,30 @@
+title: Run Key Set To Script Or User-Writable Path
+id: 6fd191a1-2e4d-5b4c-bf40-0a78a912ec5b
+status: test
+description: >
+  Detects a registry Run key value that launches an interpreter or a binary from a user-writable
+  location. Run keys execute at every logon and are one of the most common persistence mechanisms.
+references:
+  - https://attack.mitre.org/techniques/T1547/001/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1547.001
+logsource:
+  category: registry_set
+  product: windows
+detection:
+  selection_key:
+    TargetObject|contains: '\CurrentVersion\Run'
+  selection_value:
+    Details|contains:
+      - '\AppData'
+      - '\Temp'
+      - '\Users\Public'
+      - 'powershell'
+      - 'mshta'
+      - 'wscript'
+  condition: selection_key and selection_value
+falsepositives:
+  - Per-user installers that register updaters under AppData (for example collaboration clients)
+level: medium

@@ -1,0 +1,56 @@
+name: Lab proposal
+description: Propose a new lab
+labels: [lab, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read [docs/contributing-labs.md](../blob/main/docs/contributing-labs.md) first. Labs replay **synthetic telemetry** or target an **isolated, intentionally vulnerable local container**; nothing touches real systems.
+  - type: input
+    id: title
+    attributes:
+      label: Lab title
+      placeholder: "SSRF against a cloud metadata endpoint"
+    validations:
+      required: true
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Domain
+      options: [web, api, linux, windows-sim, network, cloud, ai-security, other]
+    validations:
+      required: true
+  - type: textarea
+    id: learning
+    attributes:
+      label: Learning objectives
+      description: What will someone be able to do afterwards?
+    validations:
+      required: true
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: Attack behaviour and the telemetry it leaves
+      description: Describe the technique and the log events (no exploit code for real software).
+    validations:
+      required: true
+  - type: input
+    id: mitre
+    attributes:
+      label: MITRE ATT&CK / ATLAS techniques
+      placeholder: T1190, T1552.005
+  - type: textarea
+    id: detections
+    attributes:
+      label: Detections it should trigger
+      description: Existing rule IDs, or describe the new Sigma rule(s).
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety
+      options:
+        - label: The lab is telemetry-only or confined to an isolated local container with fake data.
+          required: true
+        - label: I will use documentation IP ranges and reserved domains.
+          required: true
+        - label: I would like to implement this myself.

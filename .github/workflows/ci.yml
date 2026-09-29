@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web (lint, types, tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: pnpm -r --if-present lint
+      - run: pnpm typecheck
+      - run: pnpm format:check
+      - run: pnpm test:web
+      - uses: actions/cache@v4
+        with:
+          path: apps/web/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('apps/web/src/**') }}
+          restore-keys: next-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+      - run: pnpm build
+
+  api:
+    name: API (ruff, mypy, pytest, OpenAPI)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          python: "true"
+      - run: pnpm lint:api
+      - run: pnpm typecheck:api
+      - run: pnpm test:api
+      - name: Export OpenAPI
+        run: pnpm --silent openapi > openapi.json
+
+  content:
+    name: Content validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          python: "true"
+      - run: pnpm validate:content
+
+  postgres:
+    name: PostgreSQL migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: cyberforge
+          POSTGRES_PASSWORD: cyberforge_ci
+          POSTGRES_DB: cyberforge
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cyberforge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://cyberforge:cyberforge_ci@127.0.0.1:5432/cyberforge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          python: "true"
+          node: "false"
+      - name: Upgrade, downgrade, upgrade
+        working-directory: apps/api
+        run: |
+          .venv/bin/alembic upgrade head
+          .venv/bin/alembic downgrade base
+          .venv/bin/alembic upgrade head
+      - name: Boot the API against PostgreSQL and seed demo data
+        working-directory: apps/api
+        env:
+          CYBERFORGE_DEMO_MODE: "true"
+        run: |
+          .venv/bin/python - <<'PY'
+          from fastapi.testclient import TestClient
+          from cyberforge.main import app
+
+          with TestClient(app) as client:
+              assert client.get("/ready").status_code == 200
+              assert client.get("/api/v1/labs").json()
+              assert client.get("/api/v1/alerts").json()["total"] > 0
+          PY
+
+  docker:
+    name: Docker build and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Validate compose files
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+          docker compose --profile labs config --quiet
+      - name: Build images
+        run: docker compose --profile labs build
+      - name: Start the stack
+        run: docker compose --profile labs up -d --wait --wait-timeout 180
+      - name: Smoke test
+        run: |
+          curl --fail --silent http://127.0.0.1:8000/ready
+          curl --fail --silent --output /dev/null http://127.0.0.1:3000/
+          curl --fail --silent http://127.0.0.1:3000/api/v1/labs --output /dev/null
+          curl --fail --silent http://127.0.0.1:8081/healthz
+      - name: Logs on failure
+        if: failure()
+        run: docker compose --profile labs logs --no-color --tail=200
+      - name: Tear down
+        if: always()
+        run: docker compose --profile labs down -v

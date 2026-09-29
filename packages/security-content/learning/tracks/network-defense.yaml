@@ -1,0 +1,58 @@
+slug: network-defense
+title: Network Defense
+audience: Analysts and network engineers
+summary: See attacks in firewall and DNS telemetry - reconnaissance, command channels and tunnels - and respond sensibly.
+icon: network
+modules:
+  - slug: network-reconnaissance
+    title: Detecting Reconnaissance
+    summary: Port scans, what they look like, and how to tell them from noise.
+    duration_minutes: 30
+    body: |
+      Attackers map what is reachable before they attack it. A **port scan** touches many ports on one or more hosts; firewall logs show it as many connections from one source to many destination ports, mostly denied.
+
+      Count *distinct ports*, not events: a broken client retrying one closed port makes many events but a scan makes many ports.
+
+      Also look at what **succeeded**. The scan is background noise; a scan that found an open service is the beginning of a plan. Restrict administrative ports to a VPN and the scan reveals nothing useful.
+    labs: [network-reconnaissance-detection]
+    rules: [net-port-scan-burst]
+    techniques: [T1046, T1595.001]
+  - slug: network-dns-abuse
+    title: "DNS Abuse: DGA and Tunnelling"
+    summary: How malware uses DNS for command channels and data, and what gives it away.
+    duration_minutes: 45
+    body: |
+      DNS is allowed almost everywhere, which makes it attractive to attackers. Two patterns matter.
+
+      **Domain generation algorithms** create many candidate names; most do not exist, so the client produces a burst of `NXDOMAIN` responses while searching for a live server. **Tunnelling** carries data *inside* query names and answers, so you see long encoded labels and often `TXT` records.
+
+      Useful features: query length, character set, record type, response code and volume per client. Each has benign exceptions (content delivery networks use long names), so combine features rather than relying on one.
+    labs: [dns-anomaly-investigation]
+    rules: [dns-long-random-subdomain-query, dns-nxdomain-burst, dns-txt-query-with-encoded-label]
+    techniques: [T1568.002, T1071.004, T1572]
+  - slug: network-segmentation-containers
+    title: Segmentation and Container Isolation
+    summary: Limit blast radius with network design, and see how CyberForge isolates its own labs.
+    duration_minutes: 30
+    body: |
+      **Segmentation** limits what a compromised system can reach. Put databases on networks that only application servers can enter; keep intentionally vulnerable systems on networks with no route to anything else.
+
+      CyberForge applies this to itself: lab services attach to an *internal* Docker network with no internet access, and a small gateway bound to `127.0.0.1` is the only way in. Read `docker-compose.yml` and trace which service can talk to which.
+
+      Containers add another boundary, but privileged mode or mounting the Docker socket removes it. See the *Docker Security Misconfiguration* lab.
+    labs: [docker-security-misconfiguration]
+    rules: [container-docker-socket-mounted]
+    techniques: [T1611]
+  - slug: network-remote-access
+    title: Securing Remote Access
+    summary: RDP and SSH exposed to the internet, and what a safe design looks like.
+    duration_minutes: 30
+    body: |
+      Remote administration protocols are prime targets. Exposed **RDP** or **SSH** with passwords is guessed continuously across the internet.
+
+      Safer design: no direct exposure; access through a VPN or identity-aware gateway with **MFA**; key-based SSH; lockout tuned for spraying; logs forwarded off-host so clearing them locally does not erase the story.
+
+      Work through *Brute Force Detection* and identify the moment a guessing burst becomes a compromise, then the three follow-on actions an intruder took.
+    labs: [brute-force-detection]
+    rules: [win-rdp-logon-from-public-address, win-security-log-cleared]
+    techniques: [T1021.001, T1685.005]

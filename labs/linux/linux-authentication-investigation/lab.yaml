@@ -1,0 +1,85 @@
+slug: linux-authentication-investigation
+number: 9
+title: Linux Authentication Investigation
+domain: linux
+category: Investigation
+difficulty: intermediate
+duration_minutes: 60
+summary: Reconstruct an intrusion from a bastion host's auth and audit logs, from SSH guessing through privilege escalation and persistence.
+tags: [linux, ssh, investigation, persistence]
+objectives:
+  - Read sshd, sudo and useradd entries in /var/log/auth.log and understand what each proves.
+  - Correlate failed and accepted logins from the same source.
+  - "Recognise the follow-on steps after a credential compromise: escalation, new account, cron persistence, credential file reads."
+  - Build a timeline an incident report can be written from.
+architecture:
+  description: >
+    A simulated bastion host emits syslog and auditd-style records. CyberForge normalises them, applies
+    seven Sigma rules, and lets you pivot from alert to raw log line.
+  diagram: |
+    flowchart LR
+      ssh[SSH client 203.0.113.50] --> bastion[bastion-01 - simulated]
+      bastion -->|auth.log + auditd| api[CyberForge API]
+      api --> engine[Sigma engine] --> alerts[7 alerts across the kill chain]
+  components:
+    - { name: bastion-01, role: "Simulated Linux bastion host", network: none }
+    - { name: CyberForge API, role: "Normalises logs, runs detections", network: backend }
+scenario: >
+  An internet-facing bastion accepts SSH passwords. Ten failures from one address are followed by a
+  successful login as the deploy account. Within four minutes a root shell, a new local account, a cron
+  entry, a shadow file read and a bash network redirect appear. Reconstruct the story in order.
+setup:
+  requires_containers: false
+  steps:
+    - "Open this lab in CyberForge and select Run simulation."
+    - "Open the resulting alerts in order of time and use the lifecycle view to read each raw log line."
+telemetry:
+  sources:
+    - { name: sshd and sudo (auth.log), description: "Syslog authentication messages.", log_source: linux/auth }
+    - { name: auditd, description: "Process execution and file access records.", log_source: linux/process_creation }
+attack_simulation:
+  description: >
+    The simulation replays the full intrusion chain as telemetry. All addresses come from documentation
+    ranges and no real connection is made anywhere.
+  steps:
+    - { title: Guess, detail: "Ten failed SSH passwords from one source against a nonexistent account." }
+    - { title: Log in, detail: "The same source authenticates successfully as deploy." }
+    - { title: Escalate, detail: "sudo to an interactive root shell." }
+    - { title: Persist and harvest, detail: "A new account, a cron entry and a shadow file read follow." }
+    - { title: Call out, detail: "A bash network redirect to a documentation-range address represents a reverse shell." }
+expected_detection:
+  description: >
+    Seven rules cover the chain: guessing burst, login-after-failures, sudo root shell, new local user,
+    cron persistence, shadow read, and network redirect. Each maps to a distinct ATT&CK technique.
+  rules:
+    - linux-ssh-brute-force-burst
+    - linux-ssh-login-after-failed-burst
+    - linux-sudo-spawns-root-shell
+    - linux-new-local-user-created
+    - linux-cron-persistence-file-modified
+    - linux-shadow-file-read
+    - linux-shell-network-redirect-pattern
+mitre: [T1110.001, T1078, T1548.003, T1136.001, T1053.003, T1003.008, T1059.004]
+investigation_questions:
+  - question: At what exact time did the attacker gain access, and how do you know it was the same actor as the failures?
+    hint: Find the Accepted password entry and compare source addresses.
+    answer: The Accepted password for deploy at t+40s came from 203.0.113.50, the same address as the ten failures.
+  - question: Which alert would you contain first, and what is the first action?
+    hint: What gives the attacker durable access?
+    answer: Isolate the host and disable the deploy and svc-backup accounts; the new account and cron entry are persistence.
+  - question: What evidence would confirm credential theft rather than just access?
+    hint: Which alert concerns password hashes?
+    answer: The read of /etc/shadow by cat; treat all local password hashes as exposed.
+mitigation:
+  - Disable SSH password authentication; require keys and MFA on the bastion.
+  - Restrict sudo to specific commands and log full command lines.
+  - Manage local accounts and cron through configuration management and alert on drift.
+  - Monitor reads of credential files and outbound connections from shells.
+cleanup:
+  - "Nothing to clean up: this lab runs entirely from telemetry."
+references:
+  - { title: "MITRE ATT&CK T1078 Valid Accounts", url: "https://attack.mitre.org/techniques/T1078/" }
+  - { title: "OpenSSH manual pages", url: "https://man.openbsd.org/sshd_config" }
+safety:
+  scope: simulation-only
+  network: none

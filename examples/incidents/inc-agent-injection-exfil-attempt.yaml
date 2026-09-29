@@ -1,0 +1,48 @@
+slug: inc-agent-injection-exfil-attempt
+title: Ticket summarizer agent tried to send data to an external destination
+lab: indirect-prompt-injection
+severity: high
+status: in_progress
+lead: kthorne
+days_ago: 2
+summary: A support ticket contained hidden instructions; the summarizer agent tried to post customer data outward and was blocked by the egress allow-list.
+alert_status: investigating
+notes:
+  - {
+      analyst: kthorne,
+      offset_minutes: 4,
+      body: "The user prompt was benign. The instruction arrived in the ticket body from an untrusted submitter. The allow-list blocked the call, so no data left.",
+    }
+  - {
+      analyst: nvasquez,
+      offset_minutes: 25,
+      body: "Searching other tickets from the same submitter for similar text. Quarantining ticket 4821 from the summarizer index.",
+    }
+timeline:
+  - {
+      offset_minutes: 0,
+      kind: detection,
+      title: Retrieved content contains instructions,
+      detail: "Ticket 4821 includes text addressed to the assistant.",
+    }
+  - {
+      offset_minutes: 0,
+      kind: detection,
+      title: Outbound tool call blocked,
+      detail: "http_post to collector.attacker-lab.example blocked by policy.",
+    }
+  - {
+      offset_minutes: 30,
+      kind: containment,
+      title: Ticket quarantined,
+      detail: "Removed from the summarizer's retrieval scope.",
+    }
+report:
+  executive_summary: "An indirect prompt injection in a support ticket caused the summarizer agent to attempt data exfiltration. The egress allow-list blocked it. No data left the organisation."
+  affected_assets: ["ticket-summarizer agent", "Support ticket 4821"]
+  indicators: ["collector.attacker-lab.example"]
+  evidence: "Gateway log showing the retrieval, the blocked http_post tool call with destination_not_allowlisted, and the benign final answer."
+  root_cause: "Untrusted ticket content was placed in the model context alongside a tool capable of outbound requests."
+  containment: "Ticket quarantined; outbound tool restricted further; similar tickets searched."
+  remediation: "Separate untrusted content from instructions, minimise the agent's data access, require approval for outbound actions."
+  lessons_learned: "The policy layer worked; logging blocked attempts is what made the attack visible at all."

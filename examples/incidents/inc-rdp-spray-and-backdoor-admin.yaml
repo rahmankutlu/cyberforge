@@ -1,0 +1,54 @@
+slug: inc-rdp-spray-and-backdoor-admin
+title: Internet-exposed RDP guessed, backdoor administrator created, log cleared
+lab: brute-force-detection
+severity: high
+status: contained
+lead: kthorne
+days_ago: 4
+summary: An address guessed the RDP administrator password, created a backdoor administrator and cleared the Security log; a second address sprayed ten accounts.
+alert_status: contained
+notes:
+  - {
+      analyst: kthorne,
+      offset_minutes: 9,
+      body: "Two different sources: 203.0.113.99 guessed one account, 198.51.100.77 sprayed ten. Only the first succeeded.",
+    }
+  - {
+      analyst: mokafor,
+      offset_minutes: 30,
+      body: "Log clearing means we depend on forwarded logs for earlier activity. Confirming forwarding coverage.",
+    }
+timeline:
+  - {
+      offset_minutes: 0,
+      kind: detection,
+      title: Failed logon burst against administrator,
+      detail: "Fourteen failures in 39 seconds.",
+    }
+  - {
+      offset_minutes: 2,
+      kind: detection,
+      title: RDP logon from public address,
+      detail: "Successful logon type 10 from 203.0.113.99.",
+    }
+  - {
+      offset_minutes: 6,
+      kind: detection,
+      title: Backdoor admin and log clear,
+      detail: "backupadmin created, added to Administrators; Security log cleared.",
+    }
+  - {
+      offset_minutes: 35,
+      kind: containment,
+      title: Server isolated,
+      detail: "RDP closed at the firewall, backupadmin disabled.",
+    }
+report:
+  executive_summary: "An internet-exposed RDP server was compromised by password guessing. The intruder created a persistent administrator and cleared the local audit log before the host was isolated."
+  affected_assets: ["SRV-RDP01"]
+  indicators: ["203.0.113.99", "198.51.100.77", "backupadmin"]
+  evidence: "Event 4625 bursts, 4624 logon type 10 from a public address, 4720 and 4732 for backupadmin, 1102 log cleared."
+  root_cause: "RDP was reachable from the internet without MFA and the administrator password was guessable."
+  containment: "RDP closed at the perimeter, backdoor account disabled, host isolated."
+  remediation: "Require a VPN or gateway with MFA for remote administration, rename and restrict the built-in administrator, forward logs off-host."
+  lessons_learned: "Distinct-account counting separated spraying from guessing; forwarded logs preserved the earlier timeline."

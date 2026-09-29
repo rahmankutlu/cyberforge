@@ -1,0 +1,47 @@
+name: Detection proposal
+description: Propose a new or improved detection rule
+labels: [detection, triage]
+body:
+  - type: input
+    id: title
+    attributes:
+      label: Rule title
+    validations:
+      required: true
+  - type: dropdown
+    id: format
+    attributes:
+      label: Format
+      options: [Sigma, YARA, Suricata]
+    validations:
+      required: true
+  - type: input
+    id: technique
+    attributes:
+      label: MITRE technique(s)
+      placeholder: T1059.001
+    validations:
+      required: true
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: Behaviour to detect
+      description: What does the activity look like in logs, and why is it suspicious?
+    validations:
+      required: true
+  - type: textarea
+    id: logic
+    attributes:
+      label: Proposed logic
+      description: Sigma YAML, or a description of fields and conditions.
+      render: yaml
+  - type: textarea
+    id: fp
+    attributes:
+      label: Expected false positives
+  - type: textarea
+    id: telemetry
+    attributes:
+      label: Example events
+      description: Synthetic only. Include one that should match and one that should not.
+      render: json

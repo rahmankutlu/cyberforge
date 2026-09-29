@@ -1,0 +1,83 @@
+slug: brute-force-detection
+number: 14
+title: Brute Force Detection
+domain: windows-sim
+category: Authentication
+difficulty: intermediate
+duration_minutes: 50
+summary: Detect password guessing and password spraying on Windows, then follow an intruder who gets in through RDP, adds an administrator and clears the log.
+tags: [windows, brute-force, spraying, rdp, correlation]
+objectives:
+  - Tell brute force (one account, many passwords) from password spraying (many accounts, few passwords) in Event 4625 data.
+  - Build correlation rules that count events and distinct values.
+  - Recognise post-compromise account and log manipulation events.
+  - Sequence the events into an incident timeline.
+architecture:
+  description: >
+    A simulated RDP server emits Windows Security events. CyberForge applies five Sigma rules, three of
+    them correlations, to separate guessing, spraying, a successful public RDP logon, a backdoor
+    administrator, and log clearing.
+  diagram: |
+    flowchart LR
+      a1[203.0.113.99] -->|14x 4625 then 4624| rdp[SRV-RDP01 - simulated]
+      a2[198.51.100.77] -->|10 accounts x 1| rdp
+      rdp -->|4720 + 4732 + 1102| api[CyberForge API]
+      api --> engine[Sigma engine] --> alerts[SOC alerts]
+  components:
+    - { name: SRV-RDP01, role: "Simulated Windows RDP host", network: none }
+    - { name: CyberForge API, role: "Correlates and alerts", network: backend }
+scenario: >
+  An RDP server is reachable from the internet. One address guesses the administrator password fourteen
+  times and then logs in; another tries ten accounts once each. After logging in, the intruder creates a
+  new account, adds it to Administrators and clears the Security log.
+setup:
+  requires_containers: false
+  steps:
+    - "Open this lab in CyberForge and select Run simulation."
+    - "Compare the guessing alert with the spraying alert: which field differs?"
+telemetry:
+  sources:
+    - { name: Windows Security log, description: "4625 failed logon, 4624 logon, 4720 account created, 4732 group change, 1102 log cleared.", log_source: windows/security }
+attack_simulation:
+  description: >
+    The simulation replays guessing, a successful RDP logon, a spraying pattern, account creation and
+    promotion, and log clearing. All addresses are documentation ranges and nothing connects anywhere.
+  steps:
+    - { title: Guess one account, detail: "Fourteen failures for administrator from one address in under a minute." }
+    - { title: Get in, detail: "A logon type 10 (RDP) from a public address succeeds." }
+    - { title: Spray many accounts, detail: "Another address tries ten different user names once each." }
+    - { title: Entrench, detail: "Create backupadmin, add it to Administrators, clear the Security log." }
+expected_detection:
+  description: >
+    Failed-logon burst, password spraying, public RDP logon, local admin creation and log clearing
+    each raise their own alert, together forming the incident.
+  rules:
+    - win-failed-logon-burst
+    - win-password-spraying-pattern
+    - win-rdp-logon-from-public-address
+    - win-local-admin-account-created
+    - win-security-log-cleared
+mitre: [T1110.001, T1110.003, T1021.001, T1078, T1136.001, T1098, T1685.005]
+investigation_questions:
+  - question: Which source is guessing and which is spraying, and what field proves it?
+    hint: Count distinct TargetUserName per source.
+    answer: 203.0.113.99 targets one account repeatedly (guessing); 198.51.100.77 targets ten accounts once each (spraying).
+  - question: How long after the RDP logon was the backdoor administrator created?
+    hint: Compare the 4624 and 4720 timestamps.
+    answer: About two minutes.
+  - question: What can you no longer trust after Event 1102?
+    hint: Think about what was cleared.
+    answer: Local Security log history before the clear; rely on forwarded logs and other sources to reconstruct earlier activity.
+mitigation:
+  - Never expose RDP directly to the internet; require a VPN or gateway with MFA.
+  - Enforce account lockout and smart-lockout policies suitable for spraying.
+  - Forward Security logs off-host in near real time so clearing does not erase evidence.
+  - Alert on privileged group changes and new local accounts.
+cleanup:
+  - "Nothing to clean up: this lab runs entirely from telemetry."
+references:
+  - { title: "MITRE ATT&CK T1110.003 Password Spraying", url: "https://attack.mitre.org/techniques/T1110/003/" }
+  - { title: "Microsoft audit logon events", url: "https://learn.microsoft.com/windows/security/threat-protection/auditing/event-4625" }
+safety:
+  scope: simulation-only
+  network: none

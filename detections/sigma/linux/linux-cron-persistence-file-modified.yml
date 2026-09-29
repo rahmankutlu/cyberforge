@@ -1,0 +1,32 @@
+title: Cron Job Definition Written Outside Package Management
+id: 4afcea60-6e23-524a-88c8-2538672bf939
+status: test
+description: >
+  Detects writes to cron directories by a process other than the package manager or the cron daemon
+  itself. Cron entries run on a schedule and survive reboots, so unexpected additions are worth review.
+references:
+  - https://attack.mitre.org/techniques/T1053/003/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1053.003
+logsource:
+  category: file_event
+  product: linux
+detection:
+  selection:
+    Operation: 'write'
+    TargetFilename|startswith:
+      - '/etc/cron'
+      - '/var/spool/cron'
+  filter_packages:
+    Image|endswith:
+      - '/dpkg'
+      - '/rpm'
+      - '/apt'
+      - '/yum'
+      - '/crontab'
+  condition: selection and not filter_packages
+falsepositives:
+  - Configuration management agents that own cron files (allow-list the agent binary)
+level: medium

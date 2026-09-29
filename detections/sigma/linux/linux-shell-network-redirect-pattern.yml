@@ -1,0 +1,25 @@
+title: Shell Command Line Using Bash Network Redirection
+id: 25596b8a-7b8f-5f4e-a06c-a7ea63d3a398
+status: test
+description: >
+  Detects command lines that use bash's built-in /dev/tcp or /dev/udp pseudo-devices. Legitimate
+  scripts almost never open raw sockets this way, whereas interactive reverse shells and simple
+  file-transfer one-liners rely on it.
+references:
+  - https://attack.mitre.org/techniques/T1059/004/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1059.004
+logsource:
+  category: process_creation
+  product: linux
+detection:
+  selection:
+    CommandLine|contains:
+      - '/dev/tcp/'
+      - '/dev/udp/'
+  condition: selection
+falsepositives:
+  - Health-check scripts that probe TCP ports with /dev/tcp (rare; replace with a proper check)
+level: high

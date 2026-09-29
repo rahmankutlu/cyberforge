@@ -1,0 +1,273 @@
+{
+  "framework": "atlas",
+  "name": "MITRE ATLAS",
+  "version": "5.6.0",
+  "source": "https://raw.githubusercontent.com/mitre-atlas/atlas-data/main/dist/ATLAS.yaml",
+  "notice": "MITRE ATLAS is a trademark of The MITRE Corporation.",
+  "tactics": [
+    {
+      "id": "AML.TA0002",
+      "shortname": "reconnaissance",
+      "name": "Reconnaissance",
+      "framework": "atlas",
+      "description": "The adversary is trying to gather information about the AI system they can use to plan future operations.",
+      "url": "https://atlas.mitre.org/tactics/AML.TA0002"
+    },
+    {
+      "id": "AML.TA0005",
+      "shortname": "execution",
+      "name": "Execution",
+      "framework": "atlas",
+      "description": "The adversary is trying to run malicious code embedded in AI artifacts or software.",
+      "url": "https://atlas.mitre.org/tactics/AML.TA0005"
+    },
+    {
+      "id": "AML.TA0006",
+      "shortname": "persistence",
+      "name": "Persistence",
+      "framework": "atlas",
+      "description": "The adversary is trying to maintain their foothold via AI artifacts or software.",
+      "url": "https://atlas.mitre.org/tactics/AML.TA0006"
+    },
+    {
+      "id": "AML.TA0012",
+      "shortname": "privilege-escalation",
+      "name": "Privilege Escalation",
+      "framework": "atlas",
+      "description": "The adversary is trying to gain higher-level permissions.",
+      "url": "https://atlas.mitre.org/tactics/AML.TA0012"
+    },
+    {
+      "id": "AML.TA0007",
+      "shortname": "defense-evasion",
+      "name": "Defense Evasion",
+      "framework": "atlas",
+      "description": "The adversary is trying to avoid being detected by AI-enabled security software.",
+      "url": "https://atlas.mitre.org/tactics/AML.TA0007"
+    },
+    {
+      "id": "AML.TA0013",
+      "shortname": "credential-access",
+      "name": "Credential Access",
+      "framework": "atlas",
+      "description": "The adversary is trying to steal account names and passwords.",
+      "url": "https://atlas.mitre.org/tactics/AML.TA0013"
+    },
+    {
+      "id": "AML.TA0008",
+      "shortname": "discovery",
+      "name": "Discovery",
+      "framework": "atlas",
+      "description": "The adversary is trying to figure out your AI environment.",
+      "url": "https://atlas.mitre.org/tactics/AML.TA0008"
+    },
+    {
+      "id": "AML.TA0010",
+      "shortname": "exfiltration",
+      "name": "Exfiltration",
+      "framework": "atlas",
+      "description": "The adversary is trying to steal AI artifacts or other information about the AI system.",
+      "url": "https://atlas.mitre.org/tactics/AML.TA0010"
+    }
+  ],
+  "techniques": [
+    {
+      "id": "AML.T0051",
+      "name": "LLM Prompt Injection",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0005"
+      ],
+      "description": "An adversary may craft malicious prompts as inputs to an LLM that cause the LLM to act in unintended ways. These \"prompt injections\" are often designed to cause the model to ignore aspects of its original instructions and follow the adversary's instructions instead.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0051",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0051.000",
+      "name": "Direct",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0005"
+      ],
+      "description": "An adversary may inject prompts directly as a user of the LLM. This type of injection may be used by the adversary to gain a foothold in the system or to misuse the LLM itself, as for example to generate harmful content.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0051.000",
+      "is_subtechnique": true,
+      "parent": "AML.T0051",
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0051.001",
+      "name": "Indirect",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0005"
+      ],
+      "description": "An adversary may inject prompts indirectly via separate data channel ingested by the LLM such as include text or multimedia pulled from databases or websites. These malicious prompts may be hidden or obfuscated from the user. This type of injection may be used by the adversary to gain a foothold in the system or to target an unwitting user of the system.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0051.001",
+      "is_subtechnique": true,
+      "parent": "AML.T0051",
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0054",
+      "name": "LLM Jailbreak",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0012",
+        "AML.TA0007"
+      ],
+      "description": "Adversaries may induce a large language model (LLM) to ignore, circumvent, or override its safety/alignment behaviors and/or guardrails to elicit outputs the model is intended to withhold. Once jailbroken, the LLM may be used in unintended ways by the adversary. Jailbreaks may be achieved via adversarial prompting, or by modifying model weights or safety mechanisms.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0054",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0056",
+      "name": "Extract LLM System Prompt",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0010"
+      ],
+      "description": "Adversaries may attempt to extract a large language model's (LLM) system prompt. This can be done via prompt injection to induce the model to reveal its own system prompt or may be extracted from a configuration file.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0056",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0057",
+      "name": "LLM Data Leakage",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0010"
+      ],
+      "description": "Adversaries may craft prompts that induce the LLM to leak sensitive information. This can include private user data or proprietary information. The leaked information may come from proprietary training data, data sources the LLM is connected to, or information from other users of the LLM.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0057",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0053",
+      "name": "AI Agent Tool Invocation",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0005",
+        "AML.TA0012"
+      ],
+      "description": "Adversaries may use their access to an AI agent to invoke tools the agent has access to. LLMs are often connected to other services or resources via tools to increase their capabilities. Tools may include integrations with other applications, access to public or private data sources, and the ability to execute code.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0053",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0064",
+      "name": "Gather RAG-Indexed Targets",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0002"
+      ],
+      "description": "Adversaries may identify data sources used in retrieval augmented generation (RAG) systems for targeting purposes. By pinpointing these sources, attackers can focus on poisoning or otherwise manipulating the external data repositories the AI relies on.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0064",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0068",
+      "name": "LLM Prompt Obfuscation",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0007"
+      ],
+      "description": "Adversaries may hide or otherwise obfuscate prompt injections or retrieval content to avoid detection from humans, large language model (LLM) guardrails, or other detection mechanisms.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0068",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0070",
+      "name": "RAG Poisoning",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0006"
+      ],
+      "description": "Adversaries may inject malicious content into data indexed by a retrieval augmented generation (RAG) system to contaminate a future thread through RAG-based search results. This may be accomplished by placing manipulated documents in a location the RAG indexes (see Gather RAG-Indexed Targets).",
+      "url": "https://atlas.mitre.org/techniques/AML.T0070",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0080",
+      "name": "AI Agent Context Poisoning",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0006"
+      ],
+      "description": "Adversaries may attempt to manipulate the context used by an AI agent's large language model (LLM) to influence the responses it generates or actions it takes. This allows an adversary to persistently change the behavior of the target agent and further their goals.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0080",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0084",
+      "name": "Discover AI Agent Configuration",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0008"
+      ],
+      "description": "Adversaries may attempt to discover configuration information for AI agents present on the victim's system. Agent configurations can include tools or services they have access to.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0084",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0086",
+      "name": "Exfiltration via AI Agent Tool Invocation",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0010"
+      ],
+      "description": "AI agent tools capable of performing write operations may be invoked to exfiltrate data to an adversary. Sensitive information can be encoded into the tool's input parameters and transmitted to an adversary-controlled location (such as an inbox, document, or server) as part of a seemingly legitimate action.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0086",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    },
+    {
+      "id": "AML.T0082",
+      "name": "RAG Credential Harvesting",
+      "framework": "atlas",
+      "tactics": [
+        "AML.TA0013"
+      ],
+      "description": "Adversaries may attempt to use their access to a large language model (LLM) on the victim's system to collect credentials. Credentials may be stored in internal documents which can inadvertently be ingested into a RAG database, where they can ultimately be retrieved by an AI agent.",
+      "url": "https://atlas.mitre.org/techniques/AML.T0082",
+      "is_subtechnique": false,
+      "parent": null,
+      "platforms": [],
+      "mitigations": []
+    }
+  ]
+}

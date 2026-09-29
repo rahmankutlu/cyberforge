@@ -1,0 +1,30 @@
+title: Console Login From Unexpected Country
+id: 27f0e8db-cd6d-5e69-aa53-a6d07ceb93d7
+status: experimental
+description: >
+  Detects a successful console login whose geolocated country is outside the organisation's expected
+  set. Requires a geo enrichment step that adds geo.country to events (the CyberForge synthetic data
+  includes it). Tune the allow-list to your workforce before enabling.
+references:
+  - https://attack.mitre.org/techniques/T1078/004/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1078.004
+logsource:
+  product: aws
+  service: cloudtrail
+detection:
+  selection:
+    eventName: 'ConsoleLogin'
+    responseElements.ConsoleLogin: 'Success'
+  filter_expected:
+    geo.country:
+      - 'US'
+      - 'CA'
+      - 'GB'
+  condition: selection and not filter_expected
+falsepositives:
+  - Employees travelling or working remotely
+  - VPN or proxy egress in another country
+level: medium

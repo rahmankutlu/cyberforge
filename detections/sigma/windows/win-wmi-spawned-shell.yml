@@ -1,0 +1,26 @@
+title: WMI Provider Host Spawns Shell
+id: 3feaab2f-b37c-5065-85fb-64a41e7446cb
+status: test
+description: >
+  Detects WmiPrvSE.exe starting a command interpreter. Remote WMI process creation executes the
+  child under the WMI provider host, which is how many lateral-movement tools run commands remotely.
+references:
+  - https://attack.mitre.org/techniques/T1047/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1047
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    ParentImage|endswith: '\WmiPrvSE.exe'
+    Image|endswith:
+      - '\cmd.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+  condition: selection
+falsepositives:
+  - Management platforms that use WMI to run remediation commands
+level: high

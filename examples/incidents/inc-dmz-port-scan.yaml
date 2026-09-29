@@ -1,0 +1,43 @@
+slug: inc-dmz-port-scan
+title: Vertical port scan against the DMZ web server
+lab: network-reconnaissance-detection
+severity: low
+status: closed
+lead: dlindqvist
+days_ago: 6
+summary: One external address probed thirty ports on the DMZ web server; only SSH and HTTP were reachable.
+alert_status: resolved
+notes:
+  - {
+      analyst: dlindqvist,
+      offset_minutes: 5,
+      body: "Thirty denied ports in thirty seconds then two allowed (22, 80). Source is external. No follow-on activity in web or auth logs.",
+    }
+timeline:
+  - {
+      offset_minutes: 0,
+      kind: detection,
+      title: Port scan detected,
+      detail: "Thirty distinct denied ports from 203.0.113.77 in thirty seconds.",
+    }
+  - {
+      offset_minutes: 20,
+      kind: containment,
+      title: Source blocked,
+      detail: "Address added to the edge block list for 24 hours.",
+    }
+  - {
+      offset_minutes: 60,
+      kind: status,
+      title: Closed as reconnaissance only,
+      detail: "No exploitation observed. SSH restricted to VPN addresses as follow-up.",
+    }
+report:
+  executive_summary: "An external address scanned the DMZ. No exploitation followed. SSH exposure was reduced as a result."
+  affected_assets: ["DMZ web server 10.20.0.15"]
+  indicators: ["203.0.113.77"]
+  evidence: "Firewall log showing sequential denied ports 20 to 49 followed by allowed connections to 22 and 80."
+  root_cause: "Normal internet background scanning; SSH was unnecessarily reachable from the internet."
+  containment: "Blocked the source at the edge for 24 hours."
+  remediation: "Restrict SSH to VPN ranges; keep scan alerting enabled at medium severity."
+  lessons_learned: "Scan alerts are context for later alerts more than incidents in themselves."

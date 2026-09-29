@@ -1,0 +1,64 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security vulnerabilities do not belong here**; see SECURITY.md.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. docker compose up --build
+        2. Open /labs/...
+        3. Click ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        [
+          Web UI,
+          API,
+          Sigma engine / detections,
+          Labs,
+          MITRE,
+          AI analyst,
+          Docker / setup,
+          Docs,
+          Other,
+        ]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0 or abc1234
+  - type: dropdown
+    id: run
+    attributes:
+      label: How are you running it?
+      options: [Docker Compose, Local dev (pnpm), Other]
+  - type: input
+    id: env
+    attributes:
+      label: OS and browser
+      placeholder: Windows 11, Edge 130
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Redact anything sensitive.
+      render: shell

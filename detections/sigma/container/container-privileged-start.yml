@@ -1,0 +1,25 @@
+title: Privileged Container Started
+id: 1a1e4b39-337b-541e-b33c-c10ab0db7455
+status: stable
+description: >
+  Detects a container started in privileged mode. A privileged container has nearly the same access
+  to the host kernel as a root process and can trivially break out, so it undermines the isolation
+  containers are supposed to provide.
+references:
+  - https://attack.mitre.org/techniques/T1610/
+  - https://attack.mitre.org/techniques/T1611/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1610
+  - attack.t1611
+logsource:
+  product: docker
+  service: runtime
+detection:
+  selection:
+    Privileged: true
+  condition: selection
+falsepositives:
+  - Node-level agents such as storage or networking daemons that genuinely require privilege
+level: high

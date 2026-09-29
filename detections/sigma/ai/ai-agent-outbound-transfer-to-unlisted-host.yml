@@ -1,0 +1,27 @@
+title: Agent Sends Data To A Destination Outside Its Allow-List
+id: 8c271ca2-8e82-535a-8f7f-9ec02f367e2c
+status: experimental
+description: >
+  Detects outbound-capable tools (HTTP post, email) invoked with a destination the policy layer
+  flagged as not allow-listed. Exfiltration through an agent's own tools is the payoff of many
+  prompt-injection chains, so this is the last line of defence before data leaves the boundary.
+references:
+  - https://atlas.mitre.org/techniques/AML.T0086
+author: CyberForge
+date: 2026-09-01
+tags:
+  - atlas.aml.t0086
+logsource:
+  product: cyberforge
+  service: ai_gateway
+detection:
+  selection:
+    event_type: 'tool_call'
+    tool_name:
+      - 'http_post'
+      - 'send_email'
+    guardrail_flags: 'destination_not_allowlisted'
+  condition: selection
+falsepositives:
+  - A newly onboarded partner integration that has not been added to the allow-list yet
+level: critical

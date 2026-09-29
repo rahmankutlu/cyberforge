@@ -1,0 +1,221 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Tailwind does not scan workspace packages outside this app by default. */
+@source "../../../../packages/ui/src";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * CyberForge design tokens. Dark is the primary theme (graphite, not black); light is a
+ * first-class citizen. Severity colours are restrained on purpose: they should draw the eye only
+ * when something needs attention.
+ */
+:root {
+  --background: #f8f9fb;
+  --foreground: #10141b;
+  --card: #ffffff;
+  --card-foreground: #10141b;
+  --popover: #ffffff;
+  --popover-foreground: #10141b;
+  --muted: #eef0f5;
+  --muted-foreground: #5a6373;
+  --border: #dfe3ea;
+  --input: #dfe3ea;
+  --primary: #3455c4;
+  --primary-foreground: #ffffff;
+  --secondary: #e9ecf3;
+  --secondary-foreground: #232a38;
+  --ring: #3455c4;
+  --ok: #1c8a63;
+  --sev-critical: #d12a33;
+  --sev-high: #d0600f;
+  --sev-medium: #a86f12;
+  --sev-low: #2a68b8;
+  --chart-grid: #e4e7ee;
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0a0c10;
+  --foreground: #e6e9ef;
+  --card: #0f1218;
+  --card-foreground: #e6e9ef;
+  --popover: #12161d;
+  --popover-foreground: #e6e9ef;
+  --muted: #161a22;
+  --muted-foreground: #8a92a3;
+  --border: #212733;
+  --input: #212733;
+  --primary: #6f97f7;
+  --primary-foreground: #0a0c10;
+  --secondary: #1a1f29;
+  --secondary-foreground: #d4d8e1;
+  --ring: #6f97f7;
+  --ok: #3fb68b;
+  --sev-critical: #f0565b;
+  --sev-high: #f5813f;
+  --sev-medium: #e6b24a;
+  --sev-low: #5aa0ea;
+  --chart-grid: #1c212b;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-ring: var(--ring);
+  --color-ok: var(--ok);
+  --color-sev-critical: var(--sev-critical);
+  --color-sev-high: var(--sev-high);
+  --color-sev-medium: var(--sev-medium);
+  --color-sev-low: var(--sev-low);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 30%, transparent);
+  }
+  :focus-visible {
+    outline: none;
+  }
+  /* Slim, unobtrusive scrollbars in dense tables and code panes. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+}
+
+/* Lifecycle connectors: a subtle travelling highlight along the active path. */
+@keyframes flow {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 24px 0;
+  }
+}
+.flow-line {
+  background-image: linear-gradient(90deg, var(--primary) 50%, transparent 50%);
+  background-size: 12px 100%;
+  animation: flow 1.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-line {
+    animation: none;
+  }
+}
+
+.prose-cf h1,
+.prose-cf h2,
+.prose-cf h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+.prose-cf h1 {
+  font-size: 1.5rem;
+  margin-top: 0;
+}
+.prose-cf h2 {
+  font-size: 1.15rem;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+.prose-cf h3 {
+  font-size: 1rem;
+}
+.prose-cf p,
+.prose-cf ul,
+.prose-cf ol,
+.prose-cf table,
+.prose-cf blockquote,
+.prose-cf pre {
+  margin: 0.75em 0;
+}
+.prose-cf ul {
+  list-style: disc;
+  padding-left: 1.4em;
+}
+.prose-cf ol {
+  list-style: decimal;
+  padding-left: 1.4em;
+}
+.prose-cf li {
+  margin: 0.25em 0;
+}
+.prose-cf a {
+  color: var(--primary);
+  text-underline-offset: 3px;
+}
+.prose-cf a:hover {
+  text-decoration: underline;
+}
+.prose-cf code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--muted);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+.prose-cf pre {
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.9em 1em;
+  overflow-x: auto;
+}
+.prose-cf pre code {
+  background: none;
+  padding: 0;
+}
+.prose-cf blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1em;
+  color: var(--muted-foreground);
+}
+.prose-cf table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+.prose-cf th,
+.prose-cf td {
+  border: 1px solid var(--border);
+  padding: 0.4em 0.7em;
+  text-align: left;
+}
+.prose-cf th {
+  background: var(--muted);
+}

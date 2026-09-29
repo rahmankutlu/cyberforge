@@ -1,0 +1,22 @@
+title: Windows Security Audit Log Cleared
+id: 3c0e045b-0719-51e0-b752-40ab09401d49
+status: stable
+description: >
+  Detects Security Event 1102, generated when the audit log is cleared. Clearing logs is rarely
+  part of routine operations and is commonly done to hide earlier activity.
+references:
+  - https://attack.mitre.org/techniques/T1685/005/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1685.005
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 1102
+  condition: selection
+falsepositives:
+  - Planned log maintenance during system rebuilds or lab resets
+level: high

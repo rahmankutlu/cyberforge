@@ -1,0 +1,78 @@
+slug: idor-broken-access-control
+number: 4
+title: IDOR / Broken Access Control
+domain: web
+category: Access Control
+difficulty: intermediate
+duration_minutes: 40
+summary: Find an insecure direct object reference by reading logs, then contrast authentication ("who are you") with authorisation ("may you see this").
+tags: [owasp-top10, access-control, idor, api]
+objectives:
+  - Explain the difference between authentication and authorisation with a concrete failure.
+  - Spot enumeration in access logs by counting distinct object identifiers per client.
+  - Describe object-level authorisation checks and why sequential identifiers make the flaw easier to exploit.
+architecture:
+  description: >
+    The Acme Portal exposes /api/invoices/{id}. It requires a valid session but never checks that the
+    invoice belongs to the caller. Data is fake and held in memory inside the lab network.
+  diagram: |
+    sequenceDiagram
+      participant B as Bob (valid session)
+      participant P as Acme Portal
+      B->>P: GET /api/invoices/1042 (own)
+      P-->>B: 200 (correct)
+      B->>P: GET /api/invoices/1043 (someone else)
+      P-->>B: 200 (flaw: no ownership check)
+  components:
+    - { name: Acme Portal, role: "Invoice API without object-level authorisation (intentional flaw)", network: lab-internal }
+    - { name: lab-gateway, role: "Localhost-only reverse proxy", network: host-localhost }
+    - { name: CyberForge API, role: "Receives telemetry, evaluates Sigma rules", network: backend }
+scenario: >
+  Bob is a legitimate customer. After viewing his own invoice he changes the number in the URL and
+  keeps reading. Every response is 200. From the server's perspective nothing failed, which is
+  precisely the problem: only a correlation across requests reveals the abuse.
+setup:
+  requires_containers: true
+  compose_profile: labs
+  steps:
+    - "Start the lab: `docker compose --profile labs up -d lab-vuln-web lab-gateway`."
+    - "Log in to the portal as the demo user shown on its home page and open your invoice."
+    - "Or run the simulation in CyberForge to replay the telemetry."
+telemetry:
+  sources:
+    - { name: Portal access log, description: "Requests with path, status and authenticated user.", log_source: web/webserver }
+attack_simulation:
+  description: >
+    The simulation replays one legitimate invoice read followed by fifteen sequential reads of other
+    customers' invoices from the same session.
+  steps:
+    - { title: Read your own record, detail: "Open your invoice and note the numeric identifier in the URL." }
+    - { title: Change the identifier, detail: "Request the next number. A correct application returns 403 or 404; the lab portal returns the data." }
+    - { title: Enumerate, detail: "Repeat for a range of identifiers. Count how many distinct objects one session touched." }
+expected_detection:
+  description: >
+    A value-count correlation rule alerts when one client reads ten or more distinct invoice URLs in a
+    minute, a pattern normal customers never produce.
+  rules: [web-object-id-enumeration]
+mitre: [T1190, T1213]
+investigation_questions:
+  - question: Which request was the first unauthorised access?
+    hint: Find where the identifier stops matching the user's own invoice.
+    answer: GET /api/invoices/1043, the first identifier after the user's own 1042.
+  - question: Why is a WAF unlikely to catch this?
+    hint: Is any single request malformed?
+    answer: Each request is syntactically valid and authenticated; the abuse is only visible in the pattern.
+mitigation:
+  - Check object ownership or role on every request server-side; deny by default.
+  - Use non-guessable identifiers (UUIDs) as defence in depth, not as the access control.
+  - Log the authenticated user and object identifier so anomalies can be correlated.
+  - Alert on distinct-object counts per session.
+cleanup:
+  - "Stop the lab: `docker compose --profile labs down`."
+references:
+  - { title: "OWASP Top 10 A01 Broken Access Control", url: "https://owasp.org/Top10/A01_2021-Broken_Access_Control/" }
+  - { title: "OWASP Insecure Direct Object Reference Prevention", url: "https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html" }
+safety:
+  scope: local-container
+  network: lab-internal
+  allowed_targets: [acme-portal.lab.internal]

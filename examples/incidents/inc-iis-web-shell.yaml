@@ -1,0 +1,54 @@
+slug: inc-iis-web-shell
+title: Web shell dropped on IIS via unrestricted file upload
+lab: web-shell-telemetry-analysis
+severity: high
+status: closed
+lead: nvasquez
+days_ago: 5
+summary: An unrestricted upload handler let an outsider write an ASPX file that then executed commands as the application pool identity.
+alert_status: resolved
+notes:
+  - {
+      analyst: nvasquez,
+      offset_minutes: 7,
+      body: "Request, file creation and cmd.exe process line up within one second. Definitely the upload handler.",
+    }
+  - {
+      analyst: kthorne,
+      offset_minutes: 35,
+      body: "Shell only ran whoami, net user and whoami /priv. No lateral movement seen. Add file-type validation to the upload code.",
+    }
+timeline:
+  - {
+      offset_minutes: 0,
+      kind: detection,
+      title: Script file written to web root by w3wp.exe,
+      detail: "help.aspx created under uploads.",
+    }
+  - {
+      offset_minutes: 1,
+      kind: detection,
+      title: Command request and child process,
+      detail: "help.aspx?cmd=whoami followed by cmd.exe under w3wp.exe.",
+    }
+  - {
+      offset_minutes: 40,
+      kind: containment,
+      title: Shell removed after evidence capture,
+      detail: "File copied for analysis, then deleted; upload directory made non-executable.",
+    }
+  - {
+      offset_minutes: 180,
+      kind: status,
+      title: Fix deployed,
+      detail: "Upload validation and app pool permissions corrected.",
+    }
+report:
+  executive_summary: "A web shell was uploaded to the corporate IIS server and used for basic discovery commands. It was removed within an hour and the upload flaw was fixed."
+  affected_assets: ["IIS-WEB01"]
+  indicators: ["203.0.113.61", "C:\\inetpub\\wwwroot\\uploads\\help.aspx"]
+  evidence: "POST /upload, Sysmon file create by w3wp.exe, GET help.aspx?cmd=whoami, child processes cmd.exe, net.exe and whoami.exe."
+  root_cause: "The upload endpoint accepted executable file types into a directory that the web server would execute."
+  containment: "Collected the file and memory, removed the shell, disabled script execution in uploads."
+  remediation: "Validate uploads, store outside the web root, run the pool with least privilege and deny write to the web root."
+  lessons_learned: "Correlating web, file and process telemetry proved the case in minutes; the earlier file-drop rule was the best signal."

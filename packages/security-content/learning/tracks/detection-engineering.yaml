@@ -1,0 +1,62 @@
+slug: detection-engineering
+title: Detection Engineering
+audience: Analysts and engineers who write detections
+summary: Design, write, test and tune detection rules with Sigma, and measure coverage against ATT&CK.
+icon: crosshair
+modules:
+  - slug: detection-sigma-basics
+    title: Sigma Basics
+    summary: Write a portable detection rule that any SIEM can run.
+    duration_minutes: 40
+    body: |
+      **Sigma** is a vendor-neutral rule format written in YAML. One rule can be translated to Splunk, Elastic, Sentinel and more.
+
+      A rule has **metadata** (title, level, tags), a **logsource** (which telemetry it applies to) and a **detection** (selections joined by a condition). Modifiers change how a value is matched: `contains`, `endswith`, `startswith`, `re`, `cidr`, `all`.
+
+      Open the *Encoded PowerShell* rule in the workbench. Notice the filter for a management agent: a good rule expresses *what to exclude* as deliberately as *what to match*.
+
+      Then open the playground and translate it to each target to see the same logic in different languages.
+    labs: [suspicious-powershell-detection-simulation]
+    rules: [win-encoded-powershell-command, win-office-application-spawns-shell]
+    techniques: [T1059.001, T1027.010]
+  - slug: detection-correlation
+    title: Correlation Rules
+    summary: Turn many weak events into one strong alert with counts, distinct values and ordering.
+    duration_minutes: 45
+    body: |
+      Some behaviour only shows up across events. Sigma **correlation rules** reference base rules and add logic:
+
+      - **event_count**: at least N events per group in a window (guessing bursts).
+      - **value_count**: at least N *distinct* values (port scans, password spraying).
+      - **temporal / temporal_ordered**: several different events, optionally in order (failed logins *then* a success).
+
+      Choose the group-by field carefully: it defines "the same actor". Choose the window to match how fast the behaviour happens. Compare *Port Scan* (distinct ports) with *SSH Brute Force* (event count) and explain why each uses the measure it does.
+    labs: [network-reconnaissance-detection, linux-authentication-investigation]
+    rules: [net-port-scan-burst, linux-ssh-brute-force-burst, linux-ssh-login-after-failed-burst]
+    techniques: [T1046, T1110.001]
+  - slug: detection-testing-tuning
+    title: Testing and Tuning Detections
+    summary: Prove a rule fires when it should, stays quiet when it should, and survives real traffic.
+    duration_minutes: 40
+    body: |
+      Every rule needs three tests: a **true positive** (it fires on the bad thing), a **true negative** (it stays quiet on ordinary activity) and a **near miss** (similar but benign activity it must not flag).
+
+      The seeded datasets include near misses on purpose: management-agent PowerShell that the encoded-command rule filters, a console login from an expected country, and a user rotating their own access key. Read how each rule handles them.
+
+      Use the playground to paste your own events and see which rules match and *why*. When a rule is noisy, narrow it with a filter and record the reasoning in `falsepositives`.
+    labs: [cloud-audit-log-investigation]
+    rules: [cloud-console-login-from-unexpected-country, cloud-access-key-created-for-another-user]
+    techniques: [T1078.004, T1098]
+  - slug: detection-coverage
+    title: Measuring Coverage with ATT&CK
+    summary: Map rules to techniques, find the gaps, and prioritise what to write next.
+    duration_minutes: 30
+    body: |
+      Coverage is a *question*, not a score. For each ATT&CK technique ask: do we have telemetry that could show it, and a rule that would flag it?
+
+      The CyberForge MITRE view colours each technique by rule count. Blank cells are gaps. But a covered cell only means *a* rule exists, not that it is good - check severity, freshness and false-positive notes.
+
+      Prioritise gaps by the threats you actually face, not by the number of blank cells. Write the rule, test it, then re-check the map.
+    labs: []
+    rules: [win-lsass-process-access, linux-shadow-file-read]
+    techniques: [T1003.001, T1003.008]

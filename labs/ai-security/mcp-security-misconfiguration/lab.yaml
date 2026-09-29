@@ -1,0 +1,79 @@
+slug: mcp-security-misconfiguration
+number: 20
+title: MCP Security Misconfiguration
+domain: ai-security
+category: LLM Application Security
+difficulty: advanced
+duration_minutes: 45
+summary: Review how Model Context Protocol servers get registered, and detect an unauthenticated, wide-binding tool server that hands filesystem and command tools to any caller.
+tags: [llm, mcp, agents, authentication, tools]
+objectives:
+  - Explain what an MCP server exposes and why authentication and binding matter.
+  - Compare a well-configured docs server with a dangerous filesystem server.
+  - Detect insecure registrations and blocked tool attempts from gateway telemetry.
+  - Write a checklist for approving new MCP servers.
+architecture:
+  description: >
+    A synthetic developer assistant registers two tool servers. One is read-only, authenticated and
+    bound to localhost; the other is bound to all interfaces with no authentication and exposes file and
+    command tools. Only registration and call telemetry exists; no server process is started.
+  diagram: |
+    flowchart LR
+      agent[dev-assistant] --> a[docs-search - bearer auth, 127.0.0.1]
+      agent --> b[filesystem-tools - NO auth, 0.0.0.0]
+      b --> tools[read_file, write_file, run_command]
+      other[Anything on the network] -. can call .-> b
+  components:
+    - { name: dev-assistant, role: "Synthetic agent that registers MCP servers", network: lab-internal }
+    - { name: docs-search, role: "Read-only server with bearer authentication", network: lab-internal }
+    - { name: filesystem-tools, role: "Unauthenticated server with powerful tools (intentional flaw)", network: lab-internal }
+    - { name: CyberForge API, role: "Runs registration and call detections", network: backend }
+scenario: >
+  A developer connects an assistant to two tool servers. The second one was started for a quick test,
+  bound to every interface with no authentication, and exposes a command tool. The agent later reads a
+  credentials file through it and attempts to run a command.
+setup:
+  requires_containers: false
+  steps:
+    - "Open this lab in CyberForge and select Run simulation."
+    - "Read the registration events first, then the calls that used the risky server."
+telemetry:
+  sources:
+    - { name: AI gateway log, description: "Server registrations (transport, bind address, auth) and tool calls with decisions.", log_source: cyberforge/ai_gateway }
+attack_simulation:
+  description: >
+    The simulation replays two server registrations and two tool calls through the risky server. No
+    server is started and no real file is read; the arguments are illustrative.
+  steps:
+    - { title: Good registration, detail: "A docs server with bearer authentication on localhost." }
+    - { title: Risky registration, detail: "A filesystem server bound to all interfaces without authentication exposing read, write and command tools." }
+    - { title: Use, detail: "The agent reads a credentials path and attempts a command through the server." }
+expected_detection:
+  description: >
+    Three rules fire: the unauthenticated registration, the sensitive-path file read, and the tool
+    outside the allow-list. The registration alert is the earliest chance to prevent the rest.
+  rules:
+    - ai-mcp-server-without-authentication
+    - ai-agent-tool-call-sensitive-path
+    - ai-agent-tool-not-on-allowlist
+mitre: [AML.T0053, AML.T0084]
+investigation_questions:
+  - question: Which registration setting turned a local convenience into a network exposure?
+    hint: Compare the bind addresses.
+    answer: Binding to 0.0.0.0:9200 with mcp_auth none, rather than 127.0.0.1 with bearer authentication.
+  - question: Does the policy block on run_command make the server safe?
+    hint: What can other clients do?
+    answer: No. The policy protects only this agent; the server still exposes run_command to anything that reaches the port.
+mitigation:
+  - Require authentication on every MCP server and bind to localhost or a private interface only.
+  - Expose the minimum tools per server; never publish command execution to an agent that does not need it.
+  - Review and pin server definitions and tool descriptions; treat them as untrusted input.
+  - Keep an inventory of registered servers and alert on new or changed registrations.
+cleanup:
+  - "Nothing to clean up: this lab runs entirely from telemetry."
+references:
+  - { title: "MCP authorization specification", url: "https://modelcontextprotocol.io/specification/latest/basic/authorization" }
+  - { title: "MITRE ATLAS AML.T0053 AI Agent Tool Invocation", url: "https://atlas.mitre.org/techniques/AML.T0053" }
+safety:
+  scope: simulation-only
+  network: none

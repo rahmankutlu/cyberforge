@@ -1,0 +1,175 @@
+# The AI security trust-boundary model shown at /ai-security.
+# Chain: User -> LLM -> Agent -> Tool -> Sensitive resource, with retrieved content feeding the LLM.
+nodes:
+  - {
+      id: user,
+      label: User,
+      kind: actor,
+      description: "Untrusted input. Anyone who can type to the agent.",
+    }
+  - {
+      id: content,
+      label: Retrieved content,
+      kind: data,
+      description: "Web pages, tickets, documents and index entries pulled into the context. Often written by outsiders.",
+    }
+  - {
+      id: llm,
+      label: LLM,
+      kind: model,
+      description: "Predicts the next tokens. Cannot reliably separate instructions from data.",
+    }
+  - {
+      id: agent,
+      label: Agent,
+      kind: runtime,
+      description: "Turns model output into decisions and tool calls.",
+    }
+  - {
+      id: tool,
+      label: Tool,
+      kind: capability,
+      description: "Files, email, HTTP, databases, MCP servers: what the agent can actually do.",
+    }
+  - {
+      id: resource,
+      label: Sensitive resource,
+      kind: asset,
+      description: "Secrets, customer data, production systems.",
+    }
+boundaries:
+  - id: prompt
+    from: user
+    to: llm
+    title: Prompt boundary
+    description: "User text enters the same context as the developer's instructions. The model cannot tell them apart."
+    failure_modes:
+      - "Direct prompt injection overrides intended behaviour."
+      - "System prompt leakage exposes hidden instructions and any secrets placed in them."
+    controls:
+      - "Assume the system prompt is public: no secrets in prompts."
+      - "Canary tokens in the system prompt to detect leakage."
+      - "Output filtering for sensitive markers."
+    rules: [ai-prompt-instruction-override-attempt, ai-system-prompt-canary-in-response]
+  - id: context
+    from: content
+    to: llm
+    title: Context boundary
+    description: "Retrieved or ingested content is placed in the context. If an outsider can write it, they can address the model."
+    failure_modes:
+      - "Indirect prompt injection hides instructions in content the agent is asked to process."
+      - "RAG poisoning plants documents that steer answers for unrelated users."
+    controls:
+      - "Track provenance and trust tier for every source."
+      - "Quarantine documents containing model-directed instructions."
+      - "Show citations so users can judge sources."
+    rules: [ai-retrieved-content-contains-instructions, ai-rag-ingest-untrusted-instruction-content]
+  - id: decision
+    from: llm
+    to: agent
+    title: Decision boundary
+    description: "Model output is turned into actions. If it is trusted blindly, a manipulated model becomes a manipulated operator."
+    failure_modes:
+      - "Excessive autonomy: the agent acts without confirmation."
+      - "Model output executed as commands or queries without validation."
+    controls:
+      - "Constrain output to structured, validated forms."
+      - "Require human approval for destructive or externally visible actions."
+    rules: []
+  - id: tool
+    from: agent
+    to: tool
+    title: Tool boundary
+    description: "Which tools exist, who may call them and how they authenticate."
+    failure_modes:
+      - "Tools outside the agent's task are reachable (excessive agency)."
+      - "MCP or tool servers are unauthenticated or bound too widely."
+    controls:
+      - "Per-agent tool allow-lists enforced in code."
+      - "Authenticate every tool server and bind to private interfaces."
+      - "Review tool descriptions as untrusted input."
+    rules: [ai-agent-tool-not-on-allowlist, ai-mcp-server-without-authentication]
+  - id: resource
+    from: tool
+    to: resource
+    title: Resource boundary
+    description: "What a tool can read or send. The last place to stop harm."
+    failure_modes:
+      - "File tools read credentials and configuration."
+      - "Outbound tools send data to attacker-controlled destinations."
+    controls:
+      - "Path and destination allow-lists."
+      - "Least-privilege credentials per tool."
+      - "Egress controls and logging of every call with the policy decision."
+    rules: [ai-agent-tool-call-sensitive-path, ai-agent-outbound-transfer-to-unlisted-host]
+topics:
+  - {
+      title: Prompt Injection,
+      summary: "Instructions smuggled in user input change model behaviour.",
+      owasp: LLM01,
+      atlas: [AML.T0051.000],
+      labs: [prompt-injection],
+    }
+  - {
+      title: Indirect Prompt Injection,
+      summary: "Instructions hidden in content the agent later processes.",
+      owasp: LLM01,
+      atlas: [AML.T0051.001],
+      labs: [indirect-prompt-injection],
+    }
+  - {
+      title: System Prompt Leakage Concepts,
+      summary: "Hidden instructions and any embedded secrets are extractable.",
+      owasp: LLM07,
+      atlas: [AML.T0056],
+      labs: [prompt-injection],
+    }
+  - {
+      title: RAG Poisoning,
+      summary: "Untrusted documents in the index steer answers for everyone.",
+      owasp: LLM08,
+      atlas: [AML.T0070],
+      labs: [rag-poisoning-concepts],
+    }
+  - {
+      title: Tool Abuse,
+      summary: "A manipulated agent uses its own tools against you.",
+      owasp: LLM06,
+      atlas: [AML.T0053],
+      labs: [tool-abuse-in-ai-agents],
+    }
+  - {
+      title: Excessive Agency,
+      summary: "More capability, permission or autonomy than the task requires.",
+      owasp: LLM06,
+      atlas: [AML.T0053],
+      labs: [tool-abuse-in-ai-agents],
+    }
+  - {
+      title: MCP Security,
+      summary: "Tool servers need authentication, narrow scope and review.",
+      owasp: LLM06,
+      atlas: [AML.T0053, AML.T0084],
+      labs: [mcp-security-misconfiguration],
+    }
+  - {
+      title: Unsafe Tool Permissions,
+      summary: "File and network tools with no path or destination limits.",
+      owasp: LLM06,
+      atlas: [AML.T0053],
+      labs: [tool-abuse-in-ai-agents, mcp-security-misconfiguration],
+    }
+  - {
+      title: Data Leakage,
+      summary: "Sensitive data leaves through responses or outbound tools.",
+      owasp: LLM02,
+      atlas: [AML.T0057, AML.T0086],
+      labs: [indirect-prompt-injection, prompt-injection],
+    }
+  - {
+      title: Agent Trust Boundaries,
+      summary: "Where untrusted input meets privileged action, and which control sits there.",
+      owasp: LLM06,
+      atlas: [AML.T0051],
+      labs: [indirect-prompt-injection, tool-abuse-in-ai-agents],
+    }

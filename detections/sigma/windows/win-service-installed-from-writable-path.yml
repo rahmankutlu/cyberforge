@@ -1,0 +1,29 @@
+title: Service Installed From User-Writable Path
+id: fc50e06f-c03d-59cf-9d0a-71a8759ef110
+status: test
+description: >
+  Detects System Event 7045 (new service installed) where the service binary lives in a
+  user-writable directory or launches an interpreter. Legitimate services are installed from
+  protected program directories.
+references:
+  - https://attack.mitre.org/techniques/T1543/003/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1543.003
+logsource:
+  product: windows
+  service: system
+detection:
+  selection:
+    EventID: 7045
+    ImagePath|contains:
+      - '\Users'
+      - '\Temp'
+      - '\ProgramData'
+      - 'powershell'
+      - '%COMSPEC%'
+  condition: selection
+falsepositives:
+  - Some software installs helper services under ProgramData
+level: high

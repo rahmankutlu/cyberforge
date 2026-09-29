@@ -1,0 +1,42 @@
+title: Denied Connection Base Event
+id: a45bc29b-b39f-57c2-b7ce-d1f81a3c78f4
+name: fw_denied_connection
+status: stable
+description: Base rule. The firewall denied a connection attempt.
+logsource:
+  category: firewall
+detection:
+  selection:
+    action: 'deny'
+  condition: selection
+level: informational
+---
+title: Port Scan Pattern - Many Denied Ports From One Source
+id: 161540d6-006d-5a62-8ce0-7f0d74475136
+status: stable
+description: >
+  Detects one source address probing fifteen or more distinct destination ports within a minute and
+  being denied. Horizontal or vertical scanning is the reconnaissance step that precedes most
+  intrusions; counting distinct ports separates scanning from a single service being retried.
+references:
+  - https://attack.mitre.org/techniques/T1046/
+  - https://attack.mitre.org/techniques/T1595/001/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1046
+  - attack.t1595.001
+correlation:
+  type: value_count
+  rules:
+    - fw_denied_connection
+  group-by:
+    - src_ip
+  timespan: 1m
+  condition:
+    gte: 15
+    field: dst_port
+falsepositives:
+  - Authorized internal vulnerability scanners
+  - Misconfigured monitoring systems that check many ports
+level: medium

@@ -1,0 +1,25 @@
+title: System Prompt Canary Token Appears In Model Response
+id: ee42c453-9d8f-5a1a-8042-92862f3e3ee0
+status: experimental
+description: >
+  Detects a canary token, planted inside the system prompt, appearing in an output sent to the user.
+  Canaries turn silent system prompt leakage into a reliable alert without inspecting the prompt
+  content itself.
+references:
+  - https://atlas.mitre.org/techniques/AML.T0056
+  - https://genai.owasp.org/llmrisk/llm072025-system-prompt-leakage/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - atlas.aml.t0056
+logsource:
+  product: cyberforge
+  service: ai_gateway
+detection:
+  selection:
+    event_type: 'model_response'
+    response|contains: 'CF-CANARY-'
+  condition: selection
+falsepositives:
+  - Developers who paste the system prompt into a test conversation
+level: high

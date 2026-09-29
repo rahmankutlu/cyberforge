@@ -1,0 +1,17 @@
+# Demo analysts for alert assignment and investigation notes.
+# These are fictional local personas, not real people. CyberForge has no user accounts in v0.1.
+- handle: nvasquez
+  name: Nadia Vasquez
+  role: Tier 2 Analyst
+- handle: dlindqvist
+  name: Dev Lindqvist
+  role: Tier 1 Analyst
+- handle: mokafor
+  name: Mira Okafor
+  role: SOC Lead
+- handle: kthorne
+  name: Kai Thorne
+  role: Detection Engineer
+- handle: sbrandt
+  name: Sam Brandt
+  role: Threat Hunter

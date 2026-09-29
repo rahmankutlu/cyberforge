@@ -1,0 +1,54 @@
+slug: inc-bastion-ssh-compromise
+title: Bastion host compromised after SSH password guessing
+lab: linux-authentication-investigation
+severity: critical
+status: contained
+lead: mokafor
+days_ago: 3
+summary: An external address guessed the deploy account password on the bastion, escalated to root, created a backdoor user and cron entry and read the shadow file.
+alert_status: contained
+notes:
+  - {
+      analyst: mokafor,
+      offset_minutes: 10,
+      body: "Ten failures then an Accepted password for deploy from the same address. Password authentication is enabled on this host; that is the root cause.",
+    }
+  - {
+      analyst: kthorne,
+      offset_minutes: 40,
+      body: "The seven detections line up as a kill chain. Proposing to add the temporal rule to the high-priority queue.",
+    }
+timeline:
+  - {
+      offset_minutes: 0,
+      kind: detection,
+      title: SSH guessing burst,
+      detail: "Ten failed passwords from 203.0.113.50.",
+    }
+  - {
+      offset_minutes: 1,
+      kind: detection,
+      title: Successful login as deploy,
+      detail: "Accepted password following the failures.",
+    }
+  - {
+      offset_minutes: 4,
+      kind: detection,
+      title: Backdoor account and cron entry,
+      detail: "svc-backup created; /etc/cron.d/svc-update written.",
+    }
+  - {
+      offset_minutes: 30,
+      kind: containment,
+      title: Host isolated and accounts disabled,
+      detail: "deploy and svc-backup disabled; cron entry preserved for analysis.",
+    }
+report:
+  executive_summary: "The bastion was accessed by guessing a password and used to establish persistence and read password hashes. The host was isolated, all local password hashes are treated as exposed."
+  affected_assets: ["bastion-01", "Accounts deploy and svc-backup"]
+  indicators: ["203.0.113.50", "192.0.2.44", "/etc/cron.d/svc-update", "svc-backup"]
+  evidence: "auth.log entries for failed and accepted passwords, sudo to /bin/bash, useradd for svc-backup, auditd file write to /etc/cron.d and read of /etc/shadow."
+  root_cause: "SSH password authentication enabled on an internet-facing bastion with a guessable password on the deploy account."
+  containment: "Host isolated, accounts disabled, all credentials that ever touched the host rotated."
+  remediation: "Disable password authentication, require keys plus MFA, restrict source addresses, manage local accounts centrally."
+  lessons_learned: "The chain took four minutes end to end; automated containment on the temporal login-after-failures rule would have shortened exposure."

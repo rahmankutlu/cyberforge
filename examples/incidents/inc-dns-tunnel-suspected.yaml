@@ -1,0 +1,48 @@
+slug: inc-dns-tunnel-suspected
+title: Workstation shows domain generation and DNS tunnelling behaviour
+lab: dns-anomaly-investigation
+severity: medium
+status: in_progress
+lead: sbrandt
+days_ago: 1
+summary: WKS-031 cycled through random-looking names that failed and then sent hex-encoded TXT queries that were answered.
+alert_status: investigating
+notes:
+  - {
+      analyst: sbrandt,
+      offset_minutes: 12,
+      body: "Twenty-six NXDOMAINs in 39 seconds, then eight successful TXT queries to tunnel-lab.example with hex labels. The tunnel domain is registered days ago according to our intel.",
+    }
+  - {
+      analyst: mokafor,
+      offset_minutes: 45,
+      body: "Sinkholing tunnel-lab.example at the resolver. Need the process that made the queries; asking for endpoint telemetry.",
+    }
+timeline:
+  - {
+      offset_minutes: 0,
+      kind: detection,
+      title: NXDOMAIN burst,
+      detail: "Twenty-six failed lookups in 39 seconds.",
+    }
+  - {
+      offset_minutes: 1,
+      kind: detection,
+      title: Encoded TXT queries answered,
+      detail: "Eight successful TXT queries with hex labels.",
+    }
+  - {
+      offset_minutes: 45,
+      kind: containment,
+      title: Domain sinkholed,
+      detail: "tunnel-lab.example blocked at the resolver.",
+    }
+report:
+  executive_summary: "A workstation began behaviour consistent with malware searching for and then using a DNS command channel. Blocking is in place; the originating process is still being identified."
+  affected_assets: ["WKS-031"]
+  indicators: ["dga-lab.example", "tunnel-lab.example"]
+  evidence: "Resolver query log showing NXDOMAIN bursts and successful TXT queries with 40-character hex labels."
+  root_cause: "Under investigation. The process making the queries has not yet been identified."
+  containment: "Domain sinkholed; workstation network access restricted to essential services."
+  remediation: "Force all DNS through monitored resolvers and block unmanaged DNS-over-HTTPS."
+  lessons_learned: "Resolver logs alone reveal the behaviour but not the process; endpoint DNS attribution is a gap."

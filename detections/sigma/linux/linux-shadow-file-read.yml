@@ -1,0 +1,33 @@
+title: Password Hash File Read By Unexpected Process
+id: b7f8ad21-2a65-5506-a4f5-e341b9f0c21d
+status: test
+description: >
+  Detects reads of /etc/shadow by processes other than the small set of system components that need
+  it. The shadow file holds password hashes, so access from a shell, script interpreter or file
+  utility is consistent with credential harvesting.
+references:
+  - https://attack.mitre.org/techniques/T1003/008/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1003.008
+logsource:
+  category: file_event
+  product: linux
+detection:
+  selection:
+    Operation: 'read'
+    TargetFilename: '/etc/shadow'
+  filter_system:
+    Image|endswith:
+      - '/sshd'
+      - '/login'
+      - '/su'
+      - '/sudo'
+      - '/passwd'
+      - '/unix_chkpwd'
+      - '/systemd'
+  condition: selection and not filter_system
+falsepositives:
+  - Backup agents and compliance scanners that read the shadow file
+level: high

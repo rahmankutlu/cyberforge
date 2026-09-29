@@ -1,0 +1,42 @@
+title: Successful Object Reads Base Event
+id: 432bdca6-7861-56dc-8a06-b6a13b9e82dd
+name: object_read_ok
+status: test
+description: Base rule. A record under /api/invoices/ was returned successfully.
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs-method: 'GET'
+    cs-uri-stem|startswith: '/api/invoices/'
+    sc-status: 200
+  condition: selection
+level: informational
+---
+title: One Client Reads Many Distinct Object IDs
+id: b919d10b-790b-5547-b90e-230435f93091
+status: test
+description: >
+  Detects a client that successfully reads ten or more distinct object URLs within a minute.
+  Sequential access to record identifiers is the request pattern of insecure direct object
+  reference (IDOR) enumeration: the server returns records the caller does not own.
+references:
+  - https://attack.mitre.org/techniques/T1190/
+  - https://owasp.org/Top10/A01_2021-Broken_Access_Control/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1190
+correlation:
+  type: value_count
+  rules:
+    - object_read_ok
+  group-by:
+    - c-ip
+  timespan: 1m
+  condition:
+    gte: 10
+    field: cs-uri-stem
+falsepositives:
+  - Legitimate bulk export or reporting clients that read many records (allow-list by account)
+level: medium

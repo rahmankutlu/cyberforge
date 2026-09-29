@@ -1,0 +1,63 @@
+slug: ai-security
+title: AI Security
+audience: Engineers and analysts working with LLM applications
+summary: Threat-model LLM apps and agents - prompt injection, RAG poisoning, tool abuse and MCP - and design controls that hold up.
+icon: brain
+modules:
+  - slug: ai-prompt-injection
+    title: Prompt Injection
+    summary: Why models cannot separate instructions from data, and what that means for design.
+    duration_minutes: 35
+    body: |
+      A language model receives one stream of text. It has no reliable way to tell *instructions from the developer* apart from *text an attacker supplied*. That is the root of **prompt injection**.
+
+      **Direct** injection comes from the user's own prompt. **Indirect** injection hides in content the model is asked to process: a web page, an email, a ticket. The user may never see it.
+
+      Design accordingly: assume the model can be talked into anything; keep secrets out of prompts; put hard limits (permissions, allow-lists, approvals) in code *outside* the model. Use canary tokens to detect leaks.
+    labs: [prompt-injection, indirect-prompt-injection]
+    rules: [ai-prompt-instruction-override-attempt, ai-system-prompt-canary-in-response]
+    techniques: [AML.T0051.000, AML.T0051.001, AML.T0056]
+  - slug: ai-rag
+    title: RAG and Trust Boundaries
+    summary: Retrieval adds a shared, writable data source to your threat model.
+    duration_minutes: 35
+    body: |
+      **Retrieval-augmented generation** answers questions using documents fetched at request time. That index is *shared state*: whoever can add to it can influence answers for everyone.
+
+      Treat each source with a **trust tier**. Content from a publicly editable wiki should not answer policy questions. Track provenance, show citations, and quarantine documents that address the model directly.
+
+      In the *RAG Poisoning* lab a claim planted on Monday changes an unrelated customer's answer an hour later - without touching the model.
+    labs: [rag-poisoning-concepts]
+    rules: [ai-rag-ingest-untrusted-instruction-content, ai-retrieved-content-contains-instructions]
+    techniques: [AML.T0070, AML.T0051.001]
+  - slug: ai-agents-tools
+    title: Agents, Tools and Excessive Agency
+    summary: Every tool an agent can call is a capability an attacker may borrow.
+    duration_minutes: 40
+    body: |
+      An **agent** is a model that can act through tools. **Excessive agency** means it has more capability, permission or autonomy than its task needs.
+
+      Apply least privilege per agent: a narrow tool set, path and destination allow-lists, and human approval for destructive or externally visible actions. Enforce all of it in code; a prompt saying "please don't" is not a control.
+
+      Log every tool call with its arguments and the policy decision. Blocked attempts are your evidence that something tried to misuse the agent.
+    labs: [tool-abuse-in-ai-agents]
+    rules:
+      [
+        ai-agent-tool-call-sensitive-path,
+        ai-agent-tool-not-on-allowlist,
+        ai-agent-outbound-transfer-to-unlisted-host,
+      ]
+    techniques: [AML.T0053, AML.T0086]
+  - slug: ai-mcp
+    title: MCP Security
+    summary: Tool servers need authentication, narrow scope and review, like any API.
+    duration_minutes: 30
+    body: |
+      The **Model Context Protocol** lets agents discover and call tools on servers. Each server is an API with privileges, so it needs the same care: **authentication**, **least-privilege tools**, **private binding** and a change-controlled inventory.
+
+      The *MCP Security Misconfiguration* lab contrasts a read-only, authenticated, localhost server with a filesystem server bound to every interface with no authentication and a command tool. The second turns anything on the network into an operator of your agent's toolbox.
+
+      Treat tool descriptions as untrusted input too: they are text the model reads.
+    labs: [mcp-security-misconfiguration]
+    rules: [ai-mcp-server-without-authentication]
+    techniques: [AML.T0053, AML.T0084]

@@ -1,0 +1,34 @@
+title: Agent File Tool Reads A Sensitive Path
+id: f34debc1-06b6-5393-99fc-79c2ede566c8
+status: experimental
+description: >
+  Detects an AI agent calling a file-reading tool against paths that commonly hold secrets. Agents
+  rarely have a legitimate reason to open credential stores; when they do, it is usually because
+  untrusted content told them to. Treat the alert as a signal to review the preceding retrieval and
+  prompt events.
+references:
+  - https://atlas.mitre.org/techniques/AML.T0053
+  - https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - atlas.aml.t0053
+logsource:
+  product: cyberforge
+  service: ai_gateway
+detection:
+  selection:
+    event_type: 'tool_call'
+    tool_name:
+      - 'read_file'
+      - 'file_read'
+    tool_args|contains:
+      - '.env'
+      - 'id_rsa'
+      - '/etc/shadow'
+      - 'credentials'
+      - 'secrets'
+  condition: selection
+falsepositives:
+  - Agents deliberately built to manage configuration files (restrict their allowed paths instead)
+level: high

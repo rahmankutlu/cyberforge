@@ -1,0 +1,24 @@
+title: Cloud Root Account Console Login
+id: d9015cca-b72a-5549-895a-a5c9b59c45a6
+status: stable
+description: >
+  Detects a console sign-in by the cloud account root identity. The root user has unrestricted
+  access and should be reserved for a handful of account-recovery tasks; day-to-day use, or any use
+  from an unexpected location, is a serious control failure.
+references:
+  - https://attack.mitre.org/techniques/T1078/004/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1078.004
+logsource:
+  product: aws
+  service: cloudtrail
+detection:
+  selection:
+    eventName: 'ConsoleLogin'
+    userIdentity.type: 'Root'
+  condition: selection
+falsepositives:
+  - Documented break-glass procedures (confirm against the change record)
+level: critical

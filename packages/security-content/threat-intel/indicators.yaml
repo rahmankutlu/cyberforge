@@ -1,0 +1,239 @@
+# Seeded threat-intel indicators for the local workspace.
+#
+# Every value is synthetic or reserved by a standard so it cannot point at a real victim or actor:
+#   IPs      RFC 5737 documentation ranges (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24)
+#   Domains  reserved .example names
+#   ASNs     RFC 5398 documentation range (AS64496-AS64511)
+#   CVEs     real, public, widely documented vulnerabilities used as reference items
+#   Hashes   the EICAR test file and SHA-256 of harmless CyberForge sample strings
+- {
+    type: ip,
+    value: 198.51.100.23,
+    tags: [credential-guessing, web],
+    confidence: 70,
+    source: CyberForge lab 01,
+    first_seen_days_ago: 3,
+    last_seen_days_ago: 2,
+    notes: "Source of the scripted login attempts in the Broken Authentication lab.",
+  }
+- {
+    type: ip,
+    value: 203.0.113.50,
+    tags: [ssh, credential-guessing],
+    confidence: 75,
+    source: CyberForge lab 09,
+    first_seen_days_ago: 4,
+    last_seen_days_ago: 3,
+    notes: "Guessed a bastion password, then escalated. Synthetic.",
+  }
+- {
+    type: ip,
+    value: 203.0.113.61,
+    tags: [web-shell, upload],
+    confidence: 85,
+    source: CyberForge lab 13,
+    first_seen_days_ago: 6,
+    last_seen_days_ago: 5,
+    notes: "Uploaded and used a synthetic ASPX web shell.",
+  }
+- {
+    type: ip,
+    value: 203.0.113.77,
+    tags: [scanner, recon],
+    confidence: 60,
+    source: CyberForge lab 11,
+    first_seen_days_ago: 8,
+    last_seen_days_ago: 6,
+    notes: "Vertical port scan against the DMZ.",
+  }
+- {
+    type: ip,
+    value: 203.0.113.99,
+    tags: [rdp, credential-guessing],
+    confidence: 80,
+    source: CyberForge lab 14,
+    first_seen_days_ago: 5,
+    last_seen_days_ago: 4,
+    notes: "Guessed the RDP administrator password.",
+  }
+- {
+    type: ip,
+    value: 198.51.100.200,
+    tags: [cloud, root-login],
+    confidence: 90,
+    source: CyberForge lab 15,
+    first_seen_days_ago: 1,
+    last_seen_days_ago: 0,
+    notes: "Console login as the cloud root identity.",
+  }
+- {
+    type: ip,
+    value: 198.51.100.10,
+    tags: [staging, powershell],
+    confidence: 65,
+    source: CyberForge lab 10,
+    first_seen_days_ago: 2,
+    last_seen_days_ago: 1,
+    notes: "Second-stage host named in a PowerShell download cradle.",
+  }
+- {
+    type: ip,
+    value: 192.0.2.44,
+    tags: [reverse-shell, callback],
+    confidence: 55,
+    source: CyberForge lab 09,
+    first_seen_days_ago: 4,
+    last_seen_days_ago: 3,
+    notes: "Callback address in a bash network redirect.",
+  }
+- {
+    type: domain,
+    value: dga-lab.example,
+    tags: [dga, dns],
+    confidence: 60,
+    source: CyberForge lab 12,
+    first_seen_days_ago: 2,
+    last_seen_days_ago: 1,
+    notes: "Parent domain of the random-looking NXDOMAIN lookups.",
+  }
+- {
+    type: domain,
+    value: tunnel-lab.example,
+    tags: [dns-tunnel, exfiltration],
+    confidence: 80,
+    source: CyberForge lab 12,
+    first_seen_days_ago: 2,
+    last_seen_days_ago: 1,
+    notes: "Carries hex-encoded TXT queries.",
+  }
+- {
+    type: domain,
+    value: collector.attacker-lab.example,
+    tags: [exfiltration, ai-agent],
+    confidence: 90,
+    source: CyberForge lab 17,
+    first_seen_days_ago: 3,
+    last_seen_days_ago: 2,
+    notes: "Destination in an injected instruction; blocked by the allow-list.",
+  }
+- {
+    type: domain,
+    value: partner-lab.example,
+    tags: [ai-agent, exfiltration],
+    confidence: 50,
+    source: CyberForge lab 19,
+    first_seen_days_ago: 3,
+    last_seen_days_ago: 3,
+    notes: "External mail destination attempted by an over-privileged agent.",
+  }
+- {
+    type: url,
+    value: "http://198.51.100.10/stage.ps1",
+    tags: [powershell, stager],
+    confidence: 65,
+    source: CyberForge lab 10,
+    first_seen_days_ago: 2,
+    last_seen_days_ago: 1,
+    notes: "Synthetic second-stage script location. Nothing is served.",
+  }
+- {
+    type: sha256,
+    value: 275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f,
+    tags: [eicar, test-file],
+    confidence: 100,
+    source: EICAR,
+    first_seen_days_ago: 30,
+    last_seen_days_ago: 10,
+    notes: "The EICAR anti-malware test file. Harmless; use it to test scanning pipelines.",
+  }
+- {
+    type: sha256,
+    value: 4d2b7a1e99a953235a17a25323c5dc10c795e5d241176b8ece0b64304225409f,
+    tags: [macro, document, synthetic],
+    confidence: 40,
+    source: CyberForge lab 10,
+    first_seen_days_ago: 2,
+    last_seen_days_ago: 1,
+    notes: "SHA-256 of the string cyberforge-lab-sample-invoice.docm; stands in for a macro document.",
+  }
+- {
+    type: sha256,
+    value: 839c714baa331ec45f5cac1c67adb860d7926fe55c50d837d694353f463717a9,
+    tags: [powershell, persistence, synthetic],
+    confidence: 40,
+    source: CyberForge lab 10,
+    first_seen_days_ago: 2,
+    last_seen_days_ago: 1,
+    notes: "SHA-256 of the string cyberforge-lab-sample-upd.ps1; stands in for a persistence script.",
+  }
+- {
+    type: email,
+    value: billing@invoice-portal.example,
+    tags: [phishing, invoice],
+    confidence: 55,
+    source: CyberForge lab 10,
+    first_seen_days_ago: 3,
+    last_seen_days_ago: 2,
+    notes: "Sender of the fictional invoice lure.",
+  }
+- {
+    type: cve,
+    value: CVE-2021-44228,
+    tags: [log4j, rce, reference],
+    confidence: 100,
+    source: public advisory,
+    tlp: clear,
+    first_seen_days_ago: 60,
+    last_seen_days_ago: 0,
+    notes: "Log4Shell. Widely documented Java logging library remote code execution; patch and inventory affected software.",
+  }
+- {
+    type: cve,
+    value: CVE-2023-4966,
+    tags: [citrix, session-hijack, reference],
+    confidence: 100,
+    source: public advisory,
+    first_seen_days_ago: 60,
+    last_seen_days_ago: 0,
+    notes: "Citrix NetScaler information disclosure leading to session token theft.",
+  }
+- {
+    type: cve,
+    value: CVE-2024-3094,
+    tags: [supply-chain, ssh, reference],
+    confidence: 100,
+    source: public advisory,
+    first_seen_days_ago: 60,
+    last_seen_days_ago: 0,
+    notes: "Backdoor found in upstream xz-utils releases affecting sshd linkage on some systems.",
+  }
+- {
+    type: cve,
+    value: CVE-2017-0144,
+    tags: [smb, eternalblue, reference],
+    confidence: 100,
+    source: public advisory,
+    first_seen_days_ago: 60,
+    last_seen_days_ago: 0,
+    notes: "SMBv1 remote code execution. A reminder to disable SMBv1.",
+  }
+- {
+    type: asn,
+    value: AS64500,
+    tags: [documentation, hosting],
+    confidence: 30,
+    source: CyberForge synthetic,
+    first_seen_days_ago: 30,
+    last_seen_days_ago: 2,
+    notes: "Documentation ASN (RFC 5398) used for synthetic infrastructure.",
+  }
+- {
+    type: asn,
+    value: AS64501,
+    tags: [documentation, residential],
+    confidence: 30,
+    source: CyberForge synthetic,
+    first_seen_days_ago: 30,
+    last_seen_days_ago: 2,
+    notes: "Documentation ASN (RFC 5398) used for synthetic infrastructure.",
+  }

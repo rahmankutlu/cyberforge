@@ -1,0 +1,25 @@
+title: Agent Attempted A Tool Outside Its Allow-List
+id: 2330d6c7-1a77-5334-851d-a4fba2346a9e
+status: experimental
+description: >
+  Detects tool invocations that the policy layer flagged as not being on the agent's allow-list.
+  The gateway blocks the call, but the attempt itself is valuable: the model tried to use a
+  capability it should not have, which points to injected instructions or an over-broad tool set.
+references:
+  - https://atlas.mitre.org/techniques/AML.T0053
+  - https://genai.owasp.org/llmrisk/llm062025-excessive-agency/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - atlas.aml.t0053
+logsource:
+  product: cyberforge
+  service: ai_gateway
+detection:
+  selection:
+    event_type: 'tool_call'
+    guardrail_flags: 'tool_not_allowlisted'
+  condition: selection
+falsepositives:
+  - A model hallucinating a tool name (still worth fixing the tool descriptions)
+level: medium

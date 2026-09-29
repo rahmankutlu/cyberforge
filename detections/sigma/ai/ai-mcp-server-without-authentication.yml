@@ -1,0 +1,25 @@
+title: MCP Server Registered Without Authentication
+id: 0947330c-dcfb-5b4e-afdb-a023b2fd1785
+status: experimental
+description: >
+  Detects an agent runtime registering a Model Context Protocol server that requires no
+  authentication. Any client or injected instruction that can reach an unauthenticated tool server
+  can invoke its tools with the server's privileges.
+references:
+  - https://atlas.mitre.org/techniques/AML.T0053
+  - https://modelcontextprotocol.io/specification/latest/basic/authorization
+author: CyberForge
+date: 2026-09-01
+tags:
+  - atlas.aml.t0053
+logsource:
+  product: cyberforge
+  service: ai_gateway
+detection:
+  selection:
+    event_type: 'mcp_registration'
+    mcp_auth: 'none'
+  condition: selection
+falsepositives:
+  - Local stdio servers launched as child processes, where transport-level trust replaces authentication
+level: medium

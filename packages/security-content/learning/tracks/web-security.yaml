@@ -1,0 +1,58 @@
+slug: web-security
+title: Web Security
+audience: Developers and testers
+summary: Understand the most common web flaws, what they look like in logs, and how to fix them at the root.
+icon: globe
+modules:
+  - slug: web-injection
+    title: Injection (SQL and Beyond)
+    summary: Why mixing data and code is dangerous, and the one fix that works.
+    duration_minutes: 40
+    body: |
+      **Injection** happens when untrusted input is interpreted as part of a command or query. SQL injection is the classic case: a search term containing a quote changes the structure of the SQL statement.
+
+      The root cause is building queries by string concatenation. The root fix is **parameterised queries**, which keep data and code separate for the database. Web application firewalls can block *known* payloads, but they do not remove the flaw.
+
+      In the *SQL Injection Fundamentals* lab, compare the response size of a normal search with a tautology payload. A sudden jump is the visible signature of success.
+    labs: [sql-injection-fundamentals]
+    rules: [web-sql-injection-probe, web-scanner-user-agent]
+    techniques: [T1190, T1595.002]
+  - slug: web-xss
+    title: Cross-Site Scripting
+    summary: How unescaped output turns a page into an attacker's script host.
+    duration_minutes: 35
+    body: |
+      **XSS** lets an attacker run script in a victim's browser within your site's origin. It comes in three flavours: *reflected* (payload in the request), *stored* (payload saved and served later) and *DOM-based* (client-side code misuses input).
+
+      Fix it by **encoding output for its context** (HTML, attribute, JavaScript, URL) and add a strict **Content-Security-Policy** as a safety net. Cookies marked `HttpOnly` cannot be read by injected script.
+
+      The access log records only the *attempt*. Whether it worked depends on the response the browser rendered.
+    labs: [cross-site-scripting]
+    rules: [web-xss-payload-in-request]
+    techniques: [T1059.007]
+  - slug: web-api-auth
+    title: API Authentication and Tokens
+    summary: JWTs, verification pitfalls and safe defaults.
+    duration_minutes: 40
+    body: |
+      A **JSON Web Token** has a header, a payload and a signature. The payload is *readable by anyone*; only the signature protects it. A verifier must therefore decide the accepted algorithm itself and never trust the header to choose.
+
+      Classic mistakes: accepting `alg: none`, using weak shared secrets, skipping expiry and audience checks. The *JWT Misconfiguration* lab shows the moment a `403` becomes a `200` after the token header changed.
+
+      Log the algorithm from each token so a rule can flag `none` instantly.
+    labs: [jwt-misconfiguration]
+    rules: [web-jwt-none-algorithm]
+    techniques: [T1550.001, T1528]
+  - slug: web-secrets
+    title: Secrets in the Wrong Places
+    summary: Where secrets leak and the first thing to do when one does.
+    duration_minutes: 25
+    body: |
+      Secrets leak through files served by mistake (`.env`, `.git`), URLs (query strings end up in logs), source control history and build output.
+
+      **First response is rotation, not investigation**: assume anything exposed has been copied. Then remove the exposure, then review what the credentials were used for.
+
+      Prevention is boring and effective: a secret manager, secret scanning in CI and pre-commit hooks, and serving only an explicit allow-list of paths.
+    labs: [secrets-exposure]
+    rules: [web-sensitive-file-probe, web-secret-in-url-query]
+    techniques: [T1552.001]

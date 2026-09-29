@@ -1,0 +1,32 @@
+title: Remote Desktop Logon From Public IP Address
+id: 1228f60f-9f3c-5a07-a53c-5d54333520ce
+status: test
+description: >
+  Detects a successful interactive remote (RDP) logon, logon type 10, whose source address is not in
+  private address space. RDP exposed to the internet is a frequent initial-access path; a successful
+  logon from a public address deserves immediate review.
+references:
+  - https://attack.mitre.org/techniques/T1021/001/
+  - https://attack.mitre.org/techniques/T1078/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1021.001
+  - attack.t1078
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4624
+    LogonType: 10
+  filter_private:
+    IpAddress|cidr:
+      - '10.0.0.0/8'
+      - '172.16.0.0/12'
+      - '192.168.0.0/16'
+      - '127.0.0.0/8'
+  condition: selection and not filter_private
+falsepositives:
+  - Administrators connecting through a corporate VPN that presents a public egress address
+level: high

@@ -1,0 +1,29 @@
+title: Known Web Vulnerability Scanner User Agent
+id: a3a74933-d714-5561-9565-68eb1f29197f
+status: stable
+description: >
+  Detects user agents belonging to widely used scanning and exploitation tools. Attackers can change
+  the header, so absence proves nothing, but presence identifies unsophisticated automated probing
+  and is useful for enriching other alerts.
+references:
+  - https://attack.mitre.org/techniques/T1595/002/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1595.002
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs-user-agent|contains:
+      - 'sqlmap'
+      - 'nikto'
+      - 'masscan'
+      - 'acunetix'
+      - 'gobuster'
+      - 'wfuzz'
+      - 'Nmap Scripting Engine'
+  condition: selection
+falsepositives:
+  - Authorized vulnerability scans from known scanner addresses (allow-list the source)
+level: low

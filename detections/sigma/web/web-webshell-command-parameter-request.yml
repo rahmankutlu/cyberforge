@@ -1,0 +1,35 @@
+title: Script In Upload Directory Called With Command Parameter
+id: edfff448-62c9-5b01-9002-6b53d06e6949
+status: test
+description: >
+  Detects requests to server-side script files inside upload or temp directories that carry a
+  command-like query parameter. Uploaded scripts should never be executable; requests that pass
+  cmd= or exec= to one are consistent with interacting with a web shell.
+references:
+  - https://attack.mitre.org/techniques/T1505/003/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1505.003
+logsource:
+  category: webserver
+detection:
+  selection_script:
+    cs-uri-stem|endswith:
+      - '.php'
+      - '.aspx'
+      - '.jsp'
+  selection_dir:
+    cs-uri-stem|contains:
+      - '/uploads/'
+      - '/images/'
+      - '/tmp/'
+  selection_param:
+    cs-uri-query|contains:
+      - 'cmd='
+      - 'exec='
+      - 'command='
+  condition: selection_script and selection_dir and selection_param
+falsepositives:
+  - Applications that expose an intentionally parameterized script from an upload path (uncommon)
+level: high

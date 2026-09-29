@@ -1,0 +1,252 @@
+title: 30 Days of CyberForge
+summary: One focused task a day, about 45 minutes each. By day 30 you will have read logs, triaged and investigated alerts, written detections, mapped them to ATT&CK and reported an incident.
+days:
+  - day: 1
+    title: Security Logs
+    summary: Learn to read a log line - who, what, where, when and how it ended.
+    tasks:
+      - Open the Events explorer and pick five events from different sources. For each, write down the five questions a log line answers.
+      - Compare the raw event with its parsed form. What did parsing add?
+    techniques: []
+  - day: 2
+    title: Authentication
+    summary: Study how successful and failed logins appear in Windows and Linux logs.
+    tasks:
+      - Find an authentication event in the Windows Security source and one in the Linux auth source.
+      - Explain the difference between a failed logon and an account that does not exist.
+    labs: [brute-force-detection]
+    techniques: [T1110.001]
+  - day: 3
+    title: Network Traffic
+    summary: Read firewall and DNS records and learn what normal looks like.
+    tasks:
+      - Filter events to the firewall and DNS sources and describe the baseline traffic.
+      - Pick one host and list the destinations it talked to.
+    labs: [network-reconnaissance-detection]
+    techniques: [T1046]
+  - day: 4
+    title: Sigma
+    summary: Read and run your first Sigma rule.
+    tasks:
+      - Open the Encoded PowerShell rule in the detection workbench and identify its logsource, selections and condition.
+      - Paste it into the playground and translate it to Splunk and KQL.
+    rules: [win-encoded-powershell-command]
+    techniques: [T1059.001]
+    reading:
+      - { title: Sigma rule specification, url: "https://sigmahq.io/docs/basics/rules.html" }
+  - day: 5
+    title: MITRE ATT&CK
+    summary: Learn tactics and techniques and find them in the CyberForge explorer.
+    tasks:
+      - Open the MITRE view and find the technique for PowerShell. List the labs and rules mapped to it.
+      - Name three techniques with no detection rule yet.
+    techniques: [T1059.001]
+    reading:
+      - { title: MITRE ATT&CK, url: "https://attack.mitre.org/" }
+  - day: 6
+    title: Web Security
+    summary: Understand the shape of a web request and the OWASP Top 10.
+    tasks:
+      - Read the request lines of a web event and identify method, path, query, status and user agent.
+      - Skim the OWASP Top 10 and match three categories to CyberForge labs.
+    labs: [broken-authentication]
+    techniques: [T1110.001]
+    reading:
+      - { title: OWASP Top 10, url: "https://owasp.org/Top10/" }
+  - day: 7
+    title: Incident Triage
+    summary: Practise the five triage questions on real alerts.
+    tasks:
+      - Triage three alerts from the SOC queue. For each, record what fired, what is affected, whether it is real, how bad it is and what next.
+      - Add an analyst note to each alert.
+    techniques: []
+  - day: 8
+    title: Windows Process Telemetry
+    summary: Read process-creation events and understand parent-child relationships.
+    tasks:
+      - Run the PowerShell simulation and read the Word to cmd to PowerShell process chain.
+      - Explain why the parent process is often more informative than the child.
+    labs: [suspicious-powershell-detection-simulation]
+    techniques: [T1204.002]
+  - day: 9
+    title: PowerShell Detection
+    summary: Decode an encoded command and write down what each PowerShell rule sees.
+    tasks:
+      - Base64-decode the -enc value from the simulation (UTF-16LE) and read the result.
+      - Compare what command-line logging and script block logging each captured.
+    labs: [suspicious-powershell-detection-simulation]
+    rules: [win-powershell-scriptblock-decode-execute, win-powershell-download-cradle]
+    techniques: [T1059.001, T1140]
+  - day: 10
+    title: Linux Authentication Logs
+    summary: Read sshd, sudo and useradd messages.
+    tasks:
+      - Run the Linux investigation lab and open each of the seven alerts in time order.
+      - Draw the intrusion as a chain of five steps.
+    labs: [linux-authentication-investigation]
+    techniques: [T1078, T1548.003]
+  - day: 11
+    title: Brute Force Versus Spraying
+    summary: Tell the two apart by what you count.
+    tasks:
+      - Run the Brute Force Detection lab and identify which source guessed and which sprayed.
+      - Explain why spraying needs a distinct-account count.
+    labs: [brute-force-detection]
+    rules: [win-failed-logon-burst, win-password-spraying-pattern]
+    techniques: [T1110.001, T1110.003]
+  - day: 12
+    title: Persistence Techniques
+    summary: Study how attackers survive reboots.
+    tasks:
+      - Find the Run key, scheduled task, cron and new-account alerts in the seeded data.
+      - For each, write one legitimate reason it could occur.
+    rules:
+      [
+        win-run-key-persistence-set,
+        win-scheduled-task-with-script-payload,
+        linux-cron-persistence-file-modified,
+      ]
+    techniques: [T1547.001, T1053.005, T1053.003]
+  - day: 13
+    title: Web Shells
+    summary: Correlate web, file and process telemetry.
+    tasks:
+      - Run the Web Shell lab and line up the request, the file write and the process start by timestamp.
+      - List three containment steps that preserve evidence.
+    labs: [web-shell-telemetry-analysis]
+    techniques: [T1505.003]
+  - day: 14
+    title: Build an Investigation Timeline
+    summary: Turn a week of practice into a written timeline.
+    tasks:
+      - Open a seeded investigation and read its timeline. Add one missing entry with evidence.
+      - Write a two-sentence executive summary.
+    techniques: []
+  - day: 15
+    title: DNS Fundamentals and Abuse
+    summary: Understand normal DNS and two abuse patterns.
+    tasks:
+      - Run the DNS Anomaly lab and separate the NXDOMAIN burst from the TXT queries.
+      - Explain which pattern shows the channel was established.
+    labs: [dns-anomaly-investigation]
+    techniques: [T1568.002, T1071.004]
+  - day: 16
+    title: Firewall Logs and Port Scans
+    summary: Count distinct ports to find scans.
+    tasks:
+      - Run the Network Reconnaissance lab and find the two probes that succeeded.
+      - Explain why value_count beats event_count for scan detection.
+    labs: [network-reconnaissance-detection]
+    rules: [net-port-scan-burst]
+    techniques: [T1046]
+  - day: 17
+    title: Cloud Audit Logs
+    summary: Read CloudTrail-style events.
+    tasks:
+      - Run the Cloud Audit lab and note actor, action, source IP and result for each of the six events.
+      - Identify the point after which activity became invisible.
+    labs: [cloud-audit-log-investigation]
+    techniques: [T1078.004, T1685]
+  - day: 18
+    title: Cloud Identity Attacks
+    summary: Root use, new administrators and long-lived keys.
+    tasks:
+      - Explain why each of root login, direct admin policy attachment and key creation for another user is high signal.
+      - Write the containment steps in order.
+    rules: [cloud-root-account-console-login, cloud-admin-policy-attached-to-user]
+    techniques: [T1098, T1136.003]
+  - day: 19
+    title: Containers and Docker Security
+    summary: See how privileged mode and the Docker socket erase isolation.
+    tasks:
+      - Run the Docker lab and identify the two dangerous starts.
+      - Read the repository's docker-compose.yml and list five hardening choices in it.
+    labs: [docker-security-misconfiguration]
+    techniques: [T1610, T1611]
+  - day: 20
+    title: SQL Injection
+    summary: Understand injection and how to fix it.
+    tasks:
+      - Run the SQL Injection lab and identify which request returned too much data by response size.
+      - Rewrite the vulnerable query pattern with a parameterised query in your language of choice.
+    labs: [sql-injection-fundamentals]
+    rules: [web-sql-injection-probe]
+    techniques: [T1190]
+  - day: 21
+    title: Broken Access Control
+    summary: Authentication is not authorisation.
+    tasks:
+      - Run the IDOR lab and find the first unauthorised read.
+      - Describe the server-side check that would have prevented it.
+    labs: [idor-broken-access-control]
+    techniques: [T1190, T1213]
+  - day: 22
+    title: Cross-Site Scripting
+    summary: Output encoding and Content-Security-Policy.
+    tasks:
+      - Run the XSS lab and identify the victim client by its referrer.
+      - List the context each payload was designed for (element or attribute).
+    labs: [cross-site-scripting]
+    techniques: [T1059.007]
+  - day: 23
+    title: API Security and JWT
+    summary: Verify tokens correctly.
+    tasks:
+      - Run the JWT lab and find the request where the status flipped from 403 to 200.
+      - Write the list of verifier settings that would have rejected the token.
+    labs: [jwt-misconfiguration]
+    techniques: [T1550.001]
+  - day: 24
+    title: Secrets Management
+    summary: Find and respond to exposed secrets.
+    tasks:
+      - Run the Secrets Exposure lab and decide which exposure matters most.
+      - Write the first three steps of your response, in order.
+    labs: [secrets-exposure]
+    techniques: [T1552.001]
+  - day: 25
+    title: Rate Limiting
+    summary: Prevention and detection working together.
+    tasks:
+      - Run the API Rate Limit lab and contrast the two gateways.
+      - Propose a rate-limit key and threshold for a login endpoint.
+    labs: [api-rate-limit-misconfiguration]
+    techniques: [T1499]
+  - day: 26
+    title: Prompt Injection
+    summary: Direct injection and canary tokens.
+    tasks:
+      - Run the Prompt Injection lab and explain how the canary proved the leak.
+      - Write three mitigations that limit impact rather than block phrases.
+    labs: [prompt-injection]
+    techniques: [AML.T0051.000, AML.T0056]
+  - day: 27
+    title: Indirect Injection and RAG
+    summary: Untrusted content in the model context.
+    tasks:
+      - Run the Indirect Prompt Injection and RAG Poisoning labs and trace where the malicious text entered.
+      - Explain why the second lab affects users who never met the attacker.
+    labs: [indirect-prompt-injection, rag-poisoning-concepts]
+    techniques: [AML.T0051.001, AML.T0070]
+  - day: 28
+    title: Agent Tools and MCP
+    summary: Least privilege for agents and tool servers.
+    tasks:
+      - Run the Tool Abuse and MCP labs and list which control blocked each attempt.
+      - Design the tool set for an ops agent with the minimum capability.
+    labs: [tool-abuse-in-ai-agents, mcp-security-misconfiguration]
+    techniques: [AML.T0053]
+  - day: 29
+    title: Threat Intelligence Workflow
+    summary: Use indicators without leaking your telemetry.
+    tasks:
+      - Search the Threat Intel workspace for an indicator and read its related alerts.
+      - Import one indicator manually and tag it. Note why CyberForge never auto-enriches.
+    techniques: []
+  - day: 30
+    title: Capstone - Investigate and Report
+    summary: Pick a critical incident, investigate it end to end and write the report.
+    tasks:
+      - Choose a seeded critical alert. Build the lifecycle from raw event to mitigation.
+      - Complete the incident report sections and export it as Markdown.
+    techniques: []

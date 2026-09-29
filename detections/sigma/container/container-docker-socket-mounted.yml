@@ -1,0 +1,23 @@
+title: Container Started With Docker Socket Mounted
+id: e932e48f-2c23-5908-b529-5d4a2be703d0
+status: stable
+description: >
+  Detects containers that mount the Docker daemon socket. Access to the socket lets the container
+  create new privileged containers on the host, which is equivalent to host root.
+references:
+  - https://attack.mitre.org/techniques/T1611/
+  - https://docs.docker.com/engine/security/#docker-daemon-attack-surface
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1611
+logsource:
+  product: docker
+  service: runtime
+detection:
+  selection:
+    Mounts|contains: '/var/run/docker.sock'
+  condition: selection
+falsepositives:
+  - CI runners and container-management tools that need the socket (isolate and restrict them)
+level: high

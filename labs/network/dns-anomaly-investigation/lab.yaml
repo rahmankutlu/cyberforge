@@ -1,0 +1,73 @@
+slug: dns-anomaly-investigation
+number: 12
+title: DNS Anomaly Investigation
+domain: network
+category: Network Defense
+difficulty: intermediate
+duration_minutes: 50
+summary: Investigate two DNS abuse patterns from resolver logs (domain generation and tunnelling) and learn which features separate them from normal traffic.
+tags: [dns, dga, tunneling, network]
+objectives:
+  - Explain how domain generation algorithms and DNS tunnelling use the protocol differently.
+  - Identify NXDOMAIN bursts, long random labels and encoded TXT queries in resolver logs.
+  - "Pick investigation pivots: client host, query volume, entropy, record type."
+  - Understand the false-positive risks of length and entropy heuristics.
+architecture:
+  description: >
+    A simulated workstation sends DNS queries to an internal resolver. CyberForge evaluates three Sigma
+    rules against resolver query logs. All domains use reserved example names.
+  diagram: |
+    flowchart LR
+      host[WKS-031] -->|queries| resolver[Internal resolver - simulated]
+      resolver -->|query log| api[CyberForge API]
+      api --> r1[long random label] & r2[NXDOMAIN burst] & r3[TXT encoded label]
+  components:
+    - { name: WKS-031, role: "Simulated workstation", network: none }
+    - { name: Internal resolver, role: "Simulated DNS resolver query log", network: none }
+    - { name: CyberForge API, role: "Runs detections", network: backend }
+scenario: >
+  A workstation begins issuing long random-looking names that all fail, then switches to TXT queries
+  whose names look like hex data and which are answered. Decide which behaviour is generation and
+  which is tunnelling, and how far the data has already gone.
+setup:
+  requires_containers: false
+  steps:
+    - "Open this lab in CyberForge and select Run simulation."
+    - "Sort the events by query and compare the two families of names."
+telemetry:
+  sources:
+    - { name: Resolver query log, description: "Client, query name, record type and response code.", log_source: network/dns }
+attack_simulation:
+  description: >
+    The simulation replays normal lookups, twenty-six failed random-looking lookups, and eight
+    hex-encoded TXT queries. The names resolve to nothing real; the domains are reserved examples.
+  steps:
+    - { title: Baseline, detail: "Repeated lookups of a known update host succeed with NOERROR." }
+    - { title: Generation, detail: "Long random labels return NXDOMAIN at a steady rate." }
+    - { title: Tunnelling, detail: "TXT queries with hex-looking labels return NOERROR: they are being answered." }
+expected_detection:
+  description: >
+    Three rules fire: long random labels, an NXDOMAIN burst, and TXT queries with encoded labels.
+    Together they distinguish search-for-a-server from data-in-the-query.
+  rules: [dns-long-random-subdomain-query, dns-nxdomain-burst, dns-txt-query-with-encoded-label]
+mitre: [T1568.002, T1071.004, T1572]
+investigation_questions:
+  - question: Which behaviour indicates the command channel was found, and which indicates it was still being searched for?
+    hint: Compare response codes.
+    answer: NXDOMAIN failures are the search; the successful TXT answers show the channel is up.
+  - question: What would you check to estimate how much data left through the tunnel?
+    hint: Count queries and label lengths for the tunnel domain.
+    answer: Eight queries with roughly 40 encoded characters each is a small amount; confirm by summing label bytes and checking for longer-running activity.
+mitigation:
+  - Force all clients through monitored resolvers and block direct outbound DNS and DNS-over-HTTPS to unmanaged resolvers.
+  - Use DNS filtering or response-policy zones for newly seen and algorithmically generated domains.
+  - Alert on NXDOMAIN rates and on high-entropy labels, and tune with a per-network baseline.
+  - Restrict TXT lookups where business needs are limited.
+cleanup:
+  - "Nothing to clean up: this lab runs entirely from telemetry."
+references:
+  - { title: "MITRE ATT&CK T1568.002 Domain Generation Algorithms", url: "https://attack.mitre.org/techniques/T1568/002/" }
+  - { title: "MITRE ATT&CK T1071.004 DNS", url: "https://attack.mitre.org/techniques/T1071/004/" }
+safety:
+  scope: simulation-only
+  network: none

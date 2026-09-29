@@ -1,0 +1,30 @@
+title: Untrusted Document With Embedded Instructions Ingested Into RAG Index
+id: 8854fca6-d051-5221-a0cc-7beaae114308
+status: experimental
+description: >
+  Detects documents from untrusted sources being added to a retrieval index while containing
+  phrases that address the model directly. RAG poisoning plants such content so it is later
+  retrieved into the context of unrelated user questions.
+references:
+  - https://atlas.mitre.org/techniques/AML.T0070
+  - https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - atlas.aml.t0070
+logsource:
+  product: cyberforge
+  service: ai_gateway
+detection:
+  selection:
+    event_type: 'ingest'
+    source_trust: 'untrusted'
+    retrieved_content|contains:
+      - 'ignore previous instructions'
+      - 'always answer'
+      - 'assistant: you must'
+      - 'do not tell the user'
+  condition: selection
+falsepositives:
+  - Knowledge-base articles about prompt injection ingested from untrusted wikis
+level: high

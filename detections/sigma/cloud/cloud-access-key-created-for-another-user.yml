@@ -1,0 +1,27 @@
+title: Access Key Created For A Different IAM User
+id: c758e0d1-3059-5bad-9260-2d836ca53b61
+status: test
+description: >
+  Detects CreateAccessKey where the target user differs from the caller. Creating long-lived
+  credentials for someone else's identity is a persistence technique and an unusual administrative
+  action worth verifying with the account owner.
+references:
+  - https://attack.mitre.org/techniques/T1098/
+  - https://attack.mitre.org/techniques/T1078/004/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1098
+  - attack.t1078.004
+logsource:
+  product: aws
+  service: cloudtrail
+detection:
+  selection:
+    eventName: 'CreateAccessKey'
+  filter_self:
+    requestParameters.userName|fieldref: 'userIdentity.userName'
+  condition: selection and not filter_self
+falsepositives:
+  - Identity administrators issuing keys during onboarding
+level: medium

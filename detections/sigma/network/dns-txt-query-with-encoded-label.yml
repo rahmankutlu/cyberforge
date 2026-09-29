@@ -1,0 +1,24 @@
+title: DNS TXT Query With Long Encoded Label
+id: 2d7b645f-3da8-5524-bc42-2547a41a4f9a
+status: test
+description: >
+  Detects TXT record queries whose leading label looks like encoded data. TXT records carry
+  arbitrary strings, which makes them a convenient downstream channel for DNS tunnelling.
+references:
+  - https://attack.mitre.org/techniques/T1071/004/
+  - https://attack.mitre.org/techniques/T1572/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1071.004
+  - attack.t1572
+logsource:
+  category: dns
+detection:
+  selection:
+    record_type: 'TXT'
+    query|re: '^[a-z0-9+/=_-]{30,}\.'
+  condition: selection
+falsepositives:
+  - Email authentication lookups (SPF, DKIM) use TXT but have short, structured labels
+level: high

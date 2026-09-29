@@ -1,0 +1,26 @@
+title: Storage Bucket Access Granted To Everyone
+id: 6d22e2e6-b341-56c1-b5e8-444f81950838
+status: test
+description: >
+  Detects bucket ACL or policy changes that grant access to all users. Publicly readable storage is
+  one of the most common causes of cloud data exposure. The grantee is flattened into
+  requestParameters.grantee_uri by the CyberForge event parser.
+references:
+  - https://attack.mitre.org/techniques/T1530/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1530
+logsource:
+  product: aws
+  service: cloudtrail
+detection:
+  selection:
+    eventName:
+      - 'PutBucketAcl'
+      - 'PutBucketPolicy'
+    requestParameters.grantee_uri|contains: 'AllUsers'
+  condition: selection
+falsepositives:
+  - Buckets that intentionally host public static websites
+level: high

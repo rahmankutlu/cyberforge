@@ -1,0 +1,24 @@
+title: New Local User Account Created On Linux Host
+id: 1ec26751-ce30-53bf-b498-bf904930d977
+status: stable
+description: >
+  Detects useradd log entries announcing a new local account. On servers managed by configuration
+  management or a directory service, ad-hoc local accounts are unusual and are a common persistence
+  technique.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1136.001
+logsource:
+  product: linux
+  service: auth
+detection:
+  selection:
+    Program: 'useradd'
+    Message|contains: 'new user:'
+  condition: selection
+falsepositives:
+  - Provisioning scripts and package installs that create service accounts
+level: medium

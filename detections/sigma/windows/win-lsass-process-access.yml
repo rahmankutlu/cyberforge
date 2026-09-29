@@ -1,0 +1,37 @@
+title: Suspicious Process Access To LSASS
+id: 129a3a52-d6e8-5476-987e-ff3317e99e8b
+status: test
+description: >
+  Detects a process opening lsass.exe with access rights that permit reading memory. Credential
+  material lives in LSASS, so this access pattern is the telemetry footprint of credential dumping
+  tools. Security products and system components legitimately touch LSASS and are excluded.
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1003.001
+logsource:
+  category: process_access
+  product: windows
+detection:
+  selection:
+    TargetImage|endswith: '\lsass.exe'
+    GrantedAccess:
+      - '0x1010'
+      - '0x1410'
+      - '0x1438'
+      - '0x143a'
+      - '0x1fffff'
+  filter_known:
+    SourceImage|endswith:
+      - '\MsMpEng.exe'
+      - '\csrss.exe'
+      - '\wininit.exe'
+      - '\svchost.exe'
+      - '\taskmgr.exe'
+  condition: selection and not filter_known
+falsepositives:
+  - EDR and backup agents not listed in the filter
+  - Administrators using Task Manager or Sysinternals tools
+level: critical

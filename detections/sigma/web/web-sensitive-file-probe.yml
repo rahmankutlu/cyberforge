@@ -1,0 +1,30 @@
+title: Request For Sensitive Configuration Or Backup File
+id: 818fcc8b-6112-5df4-aa13-d90316961724
+status: stable
+description: >
+  Detects requests for files that commonly leak secrets when accidentally deployed: environment
+  files, version-control metadata, database dumps and key material. Automated scanners request these
+  paths constantly; a 200 response means the file is exposed and secrets must be rotated.
+references:
+  - https://attack.mitre.org/techniques/T1552/001/
+  - https://attack.mitre.org/techniques/T1595/002/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1552.001
+  - attack.t1595.002
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs-uri-stem|endswith:
+      - '/.env'
+      - '/.git/config'
+      - '/config.php.bak'
+      - '/backup.sql'
+      - '/id_rsa'
+      - '/.aws/credentials'
+  condition: selection
+falsepositives:
+  - Internal secret-scanning tools that probe your own applications
+level: medium

@@ -1,0 +1,25 @@
+title: DNS Query For Long Random-Looking Label
+id: 7a179c62-e123-5742-a055-71a2219e37bc
+status: test
+description: >
+  Detects DNS queries whose first label is a long run of lowercase letters and digits. Domain
+  generation algorithms and DNS tunnelling tools encode data or pseudo-random names into labels,
+  producing hostnames no human would type.
+references:
+  - https://attack.mitre.org/techniques/T1568/002/
+  - https://attack.mitre.org/techniques/T1071/004/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1568.002
+  - attack.t1071.004
+logsource:
+  category: dns
+detection:
+  selection:
+    query|re: '^[a-z0-9]{24,}\.[a-z0-9-]+\.[a-z]{2,}$'
+  condition: selection
+falsepositives:
+  - Content delivery and cloud services that use long opaque hostnames
+  - Some anti-virus and telemetry vendors that query hashed names
+level: medium

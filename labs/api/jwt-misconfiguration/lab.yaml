@@ -1,0 +1,76 @@
+slug: jwt-misconfiguration
+number: 5
+title: JWT Misconfiguration
+domain: api
+category: Authentication
+difficulty: intermediate
+duration_minutes: 45
+summary: Explore how a JSON Web Token verifier that trusts the token's own header can be tricked, what the request looks like in logs, and how to verify tokens safely.
+tags: [jwt, api-security, authentication]
+objectives:
+  - Describe the three parts of a JWT and which parts an attacker controls.
+  - Explain why accepting the "none" algorithm, or a weak shared secret, defeats signature verification.
+  - Detect forged-token attempts by logging the parsed algorithm header.
+  - List verifier settings that make token validation safe.
+architecture:
+  description: >
+    The lab API gateway issues HS256 tokens and, by design, accepts unsigned tokens whose header says
+    alg=none. It also uses a weak signing secret. The gateway logs the algorithm from each token header.
+  diagram: |
+    flowchart LR
+      client[Client] -->|Bearer token| gw[API gateway - flawed verifier]
+      gw --> admin[/api/admin/*/]
+      gw -.->|jwt_alg in log| api[CyberForge API]
+  components:
+    - { name: Lab API gateway, role: "Issues and verifies tokens with intentional flaws", network: lab-internal }
+    - { name: lab-gateway, role: "Localhost-only reverse proxy", network: host-localhost }
+    - { name: CyberForge API, role: "Receives telemetry, evaluates Sigma rules", network: backend }
+scenario: >
+  A normal user is correctly denied access to an admin endpoint. The same client then presents a token
+  that claims admin rights and declares no signature algorithm, and the gateway serves the request.
+  You will identify the moment the trust boundary failed.
+setup:
+  requires_containers: true
+  compose_profile: labs
+  steps:
+    - "Start the lab: `docker compose --profile labs up -d lab-vuln-web lab-gateway`."
+    - "Log in via the portal, copy the token from the response, and inspect it at any offline JWT viewer or with a local base64 decode."
+    - "Or run the simulation in CyberForge to replay the telemetry."
+telemetry:
+  sources:
+    - { name: Gateway access log, description: "Requests with status and the token's alg header (jwt_alg).", log_source: web/webserver }
+attack_simulation:
+  description: >
+    The simulation replays three normal requests, one refused admin request, and two admin requests
+    that succeed with an alg=none token. Nothing is brute-forced; the flaw is in verification logic.
+  steps:
+    - { title: Decode your token, detail: "Base64-decode the header and payload of your own token and read the claims." }
+    - { title: Test the verifier, detail: "In the lab, change the header algorithm and the role claim, then send the modified token to the admin endpoint." }
+    - { title: Observe the log, detail: "Find the request where jwt_alg is none and the status flips from 403 to 200." }
+expected_detection:
+  description: >
+    The JWT rule alerts whenever a request presents alg=none. A correct verifier would reject such
+    requests, so any hit in production is worth investigating.
+  rules: [web-jwt-none-algorithm]
+mitre: [T1550.001, T1528]
+investigation_questions:
+  - question: Which request shows the verifier failure, and how do you know?
+    hint: Compare the same path across requests.
+    answer: The request with jwt_alg none to /api/admin/users returned 200 where the HS256 request to the same path returned 403.
+  - question: What data was accessed with the forged privileges?
+    hint: Follow the same client after the first success.
+    answer: /api/admin/users (18 KB) and /api/admin/export (91 KB) were read.
+mitigation:
+  - Pin the accepted algorithms server-side and reject none; never trust the token header to choose.
+  - Use asymmetric signing (RS256/ES256) where practical and rotate keys.
+  - Use long random secrets for HMAC and store them in a secret manager.
+  - Validate issuer, audience and expiry on every token.
+cleanup:
+  - "Stop the lab: `docker compose --profile labs down`."
+references:
+  - { title: "OWASP JSON Web Token Cheat Sheet", url: "https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html" }
+  - { title: "MITRE ATT&CK T1550.001 Application Access Token", url: "https://attack.mitre.org/techniques/T1550/001/" }
+safety:
+  scope: local-container
+  network: lab-internal
+  allowed_targets: [acme-portal.lab.internal]

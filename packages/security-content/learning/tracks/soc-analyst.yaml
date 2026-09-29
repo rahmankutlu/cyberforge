@@ -1,0 +1,58 @@
+slug: soc-analyst
+title: SOC Analyst
+audience: Aspiring and junior analysts
+summary: Triage alerts, investigate with evidence, write it up, and decide when to escalate - using the CyberForge mini SOC.
+icon: radar
+modules:
+  - slug: soc-alert-triage
+    title: Alert Triage
+    summary: Decide in minutes whether an alert is real, how bad it is and what to do next.
+    duration_minutes: 30
+    body: |
+      Triage is a fast, structured decision. For every alert ask: **What fired and why?** (read the rule and the matched fields). **What is affected?** (host, user, data). **Is it real?** (check the raw event and look for a benign explanation). **How bad is it?** (severity, confidence, blast radius). **What is the next step?** (close, watch, investigate, contain).
+
+      Use the alert's lifecycle view to see the raw event, the parsed fields and the rule match side by side. If the raw event surprises you, the rule logic is worth reading.
+
+      Record your decision in a note. A triage without a note cannot be reviewed or improved.
+    labs: [suspicious-powershell-detection-simulation]
+    rules: [win-encoded-powershell-command]
+    techniques: [T1059.001]
+  - slug: soc-investigation-timeline
+    title: Building an Investigation Timeline
+    summary: Turn scattered events into an ordered story with evidence you can defend.
+    duration_minutes: 40
+    body: |
+      An investigation timeline orders events by time and links each to evidence. Start from the alert, pivot on the **host**, **user** and **source address**, and add every event that touches them.
+
+      In *Linux Authentication Investigation* the story is: guessing, a successful login, an escalation, a new account, a cron entry, a shadow read. Each step has a log line; each line has a timestamp. The timeline is the report's backbone.
+
+      Distinguish **facts** (what a log line says) from **inferences** (what you conclude). Label them differently in your notes.
+    labs: [linux-authentication-investigation]
+    rules: [linux-ssh-login-after-failed-burst]
+    techniques: [T1078, T1136.001]
+  - slug: soc-false-positives
+    title: False Positives and Tuning
+    summary: Recognise benign matches, close them properly and feed them back into detection quality.
+    duration_minutes: 25
+    body: |
+      A **false positive** is an alert with a benign cause. They are unavoidable and valuable: each one shows where a rule's assumptions are too broad.
+
+      The *Docker Security Misconfiguration* incident in the seeded data is a good example. The privileged container was approved, so the alert is a false positive - yet the configuration is still risky. Close the alert, but raise a hardening task.
+
+      Never "fix" a false positive by silencing the rule globally. Prefer a narrow allow-list (a specific parent process, an approved host) and document why.
+    labs: [docker-security-misconfiguration]
+    rules: [container-privileged-start]
+    techniques: [T1610, T1611]
+  - slug: soc-incident-reporting
+    title: Writing an Incident Report
+    summary: Communicate what happened, what you did and what must change, for readers who were not there.
+    duration_minutes: 35
+    body: |
+      A good incident report answers, in order: **What happened?** (executive summary, three sentences). **What was affected?** (assets, accounts, data). **How did we know, and how do we know it's over?** (evidence, containment). **Why did it happen?** (root cause). **What will change?** (remediation and lessons learned).
+
+      Write the executive summary for someone who will read nothing else. Keep the timeline factual and in UTC. List indicators so others can hunt for them.
+
+      CyberForge lets you build a report from an investigation and export it as Markdown or JSON. Try it on any seeded incident.
+    labs: [web-shell-telemetry-analysis]
+    rules: []
+    techniques: [T1505.003]

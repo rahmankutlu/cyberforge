@@ -1,0 +1,55 @@
+title: Local Account Created Then Added To Administrators
+id: a768b003-0d23-537e-9a95-e78bab1839b1
+name: account_created
+status: test
+description: Base rule. A local user account was created (Security Event 4720).
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4720
+  condition: selection
+level: low
+---
+title: Unexpected Administrator Account Created
+id: 3ee52ab7-4375-57b6-845b-65ee3c6bdfb9
+name: added_to_administrators
+status: test
+description: Base rule. A member was added to the local Administrators group (Event 4732).
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4732
+    TargetUserName: 'Administrators'
+  condition: selection
+level: low
+---
+title: Local Account Created And Promoted To Administrator On The Same Host
+id: 1ca076e5-b193-5770-b574-ab176569577d
+status: test
+description: >
+  Correlates account creation (4720) followed by an Administrators group membership change (4732)
+  on the same computer within 30 minutes. Either event alone is routine; the ordered pair is the
+  footprint of an attacker creating a backdoor administrator.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+  - https://attack.mitre.org/techniques/T1098/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1136.001
+  - attack.t1098
+correlation:
+  type: temporal_ordered
+  rules:
+    - account_created
+    - added_to_administrators
+  group-by:
+    - Computer
+  timespan: 30m
+falsepositives:
+  - Scripted provisioning of a new administrator by an authorized IT process
+level: high

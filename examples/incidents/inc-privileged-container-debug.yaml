@@ -1,0 +1,48 @@
+slug: inc-privileged-container-debug
+title: Privileged debug container and Docker socket mount on shared host
+lab: docker-security-misconfiguration
+severity: medium
+status: closed
+lead: dlindqvist
+days_ago: 7
+summary: Two alerts for a privileged container and a Docker socket mount were traced to an approved but poorly controlled debugging session.
+alert_status: false_positive
+notes:
+  - {
+      analyst: dlindqvist,
+      offset_minutes: 15,
+      body: "Both starts trace to the platform team's change ticket for debugging the CI runner. Closing as false positive, but the practice itself is risky.",
+    }
+  - {
+      analyst: mokafor,
+      offset_minutes: 40,
+      body: "Filing a hardening task to move debugging to an isolated node and to use rootless builds.",
+    }
+timeline:
+  - {
+      offset_minutes: 0,
+      kind: detection,
+      title: Privileged container started,
+      detail: "debug-tools with host root mounted.",
+    }
+  - {
+      offset_minutes: 0,
+      kind: detection,
+      title: Docker socket mounted,
+      detail: "ci-runner with /var/run/docker.sock.",
+    }
+  - {
+      offset_minutes: 60,
+      kind: status,
+      title: Closed as authorised activity,
+      detail: "Approved change; follow-up hardening task raised.",
+    }
+report:
+  executive_summary: "The alerts were caused by an approved debugging session. There was no attacker, but the configuration would have allowed host takeover from either container."
+  affected_assets: ["docker-host-01"]
+  indicators: ["debug-tools:latest", "ci-runner:latest"]
+  evidence: "Container runtime audit showing Privileged true with mounts of the host root and of the Docker socket."
+  root_cause: "Convenience: debugging was done directly on a shared host with maximum privileges."
+  containment: "Containers stopped after the session ended."
+  remediation: "Debug on isolated nodes, use rootless or daemonless builds, enforce policy with admission control."
+  lessons_learned: "A false positive can still be a valuable finding; feed it back into the hardening backlog."

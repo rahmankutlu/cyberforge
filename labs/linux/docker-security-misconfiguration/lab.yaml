@@ -1,0 +1,72 @@
+slug: docker-security-misconfiguration
+number: 8
+title: Docker Security Misconfiguration
+domain: linux
+category: Containers
+difficulty: intermediate
+duration_minutes: 40
+summary: Learn which container settings quietly erase isolation (privileged mode, host mounts, the Docker socket) and how to detect them from runtime telemetry.
+tags: [containers, docker, hardening]
+objectives:
+  - Explain what privileged mode and mounting the Docker socket give a process inside a container.
+  - Detect risky container starts from runtime audit events.
+  - "Apply a hardened baseline: non-root user, dropped capabilities, read-only filesystem, no host mounts."
+  - Read CyberForge's own docker-compose.yml as a worked example of least privilege.
+architecture:
+  description: >
+    A simulated Docker host emits container-start events. No privileged container is ever started by
+    CyberForge itself; the risky configurations exist only as telemetry so you can study the detection safely.
+  diagram: |
+    flowchart LR
+      host[Docker host - simulated] -->|container start events| api[CyberForge API]
+      api --> engine[Detection engine] --> alert[SOC alert]
+  components:
+    - { name: Simulated Docker host, role: "Emits container runtime audit events", network: none }
+    - { name: CyberForge API, role: "Runs detections", network: backend }
+scenario: >
+  A platform team runs CI and debugging tooling on a shared Docker host. Over one afternoon three
+  containers start: a hardened web server, a privileged debug image with the host root mounted, and a CI
+  runner with the Docker socket. You decide which two are dangerous and why.
+setup:
+  requires_containers: false
+  steps:
+    - "Open this lab in CyberForge and select Run simulation."
+    - "Review the hardening choices in the repository's docker-compose.yml alongside the alerts."
+telemetry:
+  sources:
+    - { name: Container runtime audit, description: "One record per container start with image, privilege flag and mounts.", log_source: docker/runtime }
+attack_simulation:
+  description: >
+    The simulation replays four container starts. It illustrates why the configuration is dangerous
+    without ever running a privileged workload or exposing a real Docker socket.
+  steps:
+    - { title: Hardened start, detail: "An unprivileged web container with a read-only content mount and a numeric non-root user." }
+    - { title: Privileged plus host mount, detail: "A debug container with privileged mode and the host root filesystem mounted." }
+    - { title: Docker socket, detail: "A CI runner with the Docker socket mounted: it can start any container on the host." }
+expected_detection:
+  description: >
+    Two Sigma rules flag privileged starts and socket mounts. Each is high severity because either
+    setting lets the container control the host.
+  rules: [container-privileged-start, container-docker-socket-mounted]
+mitre: [T1610, T1611]
+investigation_questions:
+  - question: Which containers can affect the host, and through which setting?
+    hint: Compare the Privileged flag and the Mounts value for each start.
+    answer: debug-tools through privileged mode plus the host root mount, and ci-runner through the mounted Docker socket.
+  - question: What is a safer way to give a CI job the ability to build images?
+    hint: Think about rootless or daemonless builders.
+    answer: Use rootless builders or a remote build service so the job never gets the host daemon.
+mitigation:
+  - Never run privileged containers in shared environments; add only the specific capability required.
+  - Do not mount the Docker socket; use rootless or daemonless build tools.
+  - Run as a non-root user, drop all capabilities, and use a read-only root filesystem.
+  - Enforce these as policy with admission control or a runtime security tool.
+cleanup:
+  - "Nothing to clean up: this lab runs entirely from telemetry."
+references:
+  - { title: "Docker security documentation", url: "https://docs.docker.com/engine/security/" }
+  - { title: "OWASP Docker Security Cheat Sheet", url: "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html" }
+  - { title: "MITRE ATT&CK T1611 Escape to Host", url: "https://attack.mitre.org/techniques/T1611/" }
+safety:
+  scope: simulation-only
+  network: none

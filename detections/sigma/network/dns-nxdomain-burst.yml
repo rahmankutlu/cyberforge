@@ -1,0 +1,38 @@
+title: DNS NXDOMAIN Response Base Event
+id: e5698fa1-d0d2-5c16-9baa-d297df7832ee
+name: dns_nxdomain
+status: stable
+description: Base rule. A DNS query returned NXDOMAIN.
+logsource:
+  category: dns
+detection:
+  selection:
+    rcode: 'NXDOMAIN'
+  condition: selection
+level: informational
+---
+title: Burst Of NXDOMAIN Responses For One Client
+id: 0ffafd6b-f9bf-5da1-8570-30a54e6a149a
+status: test
+description: >
+  Detects a host generating twenty or more failed name lookups within a minute. Malware using a
+  domain generation algorithm cycles through candidate domains until one resolves, leaving a burst of
+  NXDOMAIN responses.
+references:
+  - https://attack.mitre.org/techniques/T1568/002/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1568.002
+correlation:
+  type: event_count
+  rules:
+    - dns_nxdomain
+  group-by:
+    - src_ip
+  timespan: 1m
+  condition:
+    gte: 20
+falsepositives:
+  - Misconfigured applications or search-suffix loops that repeatedly resolve missing names
+level: medium

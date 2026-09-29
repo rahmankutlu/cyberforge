@@ -1,0 +1,75 @@
+slug: rag-poisoning-concepts
+number: 18
+title: RAG Poisoning Concepts
+domain: ai-security
+category: LLM Application Security
+difficulty: intermediate
+duration_minutes: 40
+summary: Learn how untrusted content that enters a retrieval index can steer answers for unrelated users, and where to put controls in the ingestion and retrieval pipeline.
+tags: [llm, rag, poisoning, vector-store]
+objectives:
+  - Describe the retrieval-augmented generation pipeline and its trust boundaries.
+  - Explain how poisoning an index affects users who never interacted with the attacker.
+  - Identify ingestion-time and retrieval-time detection points.
+  - Propose provenance, trust tiers and filtering for indexed content.
+architecture:
+  description: >
+    A synthetic knowledge-base assistant retrieves from an index fed by a trusted internal wiki and a
+    publicly editable one. The pipeline is simulated as telemetry; no embedding model or vector database
+    is involved, so the lab focuses on the trust decisions rather than the technology.
+  diagram: |
+    flowchart LR
+      internal[(Internal wiki - trusted)] --> idx[RAG index]
+      pub[(Public-edit wiki - untrusted)] --> idx
+      q[Customer question] --> agent[kb-assistant]
+      idx -->|top match| agent --> answer[Answer]
+  components:
+    - { name: RAG indexer, role: "Ingests documents from trusted and untrusted sources", network: lab-internal }
+    - { name: kb-assistant, role: "Synthetic assistant that answers from retrieved text", network: lab-internal }
+    - { name: CyberForge API, role: "Runs ingestion and retrieval detections", network: backend }
+scenario: >
+  A page on a publicly editable wiki is indexed alongside trusted content. It contains a false claim
+  about refunds and text addressed to the assistant. An hour later a different customer asks a normal
+  refund question, the poisoned page is the top match, and the assistant repeats the false claim.
+setup:
+  requires_containers: false
+  steps:
+    - "Open this lab in CyberForge and select Run simulation."
+    - "Compare the ingestion alert with the retrieval alert one hour later."
+telemetry:
+  sources:
+    - { name: RAG pipeline log, description: "Ingestion events with source trust and retrieval events with source and text.", log_source: cyberforge/ai_gateway }
+attack_simulation:
+  description: >
+    The simulation replays a trusted ingestion, an untrusted ingestion carrying planted instructions,
+    an unrelated user question an hour later, the poisoned retrieval and the resulting answer.
+  steps:
+    - { title: Normal ingestion, detail: "A trusted internal policy page is indexed." }
+    - { title: Poisoned ingestion, detail: "A public wiki page with instruction-like text is indexed." }
+    - { title: Later retrieval, detail: "Search surfaces the poisoned page for an unrelated question." }
+expected_detection:
+  description: >
+    The ingestion rule flags untrusted documents that contain model-directed phrases; the retrieval
+    rule flags the same text when it reaches the model context. The first prevents, the second contains.
+  rules: [ai-rag-ingest-untrusted-instruction-content, ai-retrieved-content-contains-instructions]
+mitre: [AML.T0070, AML.T0051.001]
+investigation_questions:
+  - question: Which control would have stopped the answer being wrong even after ingestion?
+    hint: Think about provenance at retrieval time.
+    answer: Ranking or filtering by source trust, so untrusted pages are not used for authoritative policy answers, plus citations that let users see the source.
+  - question: Why does the poisoning affect users who never touched the attacker?
+    hint: Where does the shared state live?
+    answer: "The index is shared: one bad document changes results for everyone whose question matches it."
+mitigation:
+  - Track provenance and trust tier per document; do not let untrusted sources answer policy questions.
+  - Scan and quarantine ingested content for model-directed instructions and require review for public sources.
+  - Show citations and source labels in answers so users can judge them.
+  - Monitor retrieval for sudden new dominant sources and re-index from trusted snapshots after incidents.
+cleanup:
+  - "Nothing to clean up: this lab runs entirely from telemetry."
+references:
+  - { title: "OWASP LLM08 Vector and Embedding Weaknesses", url: "https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/" }
+  - { title: "MITRE ATLAS AML.T0070 RAG Poisoning", url: "https://atlas.mitre.org/techniques/AML.T0070" }
+safety:
+  scope: simulation-only
+  network: none

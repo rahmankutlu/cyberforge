@@ -1,0 +1,36 @@
+title: Web Server Process Writes Script File Into Web Root
+id: b3ef74ab-adc3-5a7b-aad1-8d60cf4ccf49
+status: test
+description: >
+  Detects the web server worker process creating an executable web page (.aspx, .asp, .ashx, .php,
+  .jsp) inside the web root. Web servers normally serve content; they do not author new server-side
+  scripts, so this file-creation event is a strong web shell drop indicator.
+references:
+  - https://attack.mitre.org/techniques/T1505/003/
+author: CyberForge
+date: 2026-09-01
+tags:
+  - attack.t1505.003
+logsource:
+  category: file_event
+  product: windows
+detection:
+  selection_process:
+    Image|endswith:
+      - '\w3wp.exe'
+      - '\httpd.exe'
+  selection_path:
+    TargetFilename|contains:
+      - '\inetpub\wwwroot'
+      - '\htdocs'
+  selection_ext:
+    TargetFilename|endswith:
+      - '.aspx'
+      - '.asp'
+      - '.ashx'
+      - '.php'
+      - '.jsp'
+  condition: selection_process and selection_path and selection_ext
+falsepositives:
+  - Content management systems that generate pages on publish
+level: high

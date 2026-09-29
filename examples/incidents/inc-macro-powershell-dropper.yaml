@@ -1,0 +1,65 @@
+slug: inc-macro-powershell-dropper
+title: Macro document launches hidden PowerShell with persistence
+lab: suspicious-powershell-detection-simulation
+severity: critical
+status: in_progress
+lead: nvasquez
+days_ago: 1
+summary: A finance workstation opened a macro-enabled invoice that spawned hidden PowerShell, fetched a second stage and created two persistence mechanisms.
+alert_status: investigating
+notes:
+  - {
+      analyst: nvasquez,
+      offset_minutes: 5,
+      body: "Decoded the -enc argument from the process event: it is a harmless Write-Output line in this simulation, but the technique is real. Treat WKS-014 as compromised.",
+    }
+  - {
+      analyst: sbrandt,
+      offset_minutes: 30,
+      body: "Hunting for the same parent-child chain across the fleet. No other hosts so far. Run key and scheduled task both point at upd.ps1.",
+    }
+  - {
+      analyst: nvasquez,
+      offset_minutes: 55,
+      body: "Isolated WKS-014 from the network. Awaiting a forensic image before removing persistence.",
+    }
+timeline:
+  - {
+      offset_minutes: 0,
+      kind: detection,
+      title: Office application spawned a shell,
+      detail: "WINWORD.EXE started cmd.exe.",
+    }
+  - {
+      offset_minutes: 1,
+      kind: detection,
+      title: Encoded PowerShell and download cradle,
+      detail: "Hidden PowerShell with -enc, then a DownloadString cradle.",
+    }
+  - {
+      offset_minutes: 2,
+      kind: detection,
+      title: Persistence created,
+      detail: "Run key and scheduled task both launch a script.",
+    }
+  - {
+      offset_minutes: 55,
+      kind: containment,
+      title: Host isolated,
+      detail: "WKS-014 removed from the network pending imaging.",
+    }
+report:
+  executive_summary: "A user opened a malicious macro document. Execution chained through cmd.exe to PowerShell and two persistence mechanisms were installed. The host was isolated; investigation into scope continues."
+  affected_assets: ["WKS-014", "User account CORP\\jdoe"]
+  indicators:
+    [
+      "198.51.100.10",
+      "http://198.51.100.10/stage.ps1",
+      "Invoice_Q3.docm",
+      "SHA-256 4d2b7a1e99a953235a17a25323c5dc10c795e5d241176b8ece0b64304225409f",
+    ]
+  evidence: "Process tree WINWORD.EXE to cmd.exe to powershell.exe with -enc; script block log showing FromBase64String and Invoke-Expression; Run key and Event 4698 task."
+  root_cause: "A macro-enabled attachment reached the user and macros were allowed to run."
+  containment: "Host isolated; user credentials reset; email attachment quarantined organisation-wide."
+  remediation: "Block macros from the internet, enable ASR rules for Office child processes, enforce script block logging everywhere."
+  lessons_learned: "The Office parent-child rule fired first and would have contained the intrusion had it triggered an automatic isolation."
