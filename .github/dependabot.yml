@@ -1,10 +1,13 @@
+# Dependency maintenance is deliberately conservative. The v0.1.x runtime baseline is Node 22 and
+# Python 3.12, so major base-image upgrades are not proposed automatically; they are evaluated by
+# hand. Patch and minor updates are grouped to keep the number of pull requests low.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -14,7 +17,7 @@ updates:
     directory: /apps/api
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -24,10 +27,19 @@ updates:
     directory: /docker
     schedule:
       interval: weekly
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+      - dependency-name: python
+        update-types: ["version-update:semver-major"]
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
     labels: [dependencies]
 
   - package-ecosystem: github-actions
-    directory: /
+    directories: ["/", "/.github/actions/setup"]
     schedule:
       interval: weekly
     groups:

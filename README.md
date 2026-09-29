@@ -223,6 +223,8 @@ cyberforge/
 
 ## Development
 
+Runtime baseline for v0.1.x: **Node 22** and **Python 3.12**.
+
 ```bash
 pnpm install
 python -m venv apps/api/.venv && apps/api/.venv/bin/pip install -e "apps/api[dev]"   # Scripts\pip on Windows

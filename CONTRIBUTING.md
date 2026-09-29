@@ -17,7 +17,7 @@ If in doubt, open an issue and ask before writing code.
 
 ## Environment setup
 
-Requirements: Node 22+, pnpm 10, Python 3.12+. Docker is only needed for the container setup and the lab profile.
+Requirements: Node 22, pnpm 10 and Python 3.12. This is the runtime baseline for the v0.1.x line, and CI and the Docker images use it; newer major runtimes are evaluated separately. Docker is only needed for the container setup and the lab profile.
 
 ```bash
 git clone https://github.com/rahmankutlu/cyberforge.git
