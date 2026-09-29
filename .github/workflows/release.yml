@@ -85,8 +85,14 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Extract release notes
+      - name: Create the release if it does not exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; leaving it unchanged."
+            exit 0
+          fi
           version="${GITHUB_REF_NAME#v}"
           awk -v v="$version" '
             index($0, "## [" v "]") == 1 {found=1; next}
@@ -94,7 +100,4 @@ jobs:
             found {print}
           ' CHANGELOG.md > release-notes.md
           test -s release-notes.md || echo "See CHANGELOG.md." > release-notes.md
-      - uses: softprops/action-gh-release@v2
-        with:
-          body_path: release-notes.md
-          draft: true
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md
