@@ -2,7 +2,7 @@
 # CyberForge API. Build context: the repository root (content files are baked into the image).
 #   docker build -f docker/api.Dockerfile -t cyberforge-api .
 
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
@@ -11,7 +11,7 @@ COPY apps/api/pyproject.toml apps/api/README.md ./
 COPY apps/api/cyberforge ./cyberforge
 RUN pip install .
 
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 LABEL org.opencontainers.image.title="CyberForge API" \
       org.opencontainers.image.description="CyberForge API: telemetry, detections, MITRE mapping and the mini SOC" \
       org.opencontainers.image.source="https://github.com/rahmankutlu/cyberforge" \

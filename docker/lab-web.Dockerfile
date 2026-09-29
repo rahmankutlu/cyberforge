@@ -2,7 +2,7 @@
 # Acme Portal: the INTENTIONALLY VULNERABLE lab target. Runs only on the internal `lab` network.
 #   docker build -f docker/lab-web.Dockerfile -t cyberforge-lab-web .
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 LABEL org.opencontainers.image.title="CyberForge Lab: Acme Portal" \
       org.opencontainers.image.description="Intentionally vulnerable training application. Never expose it." \
       org.opencontainers.image.source="https://github.com/rahmankutlu/cyberforge" \
