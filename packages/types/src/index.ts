@@ -905,3 +905,162 @@ export interface PlaygroundExplain {
   member_of?: number[];
   bases?: (SigmaExplanation & { rule: string })[];
 }
+
+// ── v0.2: attack stories ─────────────────────────────────────────────────────────────────────
+export type StoryDomain = "endpoint" | "identity" | "web" | "network" | "cloud" | "ai-security";
+
+export interface StorySummary {
+  slug: string;
+  title: string;
+  summary: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  duration_minutes: number;
+  domain: StoryDomain;
+  order: number;
+  tags: string[];
+  step_count: number;
+  event_count: number;
+  techniques: string[];
+  detection_count: number;
+  start: string;
+  end: string;
+}
+
+export interface StoryEvidence {
+  id: string;
+  title: string;
+  kind: "log" | "process-tree" | "network" | "email" | "ticket" | "note" | "alert";
+  content: string;
+  significance: "key" | "supporting" | "noise";
+  finding: string | null;
+}
+
+export interface StoryQuestionOption {
+  id: string;
+  text: string;
+  correct: boolean;
+  explanation: string;
+}
+
+export interface StoryQuestion {
+  id: string;
+  prompt: string;
+  kind: "single" | "multiple";
+  options: StoryQuestionOption[];
+  hint: string | null;
+}
+
+export interface StoryDecisionOption {
+  id: string;
+  text: string;
+  quality: "best" | "acceptable" | "poor";
+  feedback: string;
+}
+
+export interface StoryDecision {
+  id: string;
+  prompt: string;
+  context: string | null;
+  options: StoryDecisionOption[];
+}
+
+export type GraphNodeType =
+  | "user"
+  | "host"
+  | "process"
+  | "ip"
+  | "domain"
+  | "detection"
+  | "alert"
+  | "technique";
+
+export type GraphRelation =
+  | "executed"
+  | "connected to"
+  | "triggered"
+  | "mapped to"
+  | "associated with";
+
+export interface StoryGraphNode {
+  id: string;
+  type: GraphNodeType;
+  label: string;
+  ref: string | null;
+}
+
+export interface StoryGraphEdge {
+  source: string;
+  target: string;
+  relation: GraphRelation;
+}
+
+export interface StoryEvent {
+  index: number;
+  timestamp: string;
+  source: string;
+  category: string;
+  host: string | null;
+  user: string | null;
+  message: string;
+  raw: string;
+  note: string | null;
+  fields: Record<string, unknown>;
+}
+
+export interface StoryDetection {
+  slug: string;
+  title: string;
+  level: string;
+  format: RuleFormat;
+  is_correlation: boolean;
+  techniques: string[];
+  events: number[];
+  declared: boolean;
+  why: { summary: string; event: number } | null;
+}
+
+export interface StoryStep {
+  id: string;
+  time: string;
+  timestamp: string;
+  title: string;
+  narrative: string;
+  events: StoryEvent[];
+  evidence: StoryEvidence[];
+  detections: StoryDetection[];
+  alert: { title: string; severity: string; rule: string | null } | null;
+  techniques: { id: string; name: string | null }[];
+  questions: StoryQuestion[];
+  decision: StoryDecision | null;
+  graph: { nodes: StoryGraphNode[]; edges: StoryGraphEdge[] };
+}
+
+export interface StoryContainment {
+  id: string;
+  action: string;
+  category: string;
+  quality: "recommended" | "optional" | "harmful";
+  effect: string;
+  feedback: string;
+}
+
+export interface Story extends StorySummary {
+  briefing: string;
+  attack_chain: {
+    tactic: string;
+    technique: string;
+    technique_name: string | null;
+    step: string;
+    description: string;
+  }[];
+  steps: StoryStep[];
+  containment: StoryContainment[];
+  postmortem: {
+    summary: string;
+    root_cause: string;
+    what_worked: string[];
+    what_to_improve: string[];
+    detections_to_add: string[];
+    lessons: string[];
+  };
+}

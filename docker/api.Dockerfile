@@ -32,6 +32,7 @@ COPY datasets /app/content/datasets
 COPY mitre/attack.json mitre/atlas.json /app/content/mitre/
 COPY packages/security-content /app/content/packages/security-content
 COPY examples /app/content/examples
+COPY stories /app/content/stories
 COPY docs /app/content/docs
 COPY README.md ARCHITECTURE.md ROADMAP.md CONTRIBUTING.md SECURITY.md /app/content/
 

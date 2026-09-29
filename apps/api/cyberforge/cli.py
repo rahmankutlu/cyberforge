@@ -3,6 +3,7 @@
     python -m cyberforge detections test          run every rule's tests
     python -m cyberforge detections quality       per-rule quality checks
     python -m cyberforge content stats            counts generated from the repository
+    python -m cyberforge story validate           check attack stories
     python -m cyberforge validate                 schemas, MITRE ids, scenarios, rule tests
 
 It is deliberately small: it reads files, evaluates rules with the same engine as the SOC, and
@@ -262,6 +263,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     issues: list[ContentIssue] = list(bundle.issues)
     checks.check_scenarios(bundle, issues)
     issues += checks.check_datasets(bundle)
+    issues += checks.check_stories(bundle)
     summary = rule_tests.run_all(bundle)
     for report in summary.reports:
         issues += [ContentIssue(report.tests_path or report.rule_path, e) for e in report.errors]
@@ -278,6 +280,26 @@ def cmd_validate(args: argparse.Namespace) -> int:
         f"\n{len(bundle.labs)} labs, {len(bundle.rules)} rules, {summary.test_count} rule tests, "
         f"{len(errors)} error(s), {len(warnings)} warning(s)"
     )
+    return 1 if errors else 0
+
+
+# --- story -------------------------------------------------------------------------------------
+
+
+def cmd_story_validate(args: argparse.Namespace) -> int:
+    from cyberforge.content import checks
+    from cyberforge.content.loader import load_bundle
+
+    bundle = load_bundle(find_root(args.root))
+    issues = [i for i in bundle.issues if i.path.startswith("stories/")]
+    issues += checks.check_stories(bundle)
+    errors = [i for i in issues if i.level == "error"]
+    for issue in issues:
+        print(issue)
+    for story in bundle.stories:
+        print(f"{Style().ok('✓') if not any(story.slug in i.path for i in errors) else Style().bad('✗')} {story.slug}"
+              f" ({len(story.steps)} steps, {len(story.detection_slugs())} detections)")
+    print(f"{len(bundle.stories)} {'story' if len(bundle.stories) == 1 else 'stories'} checked, {_plural(len(errors), 'error')}")
     return 1 if errors else 0
 
 
@@ -314,6 +336,12 @@ def build_parser() -> argparse.ArgumentParser:
     stats.add_argument("--json", action="store_true")
     stats.add_argument("--markdown", action="store_true")
     stats.set_defaults(func=cmd_content_stats)
+
+    story = sub.add_parser("story", help="attack story tooling").add_subparsers(
+        dest="command", required=True
+    )
+    story_validate = story.add_parser("validate", help="validate every story in stories/")
+    story_validate.set_defaults(func=cmd_story_validate)
 
     validate = sub.add_parser("validate", help="validate all content and run rule tests")
     validate.set_defaults(func=cmd_validate)

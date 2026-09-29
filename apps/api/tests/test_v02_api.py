@@ -8,9 +8,9 @@ from fastapi.testclient import TestClient
 def test_quality_reports_coverage_from_the_repository(client: TestClient) -> None:
     body = client.get("/api/v1/detections/quality").json()
     cov = body["coverage"]
-    assert cov["rules"] == cov["tested"] == 55
+    assert cov["rules"] == cov["tested"] >= 56
     assert cov["percent"] == 100 and cov["failing"] == 0
-    assert body["checks_total"] == 7 * 55
+    assert body["checks_total"] == 7 * cov["rules"]
     rule = next(r for r in body["rules"] if r["slug"] == "win-encoded-powershell-command")
     assert rule["passed"] == rule["total"] == 7
     assert {c["id"] for c in rule["checks"]} >= {"has_positive_tests", "translation_verified"}

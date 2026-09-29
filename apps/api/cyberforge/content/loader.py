@@ -34,6 +34,7 @@ from cyberforge.content.schemas import (
     ThirtyDaysDoc,
     TrackDoc,
 )
+from cyberforge.content.stories import StoryDoc
 from cyberforge.services import sigma_service
 from cyberforge.services.telemetry import known_category
 
@@ -103,7 +104,7 @@ class ContentBundle:
     analysts: list[AnalystDoc] = field(default_factory=list)
     docs: list[DocPage] = field(default_factory=list)
     ai_security: dict[str, Any] = field(default_factory=dict)
-    stories: list[Any] = field(default_factory=list)  # StoryDoc (see content.stories)
+    stories: list[StoryDoc] = field(default_factory=list)
     playground_datasets: list[Any] = field(default_factory=list)  # PlaygroundDataset
     issues: list[ContentIssue] = field(default_factory=list)
 
@@ -384,6 +385,18 @@ def _load_playground_datasets(root: Path, bundle: ContentBundle) -> None:
         bundle.playground_datasets.append(dataset)
 
 
+def _load_stories(root: Path, bundle: ContentBundle) -> None:
+    for path in sorted((root / "stories").glob("*.yaml")):
+        story = _load_model(StoryDoc, path, root, bundle.issues)
+        if story is None:
+            continue
+        if story.slug != path.stem:
+            bundle.issues.append(
+                ContentIssue(_rel(root, path), f"slug {story.slug!r} must match the file name")
+            )
+        bundle.stories.append(story)
+
+
 def _load_yaml_list(path: Path, model: type[T], root: Path, issues: list[ContentIssue]) -> list[T]:
     if not path.is_file():
         return []
@@ -434,6 +447,7 @@ def load_bundle(root: Path) -> ContentBundle:
     _load_mitre(root, bundle)
     _load_datasets(root, bundle)
     _load_playground_datasets(root, bundle)
+    _load_stories(root, bundle)
 
     content_pkg = root / "packages" / "security-content"
     for path in sorted((content_pkg / "learning" / "tracks").glob("*.yaml")):
