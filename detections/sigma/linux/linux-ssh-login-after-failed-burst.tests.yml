@@ -1,0 +1,39 @@
+tests:
+  - name: detects a successful login that follows failures from the same source
+    events:
+      - t: 0
+        repeat: 3
+        every: 10
+        fields: {Program: sshd, SrcIP: 203.0.113.50, Message: "Failed password for admin from 203.0.113.50 port 41000 ssh2"}
+      - t: 60
+        fields: {Program: sshd, SrcIP: 203.0.113.50, Message: "Accepted password for admin from 203.0.113.50 port 41022 ssh2"}
+    expected: true
+    hits: 1
+
+  - name: ignores a login that came before the failures
+    events:
+      - t: 0
+        fields: {Program: sshd, SrcIP: 203.0.113.50, Message: "Accepted password for admin from 203.0.113.50 port 41022 ssh2"}
+      - t: 60
+        repeat: 3
+        every: 10
+        fields: {Program: sshd, SrcIP: 203.0.113.50, Message: "Failed password for admin from 203.0.113.50 port 41000 ssh2"}
+    expected: false
+
+  - name: ignores a login from a different source than the failures
+    events:
+      - t: 0
+        repeat: 3
+        every: 10
+        fields: {Program: sshd, SrcIP: 203.0.113.50, Message: "Failed password for admin from 203.0.113.50 port 41000 ssh2"}
+      - t: 60
+        fields: {Program: sshd, SrcIP: 198.51.100.9, Message: "Accepted password for admin from 198.51.100.9 port 41022 ssh2"}
+    expected: false
+
+  - name: ignores a login after the ten-minute window has closed
+    events:
+      - t: 0
+        fields: {Program: sshd, SrcIP: 203.0.113.50, Message: "Failed password for admin from 203.0.113.50 port 41000 ssh2"}
+      - t: 900
+        fields: {Program: sshd, SrcIP: 203.0.113.50, Message: "Accepted password for admin from 203.0.113.50 port 41022 ssh2"}
+    expected: false

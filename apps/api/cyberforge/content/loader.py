@@ -75,6 +75,7 @@ class LoadedRule:
     author: str
     is_correlation: bool
     path: str
+    tests_path: str | None = None  # Sigma only: the rule's tests file, relative to the root
 
 
 @dataclass
@@ -101,6 +102,8 @@ class ContentBundle:
     analysts: list[AnalystDoc] = field(default_factory=list)
     docs: list[DocPage] = field(default_factory=list)
     ai_security: dict[str, Any] = field(default_factory=dict)
+    stories: list[Any] = field(default_factory=list)  # StoryDoc (see content.stories)
+    playground_datasets: list[Any] = field(default_factory=list)  # PlaygroundDataset
     issues: list[ContentIssue] = field(default_factory=list)
 
     @property
@@ -192,11 +195,30 @@ def _load_labs(root: Path, issues: list[ContentIssue]) -> list[LoadedLab]:
 # --- detection rules --------------------------------------------------------------------------
 
 
+def is_tests_file(path: Path) -> bool:
+    """Rule tests live beside the rule: `<slug>.tests.yml`, or `tests.yml` next to `rule.yml`."""
+    return path.name == "tests.yml" or path.name.endswith(".tests.yml")
+
+
+def sigma_slug(path: Path) -> str:
+    """`<slug>.yml`, or `<slug>/rule.yml` (the directory layout used by examples)."""
+    return path.parent.name if path.name == "rule.yml" else path.stem
+
+
+def sigma_tests_path(path: Path) -> Path:
+    if path.name == "rule.yml":
+        return path.parent / "tests.yml"
+    return path.with_name(f"{path.stem}.tests.yml")
+
+
 def _load_sigma(root: Path, issues: list[ContentIssue]) -> list[LoadedRule]:
     rules: list[LoadedRule] = []
     for path in sorted((root / "detections" / "sigma").rglob("*.yml")):
+        if is_tests_file(path):
+            continue
         text = path.read_text(encoding="utf-8")
         rel = _rel(root, path)
+        tests = sigma_tests_path(path)
         report = sigma_service.validate(text)
         for err in report.errors:
             issues.append(ContentIssue(rel, err))
@@ -209,7 +231,7 @@ def _load_sigma(root: Path, issues: list[ContentIssue]) -> list[LoadedRule]:
             issues.append(ContentIssue(rel, warning, level="warning"))
         rules.append(
             LoadedRule(
-                slug=path.stem,
+                slug=sigma_slug(path),
                 format="sigma",
                 title=meta.title,
                 level=meta.level,
@@ -224,6 +246,7 @@ def _load_sigma(root: Path, issues: list[ContentIssue]) -> list[LoadedRule]:
                 author=meta.author or "CyberForge",
                 is_correlation=meta.is_correlation,
                 path=rel,
+                tests_path=_rel(root, tests) if tests.is_file() else None,
             )
         )
     return rules

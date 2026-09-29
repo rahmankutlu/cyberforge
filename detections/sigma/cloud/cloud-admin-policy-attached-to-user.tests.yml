@@ -1,0 +1,24 @@
+tests:
+  - name: detects AdministratorAccess attached to a user
+    event:
+      eventName: AttachUserPolicy
+      requestParameters:
+        userName: dev-bob
+        policyArn: arn:aws:iam::aws:policy/AdministratorAccess
+    expected: true
+
+  - name: ignores a read-only policy
+    event:
+      eventName: AttachUserPolicy
+      requestParameters:
+        userName: dev-bob
+        policyArn: arn:aws:iam::aws:policy/ReadOnlyAccess
+    expected: false
+
+  - name: ignores a lookalike policy name that does not end in AdministratorAccess
+    event:
+      eventName: AttachUserPolicy
+      requestParameters:
+        userName: dev-bob
+        policyArn: arn:aws:iam::aws:policy/AdministratorAccess-Amplify
+    expected: false

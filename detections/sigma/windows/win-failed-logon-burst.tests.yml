@@ -1,0 +1,29 @@
+tests:
+  - name: detects ten failed logons from one address within five minutes
+    events:
+      - repeat: 10
+        every: 20
+        fields: {EventID: 4625, IpAddress: 203.0.113.44, TargetUserName: administrator}
+    expected: true
+    hits: 1
+
+  - name: ignores nine failed logons
+    events:
+      - repeat: 9
+        every: 20
+        fields: {EventID: 4625, IpAddress: 203.0.113.44, TargetUserName: administrator}
+    expected: false
+
+  - name: ignores failures spread over more than five minutes
+    events:
+      - repeat: 10
+        every: 60
+        fields: {EventID: 4625, IpAddress: 203.0.113.44, TargetUserName: administrator}
+    expected: false
+
+  - name: ignores successful logons
+    events:
+      - repeat: 20
+        every: 5
+        fields: {EventID: 4624, IpAddress: 203.0.113.44, TargetUserName: administrator}
+    expected: false

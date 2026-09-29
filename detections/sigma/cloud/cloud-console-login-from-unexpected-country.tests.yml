@@ -1,0 +1,21 @@
+tests:
+  - name: detects a successful console login from an unexpected country
+    event:
+      eventName: ConsoleLogin
+      responseElements: {ConsoleLogin: Success}
+      geo: {country: KP}
+    expected: true
+
+  - name: ignores a login from an expected country
+    event:
+      eventName: ConsoleLogin
+      responseElements: {ConsoleLogin: Success}
+      geo: {country: GB}
+    expected: false
+
+  - name: ignores a failed login from an unexpected country
+    event:
+      eventName: ConsoleLogin
+      responseElements: {ConsoleLogin: Failure}
+      geo: {country: KP}
+    expected: false

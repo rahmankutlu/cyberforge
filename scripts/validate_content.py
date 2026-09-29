@@ -20,25 +20,19 @@ import sys
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "apps" / "api"))
 
+from cyberforge.content.checks import check_scenarios, check_stories
 from cyberforge.content.loader import (
     ContentBundle,
     ContentIssue,
     load_bundle,
 )
-from cyberforge.services import simulation
-from cyberforge.services.sigma_engine import (
-    EvalEvent,
-    SigmaEngine,
-    SigmaEngineError,
-    compile_rule,
-)
+from cyberforge.services import rule_tests
 
 LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 FENCE = re.compile(r"```.*?```", re.DOTALL)
@@ -63,39 +57,16 @@ def markdown_files() -> list[Path]:
     return sorted(files)
 
 
-def check_scenarios(bundle: ContentBundle, issues: list[ContentIssue]) -> None:
-    """Each lab's scenario must fire exactly the rules its lab.yaml declares."""
-    compiled = {}
-    for rule in bundle.rules:
-        if rule.format != "sigma":
-            continue
-        try:
-            compiled[rule.slug] = compile_rule(rule.slug, rule.content)
-        except SigmaEngineError as exc:
-            issues.append(ContentIssue(rule.path, f"rule cannot be evaluated: {exc}"))
-    engine = SigmaEngine(compiled.values())
-    start = datetime(2026, 1, 1, tzinfo=UTC)
-    for lab in bundle.labs:
-        rows = simulation.materialize(lab.scenario, start)
-        events = [
-            EvalEvent(i, r["timestamp"], r["fields"], r["logsource"])
-            for i, r in enumerate(rows)
-        ]
-        fired = {h.rule.slug for h in engine.evaluate(events)}
-        expected = set(lab.doc.expected_detection.rules)
-        where = f"labs/{lab.doc.domain}/{lab.doc.slug}"
-        for slug in sorted(expected - fired):
-            issues.append(
-                ContentIssue(where, f"scenario does not trigger declared rule {slug!r}")
-            )
-        for slug in sorted(fired - expected):
-            issues.append(
-                ContentIssue(
-                    where,
-                    f"scenario also triggers undeclared rule {slug!r}",
-                    level="warning",
-                )
-            )
+def check_rule_tests(bundle: ContentBundle) -> list[ContentIssue]:
+    """Every rule's tests file must be valid and pass. Details: `pnpm test:detections`."""
+    summary = rule_tests.run_all(bundle)
+    issues: list[ContentIssue] = []
+    for report in summary.reports:
+        where = report.tests_path or report.rule_path
+        issues.extend(ContentIssue(where, err) for err in report.errors)
+        issues.extend(ContentIssue(where, f"{c.name}: {c.message}") for c in report.failures)
+    issues.extend(ContentIssue(o, "tests file has no matching rule") for o in summary.orphans)
+    return issues
 
 
 def check_markdown_links(issues: list[ContentIssue]) -> set[str]:
@@ -174,6 +145,8 @@ def main() -> int:
     bundle = load_bundle(ROOT)
     issues = list(bundle.issues)
     check_scenarios(bundle, issues)
+    issues.extend(check_stories(bundle))
+    issues.extend(check_rule_tests(bundle))
     external = check_markdown_links(issues)
     urls = collect_content_urls(bundle) | external
     check_url_shapes(urls, issues)

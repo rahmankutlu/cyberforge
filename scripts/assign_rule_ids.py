@@ -25,10 +25,13 @@ PLACEHOLDER = re.compile(
 def main() -> None:
     changed = 0
     for path in sorted((ROOT / "detections" / "sigma").rglob("*.yml")):
+        if path.name == "tests.yml" or path.name.endswith(".tests.yml"):
+            continue
+        slug = path.parent.name if path.name == "rule.yml" else path.stem
         text = path.read_text(encoding="utf-8")
         counter = iter(range(1000))
 
-        def replace(_: re.Match[str], slug: str = path.stem, it=counter) -> str:
+        def replace(_: re.Match[str], slug: str = slug, it=counter) -> str:
             return f"id: {uuid.uuid5(NAMESPACE, f'{slug}:{next(it)}')}"
 
         new = PLACEHOLDER.sub(replace, text)

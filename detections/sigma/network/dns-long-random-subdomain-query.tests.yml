@@ -1,0 +1,20 @@
+tests:
+  - name: detects a long random-looking subdomain
+    event:
+      query: k3j9x0qz7m2v8b1n4c6w5t9ra.cdn-update.example
+    expected: true
+
+  - name: ignores an ordinary hostname
+    event:
+      query: www.example.org
+    expected: false
+
+  - name: ignores a long label that is not alphanumeric only
+    event:
+      query: this-is-a-long-but-readable-label-with-hyphens.example.org
+    expected: false
+
+  - name: ignores a short random label
+    event:
+      query: k3j9x0qz.cdn-update.example
+    expected: false

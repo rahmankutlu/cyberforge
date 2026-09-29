@@ -1,0 +1,21 @@
+tests:
+  - name: detects an access key created for a different user
+    event:
+      eventName: CreateAccessKey
+      userIdentity: {userName: admin-ana}
+      requestParameters: {userName: svc-deploy}
+    expected: true
+
+  - name: ignores a user creating a key for themselves
+    event:
+      eventName: CreateAccessKey
+      userIdentity: {userName: dev-bob}
+      requestParameters: {userName: dev-bob}
+    expected: false
+
+  - name: ignores other IAM events
+    event:
+      eventName: ListAccessKeys
+      userIdentity: {userName: admin-ana}
+      requestParameters: {userName: svc-deploy}
+    expected: false

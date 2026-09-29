@@ -1,0 +1,18 @@
+tests:
+  - name: detects useradd creating a user
+    event:
+      Program: useradd
+      Message: 'new user: name=backdoor, UID=1002, GID=1002, home=/home/backdoor, shell=/bin/bash'
+    expected: true
+
+  - name: ignores a different program logging a similar message
+    event:
+      Program: sshd
+      Message: 'new user: name=backdoor'
+    expected: false
+
+  - name: ignores other useradd messages
+    event:
+      Program: useradd
+      Message: 'add ''backdoor'' to group ''sudo'''
+    expected: false

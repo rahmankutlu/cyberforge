@@ -1,0 +1,22 @@
+tests:
+  - name: detects twenty NXDOMAIN answers to one client in a minute
+    events:
+      - repeat: 20
+        every: 2
+        fields: {src_ip: 10.20.0.15, query: "a{i}.dga-lab.example", rcode: NXDOMAIN}
+    expected: true
+    hits: 1
+
+  - name: ignores nineteen NXDOMAIN answers
+    events:
+      - repeat: 19
+        every: 2
+        fields: {src_ip: 10.20.0.15, query: "a{i}.dga-lab.example", rcode: NXDOMAIN}
+    expected: false
+
+  - name: ignores successful lookups
+    events:
+      - repeat: 30
+        every: 1
+        fields: {src_ip: 10.20.0.15, query: "a{i}.example.org", rcode: NOERROR}
+    expected: false

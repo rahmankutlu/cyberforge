@@ -1,0 +1,29 @@
+tests:
+  - name: detects ten failed logins from one client in a minute
+    events:
+      - repeat: 10
+        every: 3
+        fields: {c-ip: 203.0.113.9, cs-method: POST, cs-uri-stem: /login, sc-status: 401}
+    expected: true
+    hits: 1
+
+  - name: ignores nine failed logins
+    events:
+      - repeat: 9
+        every: 3
+        fields: {c-ip: 203.0.113.9, cs-method: POST, cs-uri-stem: /login, sc-status: 401}
+    expected: false
+
+  - name: ignores successful logins
+    events:
+      - repeat: 12
+        every: 3
+        fields: {c-ip: 203.0.113.9, cs-method: POST, cs-uri-stem: /login, sc-status: 302}
+    expected: false
+
+  - name: ignores failures spread over more than a minute
+    events:
+      - repeat: 10
+        every: 20
+        fields: {c-ip: 203.0.113.9, cs-method: POST, cs-uri-stem: /login, sc-status: 401}
+    expected: false

@@ -1,0 +1,24 @@
+tests:
+  - name: detects a script tag in the query string
+    event:
+      cs-uri-stem: /search
+      cs-uri-query: q=<script>alert(1)</script>
+    expected: true
+
+  - name: detects an encoded script tag
+    event:
+      cs-uri-stem: /search
+      cs-uri-query: q=%3Cscript%3Ealert(1)%3C/script%3E
+    expected: true
+
+  - name: detects an event-handler payload
+    event:
+      cs-uri-stem: /search
+      cs-uri-query: q="><img src=x onerror=alert(1)>
+    expected: true
+
+  - name: ignores an ordinary search
+    event:
+      cs-uri-stem: /search
+      cs-uri-query: q=javascript+tutorials
+    expected: false

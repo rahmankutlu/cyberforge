@@ -132,3 +132,59 @@ class TestResponse(BaseModel):
     matched_count: int
     matches: list[TestMatch]
     correlation: list[dict[str, Any]]
+
+
+# --- rule tests and quality ---------------------------------------------------------------------
+
+
+class RuleTestCaseOut(BaseModel):
+    name: str
+    expected: bool
+    passed: bool
+    message: str
+    matched_events: list[int]
+    hits: int
+    definition: dict[str, Any]
+
+
+class RuleTestsOut(BaseModel):
+    slug: str
+    tests_path: str | None
+    source: str | None
+    errors: list[str]
+    cases: list[RuleTestCaseOut]
+
+
+class QualityCheckOut(BaseModel):
+    id: str
+    label: str
+    passed: bool
+    detail: str
+
+
+class RuleQualityOut(BaseModel):
+    slug: str
+    title: str
+    level: str
+    technique_ids: list[str]
+    passed: int
+    total: int
+    checks: list[QualityCheckOut]
+    positive_tests: int
+    negative_tests: int
+    failing_tests: int
+
+
+class CoverageOut(BaseModel):
+    rules: int
+    tested: int
+    percent: int
+    tests: int
+    failing: int
+
+
+class QualityResponse(BaseModel):
+    coverage: CoverageOut
+    checks_passed: int
+    checks_total: int
+    rules: list[RuleQualityOut]

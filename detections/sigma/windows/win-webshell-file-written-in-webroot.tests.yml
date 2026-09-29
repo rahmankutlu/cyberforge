@@ -1,0 +1,24 @@
+tests:
+  - name: detects the IIS worker writing an aspx file under wwwroot
+    event:
+      Image: 'C:\Windows\System32\inetsrv\w3wp.exe'
+      TargetFilename: 'C:\inetpub\wwwroot\uploads\help.aspx'
+    expected: true
+
+  - name: ignores the IIS worker writing a log file under wwwroot
+    event:
+      Image: 'C:\Windows\System32\inetsrv\w3wp.exe'
+      TargetFilename: 'C:\inetpub\wwwroot\logs\app.log'
+    expected: false
+
+  - name: ignores a deployment tool writing aspx files
+    event:
+      Image: 'C:\Program Files\Deploy\deploy.exe'
+      TargetFilename: 'C:\inetpub\wwwroot\default.aspx'
+    expected: false
+
+  - name: ignores the IIS worker writing an aspx file outside the web root
+    event:
+      Image: 'C:\Windows\System32\inetsrv\w3wp.exe'
+      TargetFilename: 'C:\Windows\Temp\compiled.aspx'
+    expected: false

