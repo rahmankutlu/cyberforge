@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from textwrap import dedent
 
@@ -292,7 +293,7 @@ def test_cli_detection_tests_exit_zero_on_the_repository(capsys: pytest.CaptureF
     assert cli.main(["detections", "test", "--require-tests"]) == 0
     out = capsys.readouterr().out
     assert "0 failures" in out
-    assert "Detection test coverage: 55/55 rules (100%)" in out
+    assert re.search(r"Detection test coverage: (\d+)/\1 rules \(100%\)", out)
 
 
 def test_cli_can_scope_to_one_rule(capsys: pytest.CaptureFixture[str]) -> None:

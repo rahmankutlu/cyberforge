@@ -1,6 +1,7 @@
 import {
   Activity,
   BookOpen,
+  BookOpenCheck,
   Brain,
   Crosshair,
   FlaskConical,
@@ -53,6 +54,12 @@ export const NAV: NavGroup[] = [
         icon: FlaskConical,
         shortcut: "b",
         keywords: "range simulation",
+      },
+      {
+        label: "Stories",
+        href: "/stories",
+        icon: BookOpenCheck,
+        keywords: "incident narrative attack defense investigation timeline",
       },
       {
         label: "AI Security",

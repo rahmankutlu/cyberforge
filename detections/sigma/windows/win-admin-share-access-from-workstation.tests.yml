@@ -1,0 +1,40 @@
+tests:
+  - name: detects a user account opening the ADMIN$ share
+    event:
+      EventID: 5140
+      SubjectUserName: mchen
+      IpAddress: 10.20.4.17
+      ShareName: '\\*\ADMIN$'
+    expected: true
+
+  - name: detects a user account opening the C$ share
+    event:
+      EventID: 5140
+      SubjectUserName: administrator
+      IpAddress: 10.20.4.17
+      ShareName: '\\*\C$'
+    expected: true
+
+  - name: ignores a computer account (machine-to-machine traffic)
+    event:
+      EventID: 5140
+      SubjectUserName: 'SRV-APP03$'
+      IpAddress: 10.20.2.13
+      ShareName: '\\*\ADMIN$'
+    expected: false
+
+  - name: ignores an ordinary file share
+    event:
+      EventID: 5140
+      SubjectUserName: mchen
+      IpAddress: 10.20.4.17
+      ShareName: '\\*\Public'
+    expected: false
+
+  - name: ignores a different event that mentions the same share
+    event:
+      EventID: 5145
+      SubjectUserName: mchen
+      IpAddress: 10.20.4.17
+      ShareName: '\\*\ADMIN$'
+    expected: false
