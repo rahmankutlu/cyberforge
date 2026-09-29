@@ -31,8 +31,9 @@ updates:
     ignore:
       - dependency-name: node
         update-types: ["version-update:semver-major"]
+      # Python feature releases (3.12 -> 3.13 -> 3.14) are minor versions in semver terms.
       - dependency-name: python
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
