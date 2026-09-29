@@ -160,9 +160,17 @@ def parse_meta(text: str) -> SigmaMeta:
 # --- validation ---------------------------------------------------------------------------
 
 
-_VALIDATORS = SigmaValidator(
-    list(InstalledSigmaPlugins.autodiscover().validators.values())  # type: ignore[arg-type]
-)
+# pySigma's ATT&CK and D3FEND tag validators download the upstream MITRE data at first use and cache it
+# under $HOME. CyberForge stays offline and checks tags against its own vendored dataset instead
+# (see the `known_techniques` check in validate()).
+_ONLINE_VALIDATORS = {"ATTACKTagValidator", "D3FENDTagValidator"}
+
+_validator_classes = [
+    v
+    for v in InstalledSigmaPlugins.autodiscover().validators.values()
+    if getattr(v, "__name__", "") not in _ONLINE_VALIDATORS
+]
+_VALIDATORS = SigmaValidator(_validator_classes)  # type: ignore[arg-type]
 
 
 def validate(text: str, known_techniques: set[str] | None = None) -> ValidationReport:
