@@ -26,7 +26,7 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "apps" / "api"))
 
-from cyberforge.content.checks import check_scenarios, check_stories
+from cyberforge.content.checks import check_datasets, check_scenarios, check_stories
 from cyberforge.content.loader import (
     ContentBundle,
     ContentIssue,
@@ -146,6 +146,7 @@ def main() -> int:
     issues = list(bundle.issues)
     check_scenarios(bundle, issues)
     issues.extend(check_stories(bundle))
+    issues.extend(check_datasets(bundle))
     issues.extend(check_rule_tests(bundle))
     external = check_markdown_links(issues)
     urls = collect_content_urls(bundle) | external

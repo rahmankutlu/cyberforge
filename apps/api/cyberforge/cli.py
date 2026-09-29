@@ -261,6 +261,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
     bundle = load_bundle(root)
     issues: list[ContentIssue] = list(bundle.issues)
     checks.check_scenarios(bundle, issues)
+    issues += checks.check_datasets(bundle)
     summary = rule_tests.run_all(bundle)
     for report in summary.reports:
         issues += [ContentIssue(report.tests_path or report.rule_path, e) for e in report.errors]

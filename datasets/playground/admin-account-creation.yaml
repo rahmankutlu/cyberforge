@@ -1,0 +1,98 @@
+slug: admin-account-creation
+name: Admin account creation
+description: >
+  The same attacker goal, a new privileged account, seen in three different logs: a Windows
+  account created and added to Administrators, a Linux useradd followed by a sudo root shell, and
+  an AWS user given AdministratorAccess. Compare how each platform records it and where the
+  rules have to be different.
+source_type: Windows Security (4720, 4732), Linux auth.log, AWS CloudTrail
+difficulty: beginner
+mitre: [T1136.001, T1136.003, T1098, T1078]
+expected_rules:
+  - win-local-admin-account-created
+  - linux-new-local-user-created
+  - linux-sudo-spawns-root-shell
+  - cloud-admin-policy-attached-to-user
+try_this:
+  - "The Windows rule is a sequence: two events on one computer within 30 minutes. Why not alert on each alone?"
+  - Which of the three platforms gives you the fewest fields to build a rule on?
+  - Write a filter that ignores account creation by your provisioning service account.
+events:
+  # Routine administration that should not alert
+  - t: 0
+    repeat: 12
+    every: 600
+    category: windows_security
+    host: DC-01
+    fields:
+      EventID: 4720
+      SubjectUserName: hr-provisioning
+      TargetUserName: 'new.hire{i}'
+    note: HR onboarding creates accounts, but never makes them administrators.
+  - t: 30
+    repeat: 6
+    every: 1200
+    category: windows_security
+    host: DC-01
+    fields:
+      EventID: 4732
+      SubjectUserName: hr-provisioning
+      TargetUserName: 'Remote Desktop Users'
+      MemberName: 'new.hire{i}'
+    note: A group change, but not the Administrators group.
+  - t: 50
+    repeat: 5
+    every: 1500
+    category: linux_auth
+    host: web-02
+    fields:
+      Program: sudo
+      Message: 'deploy : TTY=pts/0 ; PWD=/srv/app ; USER=root ; COMMAND=/usr/bin/journalctl -u app'
+
+  # Windows: create the account, then add it to Administrators
+  - t: 3600
+    category: windows_security
+    host: SRV-APP-01
+    fields:
+      EventID: 4720
+      SubjectUserName: jlee
+      TargetUserName: 'support$svc'
+    note: A new local account whose name looks like a service account.
+  - t: 3690
+    category: windows_security
+    host: SRV-APP-01
+    fields:
+      EventID: 4732
+      SubjectUserName: jlee
+      TargetUserName: Administrators
+      MemberName: 'SRV-APP-01\support$svc'
+    note: Ninety seconds later the account is a local administrator.
+
+  # Linux: create the user, then a root shell
+  - t: 3800
+    category: linux_auth
+    host: web-02
+    fields:
+      Program: useradd
+      Message: 'new user: name=backupadm, UID=1003, GID=1003, home=/home/backupadm, shell=/bin/bash'
+  - t: 3830
+    category: linux_auth
+    host: web-02
+    fields:
+      Program: sudo
+      Message: 'backupadm : TTY=pts/2 ; PWD=/home/backupadm ; USER=root ; COMMAND=/bin/bash'
+    note: The new user opens a root shell straight away.
+
+  # Cloud: attach AdministratorAccess to an IAM user
+  - t: 3900
+    category: cloud_audit
+    fields:
+      eventSource: iam.amazonaws.com
+      eventName: AttachUserPolicy
+      userIdentity.type: IAMUser
+      userIdentity.userName: ci-runner
+      requestParameters.userName: ci-runner
+      requestParameters.policyArn: 'arn:aws:iam::aws:policy/AdministratorAccess'
+      geo.country: US
+      sourceIPAddress: 192.0.2.60
+    note: A CI service account granting itself administrator rights.

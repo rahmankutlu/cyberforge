@@ -540,7 +540,7 @@ def test_global_search_spans_content_types(client: TestClient) -> None:
         "alert",
     } <= {h["kind"] for h in hits}
     assert all(h["href"].startswith("/") for h in hits)
-    assert client.get("/api/v1/search?q=%25").json()["hits"] == []  # LIKE wildcards are escaped
+    assert client.get("/api/v1/search?q=%25%25").json()["hits"] == []  # LIKE wildcards are escaped
     assert client.get("/api/v1/search?q=").status_code == 422
     assert {h["kind"] for h in client.get("/api/v1/search?q=sigma").json()["hits"]} >= {
         "learning",

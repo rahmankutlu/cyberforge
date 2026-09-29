@@ -147,14 +147,6 @@ class RuleTestCaseOut(BaseModel):
     definition: dict[str, Any]
 
 
-class RuleTestsOut(BaseModel):
-    slug: str
-    tests_path: str | None
-    source: str | None
-    errors: list[str]
-    cases: list[RuleTestCaseOut]
-
-
 class QualityCheckOut(BaseModel):
     id: str
     label: str
@@ -173,6 +165,15 @@ class RuleQualityOut(BaseModel):
     positive_tests: int
     negative_tests: int
     failing_tests: int
+
+
+class RuleTestsOut(BaseModel):
+    slug: str
+    tests_path: str | None
+    source: str | None
+    errors: list[str]
+    cases: list[RuleTestCaseOut]
+    quality: RuleQualityOut | None = None
 
 
 class CoverageOut(BaseModel):
