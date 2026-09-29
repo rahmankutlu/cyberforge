@@ -62,3 +62,7 @@ data: {"timestamp": "...", "source": "sysmon", "host": "WKS-021", "event_type": 
 It replays a fixed pool of synthetic events (every dataset match plus a sample of ordinary traffic). The stream ends after `limit` events or ten minutes, at most 20 streams run at once, and the browser reconnects on its own. Pausing the dashboard panel closes the connection.
 
 SSE was chosen over WebSockets because the data flows one way, it works through the same-origin proxy, and `EventSource` reconnects for free.
+
+## Regenerating screenshots and the GIF
+
+See [Demo assets](demo-assets.md).

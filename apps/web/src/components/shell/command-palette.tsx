@@ -6,7 +6,9 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
 import {
   BookOpen,
+  BookOpenCheck,
   Crosshair,
+  Database,
   FileText,
   FlaskConical,
   GraduationCap,
@@ -28,7 +30,9 @@ export const OPEN_PALETTE_EVENT = "cyberforge:open-palette";
 
 const KIND_META: Record<SearchHit["kind"], { label: string; icon: LucideIcon }> = {
   lab: { label: "Labs", icon: FlaskConical },
+  story: { label: "Attack stories", icon: BookOpenCheck },
   rule: { label: "Detection rules", icon: Crosshair },
+  dataset: { label: "Detection datasets", icon: Database },
   technique: { label: "MITRE techniques", icon: Grid3x3 },
   alert: { label: "Alerts", icon: ShieldAlert },
   doc: { label: "Documentation", icon: FileText },
@@ -37,7 +41,9 @@ const KIND_META: Record<SearchHit["kind"], { label: string; icon: LucideIcon }> 
 };
 const KIND_ORDER: SearchHit["kind"][] = [
   "lab",
+  "story",
   "rule",
+  "dataset",
   "technique",
   "alert",
   "learning",

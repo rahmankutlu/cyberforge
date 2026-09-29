@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
-from cyberforge.api.deps import BundleDep, PageDep, SessionDep, escape_like
+from cyberforge.api.deps import BundleDep, PageDep, SessionDep, detection_health, escape_like
 from cyberforge.content.loader import _SURICATA, ContentBundle, _suricata_options
 from cyberforge.content.schemas import ScenarioEvent
 from cyberforge.db import utcnow
@@ -144,14 +144,7 @@ def list_detections(
     return paginate(_summaries(session, list(rows)), total, paging.page, paging.page_size)
 
 
-def _health(request: Request, bundle: BundleDep) -> tuple[rule_tests.RunSummary, list[Any]]:
-    """Rule tests and quality for the loaded content. Content is read-only, so compute once."""
-    cached = getattr(request.app.state, "detection_health", None)
-    if cached is None:
-        summary = rule_tests.run_all(bundle)
-        cached = (summary, rule_quality.evaluate_all(bundle, summary))
-        request.app.state.detection_health = cached
-    return cached
+_health = detection_health
 
 
 def _quality_row(

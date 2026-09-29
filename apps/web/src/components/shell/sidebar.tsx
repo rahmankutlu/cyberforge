@@ -67,7 +67,7 @@ export function SidebarFooter({
         </Link>
       ))}
       <p className="px-2 pt-2 text-[10px] text-muted-foreground/70">
-        v{version ?? "0.1.0"} · MIT · Local-first
+        v{version ?? "0.2.0"} · MIT · Local-first
       </p>
     </div>
   );

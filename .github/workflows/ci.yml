@@ -56,6 +56,9 @@ jobs:
         with:
           python: "true"
       - run: pnpm validate:content
+      # The README counts and the JSON Schemas are generated from the repository.
+      - run: pnpm content:readme:check
+      - run: pnpm schemas:check
 
   detections:
     name: Detection tests

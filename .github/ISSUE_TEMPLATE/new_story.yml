@@ -1,0 +1,54 @@
+name: New attack story
+description: Propose a complete attack-and-defence narrative
+labels: [story, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A story walks an analyst through one incident in time order: telemetry, detections, alerts,
+        MITRE techniques, decisions, containment and lessons. Every detection a step lists must
+        fire on that step's telemetry. See [Stories](../blob/main/docs/stories.md).
+  - type: input
+    id: title
+    attributes:
+      label: Story title
+      placeholder: DNS Tunnelling From A Finance Workstation
+    validations:
+      required: true
+  - type: dropdown
+    id: domain
+    attributes:
+      label: Domain
+      options: [Endpoint, Identity, Web, Network, Cloud, AI security]
+    validations:
+      required: true
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: Difficulty
+      options: [Beginner, Intermediate, Advanced]
+    validations:
+      required: true
+  - type: textarea
+    id: chain
+    attributes:
+      label: Attack chain
+      description: The steps, each with the ATT&CK technique and the existing or new detection that sees it.
+      placeholder: |
+        1. 14:02 Beaconing to a rare domain (T1071.004): dns-long-random-subdomain-query
+        2. 14:09 TXT queries with encoded labels (T1572): dns-txt-query-with-encoded-label
+    validations:
+      required: true
+  - type: textarea
+    id: teaching
+    attributes:
+      label: What an analyst should learn
+      description: The decisions and the mistakes worth showing.
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to write this story myself
