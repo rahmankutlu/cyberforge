@@ -56,6 +56,23 @@ jobs:
         with:
           python: "true"
       - run: pnpm validate:content
+      # The README counts and the JSON Schemas are generated from the repository.
+      - run: pnpm content:readme:check
+      - run: pnpm schemas:check
+
+  detections:
+    name: Detection tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          python: "true"
+      # Fails when a rule or its tests file is invalid, a positive test does not match, a negative
+      # test matches, a MITRE identifier is unknown, or a rule has no positive and negative test.
+      # Writes the coverage table to the job summary.
+      - run: pnpm test:detections
 
   postgres:
     name: PostgreSQL migrations
@@ -125,6 +142,20 @@ jobs:
           curl --fail --silent --output /dev/null http://127.0.0.1:3000/
           curl --fail --silent http://127.0.0.1:3000/api/v1/labs --output /dev/null
           curl --fail --silent http://127.0.0.1:8081/healthz
+      - name: Demo mode works from a fresh stack
+        run: |
+          curl --fail --silent --output /dev/null http://127.0.0.1:3000/demo
+          slug=suspicious-powershell-to-credential-access
+          curl --fail --silent "http://127.0.0.1:3000/api/v1/demo/scenarios/$slug" |
+            python3 -c '
+          import json, sys
+          s = json.load(sys.stdin)
+          assert 60 <= s["duration_seconds"] <= 90, s["duration_seconds"]
+          assert s["events"] and s["alerts"] and s["techniques"] and s["containment"], "script is empty"
+          print("demo script ok:", len(s["events"]), "events,", len(s["alerts"]), "alerts,", len(s["techniques"]), "techniques")
+          '
+          curl --fail --silent --max-time 20 \
+            "http://127.0.0.1:3000/api/v1/stream/events?limit=3&rate=20" | grep -c '^data:' | grep -qx 3
       - name: Logs on failure
         if: failure()
         run: docker compose --profile labs logs --no-color --tail=200

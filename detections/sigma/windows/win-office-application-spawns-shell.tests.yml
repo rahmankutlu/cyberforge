@@ -1,0 +1,28 @@
+tests:
+  - name: detects Word starting cmd.exe
+    event:
+      ParentImage: 'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
+      Image: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'cmd.exe /c whoami'
+    expected: true
+
+  - name: detects Excel starting PowerShell
+    event:
+      ParentImage: 'C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE'
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe -nop'
+    expected: true
+
+  - name: ignores Word starting its own helper process
+    event:
+      ParentImage: 'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
+      Image: 'C:\Program Files\Microsoft Office\root\Office16\WINWORD.EXE'
+      CommandLine: 'WINWORD.EXE /safe'
+    expected: false
+
+  - name: ignores Explorer starting cmd.exe
+    event:
+      ParentImage: 'C:\Windows\explorer.exe'
+      Image: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'cmd.exe'
+    expected: false

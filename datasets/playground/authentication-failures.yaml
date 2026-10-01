@@ -1,0 +1,103 @@
+slug: authentication-failures
+name: Authentication failures
+description: >
+  Windows Security logon events mixing normal sign-ins with two hostile patterns from public
+  addresses: a password-guessing burst against one account and a spray across many accounts.
+  A single RDP logon from a public address follows. The same field, IpAddress, tells three
+  different stories depending on how you group it.
+source_type: Windows Security log (Event IDs 4624 and 4625)
+difficulty: intermediate
+mitre: [T1110.001, T1110.003, T1078]
+expected_rules:
+  - win-failed-logon-burst
+  - win-password-spraying-pattern
+  - win-rdp-logon-from-public-address
+try_this:
+  - "Compare the burst rule and the spray rule: they read the same events but group and count differently."
+  - Lower the burst threshold to 5 and see which normal events start to trigger.
+  - Add a filter so the RDP rule ignores your VPN's public range.
+events:
+  # Business-hours logons: successful interactive and network logons
+  - t: 0
+    repeat: 40
+    every: 60
+    category: windows_security
+    host: DC-01
+    user: 'CORP\user{i+1}'
+    fields:
+      EventID: 4624
+      LogonType: 2
+      IpAddress: '10.20.1.{i+10}'
+      TargetUserName: 'user{i+1}'
+      TargetDomainName: CORP
+  # Occasional mistyped passwords: the everyday noise
+  - t: 30
+    repeat: 8
+    every: 420
+    category: windows_security
+    host: DC-01
+    user: 'CORP\user{i+1}'
+    fields:
+      EventID: 4625
+      LogonType: 2
+      IpAddress: '10.20.1.{i+10}'
+      TargetUserName: 'user{i+1}'
+      TargetDomainName: CORP
+      Status: '0xC000006A'
+    note: One bad password from an internal address, once. Not a pattern.
+
+  # Password guessing against one account from a public address
+  - t: 1200
+    repeat: 14
+    every: 15
+    category: windows_security
+    host: SRV-RDS01
+    fields:
+      EventID: 4625
+      LogonType: 3
+      IpAddress: 203.0.113.44
+      TargetUserName: administrator
+      TargetDomainName: CORP
+      Status: '0xC000006D'
+    note: Fourteen failures in a little over three minutes, one source, one account.
+
+  # Password spraying: one password across many accounts, slowly
+  - t: 2400
+    repeat: 12
+    every: 40
+    category: windows_security
+    host: DC-01
+    fields:
+      EventID: 4625
+      LogonType: 3
+      IpAddress: 198.51.100.77
+      TargetUserName: 'svc{i+1}'
+      TargetDomainName: CORP
+      Status: '0xC000006A'
+    note: A dozen different accounts from one source, each tried once. Slow enough to stay under a per-account lockout.
+
+  # A remote desktop logon that follows
+  - t: 3300
+    category: windows_security
+    host: SRV-RDS01
+    user: 'CORP\administrator'
+    fields:
+      EventID: 4624
+      LogonType: 10
+      IpAddress: 203.0.113.44
+      TargetUserName: administrator
+      TargetDomainName: CORP
+    note: The guessing worked. A remote-interactive logon from the same public address.
+
+  # A legitimate remote desktop session from inside the network
+  - t: 3400
+    category: windows_security
+    host: SRV-RDS01
+    user: 'CORP\helpdesk'
+    fields:
+      EventID: 4624
+      LogonType: 10
+      IpAddress: 10.20.1.5
+      TargetUserName: helpdesk
+      TargetDomainName: CORP
+    note: Same event type from a private address. The RDP rule excludes private ranges.

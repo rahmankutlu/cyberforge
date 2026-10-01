@@ -1,0 +1,28 @@
+tests:
+  - name: detects an interpreter reading /etc/shadow
+    event:
+      Operation: read
+      TargetFilename: /etc/shadow
+      Image: /usr/bin/python3
+    expected: true
+
+  - name: ignores sshd reading /etc/shadow during authentication
+    event:
+      Operation: read
+      TargetFilename: /etc/shadow
+      Image: /usr/sbin/sshd
+    expected: false
+
+  - name: ignores unix_chkpwd
+    event:
+      Operation: read
+      TargetFilename: /etc/shadow
+      Image: /usr/sbin/unix_chkpwd
+    expected: false
+
+  - name: ignores a read of a different file
+    event:
+      Operation: read
+      TargetFilename: /etc/passwd
+      Image: /usr/bin/python3
+    expected: false

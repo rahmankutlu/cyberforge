@@ -1,0 +1,30 @@
+tests:
+  - name: detects a UNION SELECT probe
+    event:
+      cs-uri-stem: /products
+      cs-uri-query: id=1 UNION SELECT username,password FROM users
+    expected: true
+
+  - name: detects a URL-encoded OR probe
+    event:
+      cs-uri-stem: /products
+      cs-uri-query: id=1%27%20OR%20%271%27=%271
+    expected: true
+
+  - name: detects a time-based SLEEP probe
+    event:
+      cs-uri-stem: /products
+      cs-uri-query: id=1 AND SLEEP(5)
+    expected: true
+
+  - name: ignores a normal product query
+    event:
+      cs-uri-stem: /products
+      cs-uri-query: id=1001&sort=price
+    expected: false
+
+  - name: ignores an apostrophe in ordinary text
+    event:
+      cs-uri-stem: /search
+      cs-uri-query: q=it%27s+a+small+world
+    expected: false

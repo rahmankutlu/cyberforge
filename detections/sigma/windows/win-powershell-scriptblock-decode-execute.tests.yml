@@ -1,0 +1,20 @@
+tests:
+  - name: detects a script block that decodes Base64 and executes it
+    event:
+      ScriptBlockText: '$d = [Convert]::FromBase64String(''Q3liZXJGb3JnZQ==''); Invoke-Expression ([Text.Encoding]::UTF8.GetString($d))'
+    expected: true
+
+  - name: detects the iex alias
+    event:
+      ScriptBlockText: 'iex([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($s)))'
+    expected: true
+
+  - name: ignores decoding without execution
+    event:
+      ScriptBlockText: '[Convert]::FromBase64String($cert) | Set-Content cert.bin -Encoding Byte'
+    expected: false
+
+  - name: ignores execution without decoding
+    event:
+      ScriptBlockText: 'Invoke-Expression "Get-Date"'
+    expected: false

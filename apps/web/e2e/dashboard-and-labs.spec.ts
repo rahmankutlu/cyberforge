@@ -21,7 +21,38 @@ test.describe("dashboard and cyber range", () => {
     await expect(main(page).getByText("Security event timeline")).toBeVisible();
     await expect(main(page).getByText(/All telemetry on this page is synthetic/)).toBeVisible();
     await expect(page.getByText("Demo data").first()).toBeVisible();
-    await expect(main(page).getByRole("link", { name: "Open the lifecycle view" })).toBeVisible();
+    await expect(main(page).getByRole("link", { name: /Attack → Log → Detection/ })).toBeVisible();
+    await expect(main(page).getByRole("link", { name: /Live demo/ })).toBeVisible();
+    await expect(main(page).getByRole("link", { name: /Attack stories/ })).toBeVisible();
+  });
+
+  test("shows detection test coverage calculated from the repository", async ({ page }) => {
+    await page.goto("/");
+    const card = main(page).getByTestId("detection-coverage");
+    await expect(card).toContainText("Detection test coverage");
+    await expect(card).toContainText("100");
+    await expect(card).toContainText(/Rules tested\s*\d+\/\d+/);
+    await expect(card.getByRole("link", { name: "See every rule" })).toBeVisible();
+  });
+
+  test("streams live synthetic events and pauses on request", async ({ page }) => {
+    await page.goto("/");
+    const stream = main(page).getByTestId("live-stream");
+    await expect(stream.getByTestId("stream-row").first()).toBeVisible({ timeout: 15_000 });
+    await expect(stream).toHaveAttribute("data-status", "live");
+    await expect
+      .poll(async () => stream.getByTestId("stream-row").count(), { timeout: 15_000 })
+      .toBeGreaterThan(2);
+    for (const heading of ["Time", "Source", "Host", "Event type", "Rule", "Severity"]) {
+      await expect(stream.getByRole("columnheader", { name: heading })).toBeVisible();
+    }
+    await stream.getByTestId("stream-toggle").click();
+    await expect(stream).toHaveAttribute("data-status", "paused");
+    const frozen = await stream.getByTestId("stream-row").first().innerText();
+    await page.waitForTimeout(2500);
+    expect(await stream.getByTestId("stream-row").first().innerText()).toBe(frozen);
+    await stream.getByTestId("stream-toggle").click();
+    await expect(stream).toHaveAttribute("data-status", "live", { timeout: 15_000 });
   });
 
   test("browses the twenty labs and filters them", async ({ page }) => {

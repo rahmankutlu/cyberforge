@@ -24,15 +24,19 @@ from typing import Any, TypeVar
 import yaml
 from pydantic import BaseModel, ValidationError
 
+from cyberforge.content.demos import DemoScenario
 from cyberforge.content.schemas import (
     AnalystDoc,
     IncidentDoc,
     IndicatorDoc,
     LabDoc,
+    LabTestsDoc,
+    PlaygroundDataset,
     ScenarioEvent,
     ThirtyDaysDoc,
     TrackDoc,
 )
+from cyberforge.content.stories import StoryDoc
 from cyberforge.services import sigma_service
 from cyberforge.services.telemetry import known_category
 
@@ -56,6 +60,7 @@ class LoadedLab:
     doc: LabDoc
     scenario: list[ScenarioEvent]
     path: Path
+    tests: LabTestsDoc | None = None  # tests/lab.tests.yml, when the lab ships one
 
 
 @dataclass
@@ -75,6 +80,7 @@ class LoadedRule:
     author: str
     is_correlation: bool
     path: str
+    tests_path: str | None = None  # Sigma only: the rule's tests file, relative to the root
 
 
 @dataclass
@@ -101,6 +107,9 @@ class ContentBundle:
     analysts: list[AnalystDoc] = field(default_factory=list)
     docs: list[DocPage] = field(default_factory=list)
     ai_security: dict[str, Any] = field(default_factory=dict)
+    stories: list[StoryDoc] = field(default_factory=list)
+    demos: list[DemoScenario] = field(default_factory=list)
+    playground_datasets: list[Any] = field(default_factory=list)  # PlaygroundDataset
     issues: list[ContentIssue] = field(default_factory=list)
 
     @property
@@ -185,18 +194,43 @@ def _load_labs(root: Path, issues: list[ContentIssue]) -> list[LoadedLab]:
             issues.append(
                 ContentIssue(rel, f"scenario file {doc.telemetry.scenario_file} not found")
             )
-        labs.append(LoadedLab(doc=doc, scenario=scenario, path=lab_dir))
+        tests = None
+        tests_file = lab_dir / "tests" / "lab.tests.yml"
+        if tests_file.is_file():
+            tests = _load_model(LabTestsDoc, tests_file, root, issues)
+        labs.append(LoadedLab(doc=doc, scenario=scenario, path=lab_dir, tests=tests))
     return labs
 
 
 # --- detection rules --------------------------------------------------------------------------
 
 
+def is_tests_file(path: Path) -> bool:
+    """Rule tests live beside the rule: `<slug>.tests.yml`, or `tests.yml` next to `rule.yml`."""
+    return path.name == "tests.yml" or path.name.endswith(".tests.yml")
+
+
+def sigma_slug(path: Path) -> str:
+    """`<slug>.yml`, or `<slug>/rule.yml` (the directory layout used by examples)."""
+    return path.parent.name if path.name == "rule.yml" else path.stem
+
+
+def sigma_tests_path(path: Path) -> Path:
+    if path.name == "rule.yml":
+        return path.parent / "tests.yml"
+    return path.with_name(f"{path.stem}.tests.yml")
+
+
 def _load_sigma(root: Path, issues: list[ContentIssue]) -> list[LoadedRule]:
     rules: list[LoadedRule] = []
-    for path in sorted((root / "detections" / "sigma").rglob("*.yml")):
+    # Shared rules live in detections/sigma; a lab may also ship its own in labs/<domain>/<lab>/detections.
+    paths = [*(root / "detections" / "sigma").rglob("*.yml"), *root.glob("labs/*/*/detections/**/*.yml")]
+    for path in sorted(paths):
+        if is_tests_file(path):
+            continue
         text = path.read_text(encoding="utf-8")
         rel = _rel(root, path)
+        tests = sigma_tests_path(path)
         report = sigma_service.validate(text)
         for err in report.errors:
             issues.append(ContentIssue(rel, err))
@@ -209,7 +243,7 @@ def _load_sigma(root: Path, issues: list[ContentIssue]) -> list[LoadedRule]:
             issues.append(ContentIssue(rel, warning, level="warning"))
         rules.append(
             LoadedRule(
-                slug=path.stem,
+                slug=sigma_slug(path),
                 format="sigma",
                 title=meta.title,
                 level=meta.level,
@@ -224,6 +258,7 @@ def _load_sigma(root: Path, issues: list[ContentIssue]) -> list[LoadedRule]:
                 author=meta.author or "CyberForge",
                 is_correlation=meta.is_correlation,
                 path=rel,
+                tests_path=_rel(root, tests) if tests.is_file() else None,
             )
         )
     return rules
@@ -346,6 +381,49 @@ def _load_datasets(root: Path, bundle: ContentBundle) -> None:
         bundle.datasets[f"{path.parent.name}/{path.stem}"] = _load_jsonl(path, root, bundle.issues)
 
 
+def _load_playground_datasets(root: Path, bundle: ContentBundle) -> None:
+    for path in sorted((root / "datasets" / "playground").glob("*.yaml")):
+        dataset = _load_model(PlaygroundDataset, path, root, bundle.issues)
+        if dataset is None:
+            continue
+        rel = _rel(root, path)
+        if dataset.slug != path.stem:
+            bundle.issues.append(ContentIssue(rel, f"slug {dataset.slug!r} must match the file name"))
+        for i, ev in enumerate(dataset.events):
+            if not known_category(ev.category):
+                bundle.issues.append(ContentIssue(rel, f"event {i}: unknown category {ev.category!r}"))
+        bundle.playground_datasets.append(dataset)
+
+
+def _load_stories(root: Path, bundle: ContentBundle) -> None:
+    for path in sorted((root / "stories").glob("*.yaml")):
+        story = _load_model(StoryDoc, path, root, bundle.issues)
+        if story is None:
+            continue
+        if story.slug != path.stem:
+            bundle.issues.append(
+                ContentIssue(_rel(root, path), f"slug {story.slug!r} must match the file name")
+            )
+        bundle.stories.append(story)
+
+
+def _load_demos(root: Path, bundle: ContentBundle) -> None:
+    for path in sorted((root / "demos").glob("*.yaml")):
+        demo = _load_model(DemoScenario, path, root, bundle.issues)
+        if demo is None:
+            continue
+        if demo.slug != path.stem:
+            bundle.issues.append(
+                ContentIssue(_rel(root, path), f"slug {demo.slug!r} must match the file name")
+            )
+        for i, ev in enumerate(demo.events):
+            if not known_category(ev.category):
+                bundle.issues.append(
+                    ContentIssue(_rel(root, path), f"event {i}: unknown category {ev.category!r}")
+                )
+        bundle.demos.append(demo)
+
+
 def _load_yaml_list(path: Path, model: type[T], root: Path, issues: list[ContentIssue]) -> list[T]:
     if not path.is_file():
         return []
@@ -395,6 +473,9 @@ def load_bundle(root: Path) -> ContentBundle:
     )
     _load_mitre(root, bundle)
     _load_datasets(root, bundle)
+    _load_playground_datasets(root, bundle)
+    _load_stories(root, bundle)
+    _load_demos(root, bundle)
 
     content_pkg = root / "packages" / "security-content"
     for path in sorted((content_pkg / "learning" / "tracks").glob("*.yaml")):
@@ -437,6 +518,19 @@ def cross_validate(bundle: ContentBundle) -> None:
         for tid in rule.technique_ids:
             if tid not in technique_ids:
                 issues.append(ContentIssue(rule.path, f"unknown MITRE identifier {tid}"))
+
+    slugs_seen: set[str] = set()
+    for ds in bundle.playground_datasets:
+        where = f"datasets/playground/{ds.slug}.yaml"
+        if ds.slug in slugs_seen:
+            issues.append(ContentIssue(where, "duplicate dataset slug"))
+        slugs_seen.add(ds.slug)
+        for slug in ds.expected_rules:
+            if slug not in rule_slugs:
+                issues.append(ContentIssue(where, f"unknown expected rule {slug!r}"))
+        for tid in ds.mitre:
+            if tid not in technique_ids:
+                issues.append(ContentIssue(where, f"unknown MITRE identifier {tid}"))
 
     lab_slugs: set[str] = set()
     numbers: set[int] = set()

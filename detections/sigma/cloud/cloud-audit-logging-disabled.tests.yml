@@ -1,0 +1,24 @@
+tests:
+  - name: detects StopLogging on a trail
+    event:
+      eventSource: cloudtrail.amazonaws.com
+      eventName: StopLogging
+    expected: true
+
+  - name: detects DeleteTrail
+    event:
+      eventSource: cloudtrail.amazonaws.com
+      eventName: DeleteTrail
+    expected: true
+
+  - name: ignores routine trail reads
+    event:
+      eventSource: cloudtrail.amazonaws.com
+      eventName: DescribeTrails
+    expected: false
+
+  - name: ignores the same event name from a different service
+    event:
+      eventSource: s3.amazonaws.com
+      eventName: DeleteTrail
+    expected: false

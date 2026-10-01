@@ -1,0 +1,40 @@
+tests:
+  - name: detects encoded PowerShell
+    event:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe -nop -w hidden -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAGgAaQAnAA== '
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+    expected: true
+
+  - name: detects the long -EncodedCommand flag in PowerShell 7
+    event:
+      Image: 'C:\Program Files\PowerShell\7\pwsh.exe'
+      CommandLine: 'pwsh.exe -EncodedCommand VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAGgAaQAnAA== '
+    expected: true
+
+  - name: detects a renamed PowerShell through its original file name
+    event:
+      Image: 'C:\Users\Public\notpower.exe'
+      OriginalFileName: PowerShell.EXE
+      CommandLine: 'notpower.exe -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAGgAaQAnAA== '
+    expected: true
+
+  - name: ignores normal PowerShell administration
+    event:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe Get-Process | Sort-Object CPU -Descending'
+      ParentImage: 'C:\Windows\explorer.exe'
+    expected: false
+
+  - name: ignores encoded PowerShell started by the endpoint-management agent
+    event:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe -enc VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAnAGgAaQAnAA== '
+      ParentImage: 'C:\Windows\CCM\CcmExec.exe'
+    expected: false
+
+  - name: ignores the flag in a different program
+    event:
+      Image: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'cmd.exe /c echo -enc '
+    expected: false

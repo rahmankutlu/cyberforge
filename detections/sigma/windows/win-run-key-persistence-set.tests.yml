@@ -1,0 +1,24 @@
+tests:
+  - name: detects a Run key pointing at a PowerShell command
+    event:
+      TargetObject: 'HKU\S-1-5-21-1000\Software\Microsoft\Windows\CurrentVersion\Run\Updater'
+      Details: 'powershell.exe -w hidden -File C:\Users\jdoe\AppData\Roaming\upd.ps1'
+    expected: true
+
+  - name: detects a Run key pointing into a temp directory
+    event:
+      TargetObject: 'HKLM\Software\Microsoft\Windows\CurrentVersion\Run\Helper'
+      Details: 'C:\Windows\Temp\helper.exe'
+    expected: true
+
+  - name: ignores a Run key for an installed application
+    event:
+      TargetObject: 'HKLM\Software\Microsoft\Windows\CurrentVersion\Run\OneDrive'
+      Details: '"C:\Program Files\Microsoft OneDrive\OneDrive.exe" /background'
+    expected: false
+
+  - name: ignores a suspicious value under a different key
+    event:
+      TargetObject: 'HKLM\Software\Vendor\Settings\Path'
+      Details: 'C:\Windows\Temp\helper.exe'
+    expected: false

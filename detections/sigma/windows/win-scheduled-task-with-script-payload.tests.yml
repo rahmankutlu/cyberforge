@@ -1,0 +1,21 @@
+tests:
+  - name: detects a scheduled task that runs a hidden PowerShell script
+    event:
+      EventID: 4698
+      TaskName: '\Updater'
+      TaskContent: '<Exec><Command>powershell.exe</Command><Arguments>-w hidden -File C:\Users\Public\upd.ps1</Arguments></Exec>'
+    expected: true
+
+  - name: ignores a scheduled task for a signed system binary
+    event:
+      EventID: 4698
+      TaskName: '\Backup'
+      TaskContent: '<Exec><Command>C:\Windows\System32\wbadmin.exe</Command><Arguments>start backup</Arguments></Exec>'
+    expected: false
+
+  - name: ignores the same payload in a different event
+    event:
+      EventID: 4699
+      TaskName: '\Updater'
+      TaskContent: '<Exec><Command>powershell.exe</Command></Exec>'
+    expected: false

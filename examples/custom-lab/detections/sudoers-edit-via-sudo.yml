@@ -1,0 +1,27 @@
+title: Sudoers File Edited Through Sudo
+id: 5723a487-5ee2-59f1-b798-572c77d55b9c
+status: experimental
+description: >
+  Detects sudo being used to run a sudoers editor (visudo) or to open /etc/sudoers directly.
+  Changing who may use sudo is a common step towards lasting root access. Legitimate edits do
+  happen, so a hit is a prompt to check the change, not proof of compromise.
+references:
+  - https://attack.mitre.org/techniques/T1548/003/
+author: CyberForge contributors
+date: 2026-09-29
+tags:
+  - attack.t1548.003
+logsource:
+  product: linux
+  service: auth
+detection:
+  selection:
+    Program: sudo
+    Message|contains:
+      - 'COMMAND=/usr/sbin/visudo'
+      - '/etc/sudoers'
+  condition: selection
+falsepositives:
+  - Planned changes by the administrators who own sudo policy
+  - Configuration management agents that template /etc/sudoers.d
+level: medium

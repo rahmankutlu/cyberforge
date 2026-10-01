@@ -1,0 +1,18 @@
+tests:
+  - name: detects a TXT query with a long encoded label
+    event:
+      record_type: TXT
+      query: nbswy3dpeblw64tmmqqhg5dsnfxgo3zu.t.tunnel-lab.example
+    expected: true
+
+  - name: ignores an ordinary TXT query such as SPF lookup
+    event:
+      record_type: TXT
+      query: example.org
+    expected: false
+
+  - name: ignores an encoded-looking label on an A query
+    event:
+      record_type: A
+      query: nbswy3dpeblw64tmmqqhg5dsnfxgo3zu.t.tunnel-lab.example
+    expected: false

@@ -1,0 +1,30 @@
+title: Administrative Share Accessed Over The Network By A User Account
+id: 77058c79-29f5-5aca-b25d-269ea63ef6d3
+status: experimental
+description: >
+  Detects a network connection to an administrative share (ADMIN$ or C$) made with a user account
+  rather than a computer account (Security Event 5140). With valid credentials, attackers use these
+  shares to copy tools to another machine and to start services or tasks there. IT staff and
+  management software use them too, so the signal is an unexpected source address or account.
+references:
+  - https://attack.mitre.org/techniques/T1021/002/
+author: CyberForge
+date: 2026-09-29
+tags:
+  - attack.t1021.002
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 5140
+    ShareName|endswith:
+      - '\ADMIN$'
+      - '\C$'
+  filter_machine_accounts:
+    SubjectUserName|endswith: '$'
+  condition: selection and not filter_machine_accounts
+falsepositives:
+  - Endpoint management and software deployment tools that copy files to administrative shares
+  - Backup agents that use the C$ share
+level: medium

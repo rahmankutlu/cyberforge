@@ -1,0 +1,28 @@
+tests:
+  - name: detects WmiPrvSE starting cmd.exe
+    event:
+      ParentImage: 'C:\Windows\System32\wbem\WmiPrvSE.exe'
+      Image: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'cmd.exe /Q /c whoami'
+    expected: true
+
+  - name: detects WmiPrvSE starting PowerShell
+    event:
+      ParentImage: 'C:\Windows\System32\wbem\WmiPrvSE.exe'
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe -nop'
+    expected: true
+
+  - name: ignores WmiPrvSE starting a non-shell helper
+    event:
+      ParentImage: 'C:\Windows\System32\wbem\WmiPrvSE.exe'
+      Image: 'C:\Windows\System32\wbem\WmiApSrv.exe'
+      CommandLine: 'WmiApSrv.exe'
+    expected: false
+
+  - name: ignores Explorer starting PowerShell
+    event:
+      ParentImage: 'C:\Windows\explorer.exe'
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe'
+    expected: false

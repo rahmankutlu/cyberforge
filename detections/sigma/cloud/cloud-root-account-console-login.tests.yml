@@ -1,0 +1,18 @@
+tests:
+  - name: detects a root console login
+    event:
+      eventName: ConsoleLogin
+      userIdentity: {type: Root}
+    expected: true
+
+  - name: ignores an IAM user console login
+    event:
+      eventName: ConsoleLogin
+      userIdentity: {type: IAMUser, userName: dev-bob}
+    expected: false
+
+  - name: ignores root activity that is not a console login
+    event:
+      eventName: ListBuckets
+      userIdentity: {type: Root}
+    expected: false

@@ -1,6 +1,7 @@
 import {
   Activity,
   BookOpen,
+  BookOpenCheck,
   Brain,
   Crosshair,
   FlaskConical,
@@ -8,6 +9,7 @@ import {
   Grid3x3,
   LayoutDashboard,
   Library,
+  MonitorPlay,
   Radar,
   Search,
   Settings,
@@ -36,6 +38,12 @@ export const NAV: NavGroup[] = [
     items: [
       { label: "Dashboard", href: "/", icon: LayoutDashboard, shortcut: "d" },
       {
+        label: "Live demo",
+        href: "/demo",
+        icon: MonitorPlay,
+        keywords: "showcase simulate playback presentation",
+      },
+      {
         label: "Lifecycle",
         href: "/lifecycle",
         icon: Workflow,
@@ -53,6 +61,12 @@ export const NAV: NavGroup[] = [
         icon: FlaskConical,
         shortcut: "b",
         keywords: "range simulation",
+      },
+      {
+        label: "Stories",
+        href: "/stories",
+        icon: BookOpenCheck,
+        keywords: "incident narrative attack defense investigation timeline",
       },
       {
         label: "AI Security",

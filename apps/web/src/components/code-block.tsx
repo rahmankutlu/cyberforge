@@ -84,7 +84,7 @@ export function CodeBlock({
             >
               <span
                 aria-hidden
-                className="mr-3 inline-block w-6 select-none text-right text-muted-foreground/50"
+                className="mr-3 inline-block w-6 select-none text-right text-muted-foreground"
               >
                 {i + 1}
               </span>

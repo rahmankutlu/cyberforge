@@ -112,3 +112,12 @@ export const INVESTIGATION_STATUS_LABEL: Record<InvestigationStatus, string> = {
 export function compareSeverity(a: Severity, b: Severity): number {
   return SEVERITY_RANK[a] - SEVERITY_RANK[b];
 }
+
+export const STORY_DOMAIN_LABEL: Record<string, string> = {
+  endpoint: "Endpoint",
+  identity: "Identity",
+  web: "Web",
+  network: "Network",
+  cloud: "Cloud",
+  "ai-security": "AI security",
+};

@@ -55,11 +55,12 @@ A schema change needs an Alembic migration in `apps/api/cyberforge/migrations/ve
 
 ## Tests
 
-| Suite      | Command         | Covers                                                         |
-| ---------- | --------------- | -------------------------------------------------------------- |
-| Pytest     | `pnpm test:api` | content integrity, Sigma engine, guardrails, HTTP API          |
-| Vitest     | `pnpm test:web` | UI logic and components                                        |
-| Playwright | `pnpm test:e2e` | critical user flows against a fresh API and a production build |
+| Suite      | Command                | Covers                                                         |
+| ---------- | ---------------------- | -------------------------------------------------------------- |
+| Pytest     | `pnpm test:api`        | content integrity, Sigma engine, guardrails, HTTP API          |
+| Detections | `pnpm test:detections` | every Sigma rule's positive and negative tests                 |
+| Vitest     | `pnpm test:web`        | UI logic and components                                        |
+| Playwright | `pnpm test:e2e`        | critical user flows against a fresh API and a production build |
 
 Behaviour changes need tests; a bug fix needs a test that fails without the fix. Run `pnpm test:e2e` when you touch a user-facing flow (set `PW_CHANNEL=msedge` or `chrome` to reuse an installed browser instead of downloading one).
 
@@ -73,16 +74,17 @@ This checks lab and rule schemas, Sigma syntax, MITRE identifiers, that every la
 
 ## Adding a lab
 
-Follow [Contributing labs](docs/contributing-labs.md). A lab is a directory under `labs/<domain>/<slug>/` with a `lab.yaml` (the source of truth), a `telemetry/scenario.jsonl`, and a README produced by `pnpm content:labs`. The scenario must trigger the detections the lab declares, and it must be entirely synthetic.
+Start with `pnpm create:lab <domain> <slug>` and follow [Creating a lab](docs/creating-a-lab.md); the older [Contributing labs](docs/contributing-labs.md) has the design background. A lab is a directory under `labs/<domain>/<slug>/` with a `lab.yaml` (the source of truth), a `telemetry/scenario.jsonl`, and a README produced by `pnpm content:labs`. The scenario must trigger the detections the lab declares, and it must be entirely synthetic.
 
 ## Adding a Sigma detection
 
 Rules live in `detections/sigma/<area>/`, one rule (or one base-plus-correlation set) per file.
 
 - Include `title`, `description`, `logsource`, `detection`, `falsepositives`, `level`, `references` and ATT&CK `tags`. The first `attack.t…` tag is the primary technique.
+- Test it: add `<slug>.tests.yml` next to the rule with at least one event that must match and one that must not. See [Testing detections](docs/testing-detections.md); `pnpm test:detections` runs them and CI requires them.
 - Prove it: add or extend a lab scenario so the rule fires, and make sure benign activity in the datasets does not trigger it.
 - Give a new rule the placeholder id `00000000-0000-0000-0000-000000000001` and run `python scripts/assign_rule_ids.py` to replace it with a stable UUID.
-- Validate it in the [playground](docs/detections.md) or with `pnpm validate:content`.
+- Validate it in the [playground](docs/detections.md) or with `pnpm validate:content`. The shortest path is [Creating a detection](docs/creating-a-detection.md).
 
 ## MITRE mappings
 

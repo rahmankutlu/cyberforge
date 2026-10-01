@@ -1,0 +1,149 @@
+slug: http-access-logs
+name: HTTP access logs
+description: >
+  Combined-format web server access logs for a small shop: browsing traffic, then a scanner,
+  injection probes, exposed-file probes, a credential-stuffing burst and an object-ID
+  enumeration. One dataset, many rules: see how each attack leaves a different shape in the
+  same log.
+source_type: Web server access log (Apache combined / IIS W3C fields)
+difficulty: beginner
+mitre: [T1595.002, T1190, T1110.001, T1552.001]
+expected_rules:
+  - web-sql-injection-probe
+  - web-xss-payload-in-request
+  - web-scanner-user-agent
+  - web-sensitive-file-probe
+  - web-login-brute-force-burst
+  - web-object-id-enumeration
+  - suricata-9000002
+  - suricata-9000004
+try_this:
+  - Open a SQL injection match and read which encoded variants the rule lists.
+  - The scanner user agent is trivially changed. What does that say about relying on this rule alone?
+  - Which of these rules count events over time rather than inspect one request?
+events:
+  # Normal browsing
+  - t: 0
+    repeat: 120
+    every: 20
+    category: web_request
+    fields:
+      c-ip: '198.51.100.{i*1}'
+      cs-method: GET
+      cs-uri-stem: '/products/{i+100}'
+      cs-user-agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36'
+      sc-status: 200
+  - t: 10
+    repeat: 30
+    every: 75
+    category: web_request
+    fields:
+      c-ip: 198.51.100.9
+      cs-method: GET
+      cs-uri-stem: /search
+      cs-uri-query: 'q=its+a+small+world&page={i+1}'
+      cs-user-agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 Safari/605.1.15'
+      sc-status: 200
+  - t: 15
+    repeat: 12
+    every: 180
+    category: web_request
+    fields:
+      c-ip: 198.51.100.12
+      cs-method: POST
+      cs-uri-stem: /login
+      cs-user-agent: 'Mozilla/5.0 (X11; Linux x86_64) Firefox/127.0'
+      sc-status: 302
+    note: Successful logins are 302 redirects, so they do not count towards the brute-force rule.
+
+  # A scanner announces itself
+  - t: 1200
+    repeat: 5
+    every: 4
+    category: web_request
+    fields:
+      c-ip: 203.0.113.66
+      cs-method: GET
+      cs-uri-stem: '/{i}'
+      cs-user-agent: 'sqlmap/1.7.2#stable (https://sqlmap.org)'
+      sc-status: 404
+    note: A well-known scanner user agent.
+
+  # Injection probes
+  - t: 1240
+    category: web_request
+    fields:
+      c-ip: 203.0.113.66
+      cs-method: GET
+      cs-uri-stem: /products
+      cs-uri-query: "id=1 UNION SELECT username,password FROM users"
+      cs-user-agent: 'Mozilla/5.0 (Windows NT 10.0)'
+      sc-status: 500
+    note: A UNION SELECT probe. A 500 suggests the input reached the database layer.
+  - t: 1250
+    category: web_request
+    fields:
+      c-ip: 203.0.113.66
+      cs-method: GET
+      cs-uri-stem: /products
+      cs-uri-query: 'id=1%27%20OR%20%271%27=%271'
+      cs-user-agent: 'Mozilla/5.0 (Windows NT 10.0)'
+      sc-status: 200
+    note: URL-encoded tautology.
+  - t: 1300
+    category: web_request
+    fields:
+      c-ip: 203.0.113.67
+      cs-method: GET
+      cs-uri-stem: /search
+      cs-uri-query: 'q=<script>alert(document.domain)</script>'
+      cs-user-agent: 'Mozilla/5.0 (Windows NT 10.0)'
+      sc-status: 200
+    note: A reflected-XSS probe.
+
+  # Exposed file probes
+  - t: 1400
+    repeat: 4
+    every: 6
+    category: web_request
+    fields:
+      c-ip: 203.0.113.68
+      cs-method: GET
+      cs-uri-stem: '/{i}/.env'
+      cs-user-agent: 'python-requests/2.32'
+      sc-status: 404
+  - t: 1430
+    category: web_request
+    fields:
+      c-ip: 203.0.113.68
+      cs-method: GET
+      cs-uri-stem: /backup.sql
+      cs-user-agent: 'python-requests/2.32'
+      sc-status: 404
+
+  # Credential stuffing against /login
+  - t: 1800
+    repeat: 16
+    every: 2.5
+    category: web_request
+    fields:
+      c-ip: 203.0.113.70
+      cs-method: POST
+      cs-uri-stem: /login
+      cs-user-agent: 'Mozilla/5.0 (Windows NT 10.0)'
+      sc-status: 401
+    note: Sixteen failed logins inside forty seconds from one address.
+
+  # Object-ID enumeration on the invoices API
+  - t: 2400
+    repeat: 20
+    every: 1.5
+    category: web_request
+    user: acme-customer
+    fields:
+      c-ip: 203.0.113.72
+      cs-method: GET
+      cs-uri-stem: '/api/invoices/{i+5000}'
+      cs-user-agent: 'curl/8.7.1'
+      sc-status: 200
+    note: One authenticated user reading twenty different invoice IDs in half a minute.

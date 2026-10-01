@@ -1,0 +1,12 @@
+tests:
+  - name: detects the Security log being cleared
+    event:
+      EventID: 1102
+      SubjectUserName: administrator
+    expected: true
+
+  - name: ignores an ordinary logon event
+    event:
+      EventID: 4624
+      SubjectUserName: administrator
+    expected: false

@@ -1,0 +1,20 @@
+tests:
+  - name: detects an MCP server registered without authentication
+    event:
+      event_type: mcp_registration
+      mcp_server: tools.lab.internal
+      mcp_auth: none
+    expected: true
+
+  - name: ignores an MCP server registered with a bearer token
+    event:
+      event_type: mcp_registration
+      mcp_server: tools.lab.internal
+      mcp_auth: bearer
+    expected: false
+
+  - name: ignores unauthenticated values on other event types
+    event:
+      event_type: tool_call
+      mcp_auth: none
+    expected: false

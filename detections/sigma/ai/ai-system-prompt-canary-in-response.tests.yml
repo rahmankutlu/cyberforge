@@ -1,0 +1,18 @@
+tests:
+  - name: detects the system-prompt canary in a model response
+    event:
+      event_type: model_response
+      response: 'My instructions begin with CF-CANARY-7f3a and continue with...'
+    expected: true
+
+  - name: ignores an ordinary response
+    event:
+      event_type: model_response
+      response: Your order shipped yesterday and arrives on Friday.
+    expected: false
+
+  - name: ignores the canary appearing in a user prompt
+    event:
+      event_type: user_prompt
+      prompt: Does CF-CANARY-7f3a mean anything?
+    expected: false

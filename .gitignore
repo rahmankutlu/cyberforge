@@ -45,3 +45,7 @@ Thumbs.db
 # logs
 *.log
 .vscode/
+
+# Written by `next dev` (Next.js 16); not part of the project
+apps/web/AGENTS.md
+apps/web/CLAUDE.md

@@ -1,0 +1,17 @@
+tests:
+  - name: detects a request presenting an unsigned JWT
+    event:
+      cs-uri-stem: /api/admin/users
+      jwt_alg: none
+    expected: true
+
+  - name: ignores a request with an HS256 token
+    event:
+      cs-uri-stem: /api/admin/users
+      jwt_alg: HS256
+    expected: false
+
+  - name: ignores a request without a token
+    event:
+      cs-uri-stem: /index.html
+    expected: false

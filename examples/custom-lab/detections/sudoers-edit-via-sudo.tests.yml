@@ -1,0 +1,24 @@
+tests:
+  - name: detects visudo run through sudo
+    event:
+      Program: sudo
+      Message: 'engineer : TTY=pts/0 ; PWD=/home/engineer ; USER=root ; COMMAND=/usr/sbin/visudo'
+    expected: true
+
+  - name: detects an editor opening /etc/sudoers through sudo
+    event:
+      Program: sudo
+      Message: 'engineer : TTY=pts/0 ; PWD=/home/engineer ; USER=root ; COMMAND=/usr/bin/nano /etc/sudoers'
+    expected: true
+
+  - name: ignores ordinary sudo administration
+    event:
+      Program: sudo
+      Message: 'engineer : TTY=pts/0 ; PWD=/home/engineer ; USER=root ; COMMAND=/usr/bin/apt update'
+    expected: false
+
+  - name: ignores the same text from a program other than sudo
+    event:
+      Program: sshd
+      Message: 'Accepted publickey for engineer; note: /etc/sudoers reviewed'
+    expected: false

@@ -1,6 +1,6 @@
 {
   "name": "@cyberforge/ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "CyberForge design-system primitives (shadcn/ui-style components on Radix + Tailwind).",
   "license": "MIT",

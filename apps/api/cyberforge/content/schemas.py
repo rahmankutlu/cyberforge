@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, field_validator, model_validator
 
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 TECHNIQUE_RE = re.compile(r"^(T\d{4}(?:\.\d{3})?|AML\.T\d{4}(?:\.\d{3})?)$")
@@ -139,6 +139,18 @@ class LabDoc(Strict):
         return values
 
 
+class LabTestsDoc(Strict):
+    """`tests/lab.tests.yml`: extra assertions about what a lab's scenario must (not) trigger."""
+
+    min_events: int = Field(1, ge=1, description="The scenario must contain at least this many events")
+    must_fire: list[str] = Field(
+        default_factory=list, description="Rule slugs that must fire (in addition to lab.yaml)"
+    )
+    must_not_fire: list[str] = Field(
+        default_factory=list, description="Rule slugs that must stay quiet on this scenario"
+    )
+
+
 class ScenarioEvent(Strict):
     """One telemetry event in a lab scenario or dataset. `t` is seconds from scenario start.
 
@@ -257,3 +269,59 @@ class AnalystDoc(Strict):
     handle: str
     name: str
     role: str
+
+
+# --- playground datasets ---------------------------------------------------------------------
+
+
+class SampleFile(Strict):
+    """A synthetic file for YARA. `content` may be split into parts and is joined on load.
+
+    Splitting keeps antivirus products on contributors' machines from quarantining well-known test
+    strings (such as the EICAR file) inside the repository. `hex_prefix` prepends raw bytes, for
+    rules that check magic numbers.
+    """
+
+    name: str = Field(min_length=3, max_length=80)
+    description: str = Field(min_length=10)
+    content: str | list[str] = ""
+    hex_prefix: str | None = Field(None, pattern=r"^(?:[0-9A-Fa-f]{2})+$")
+
+    def text(self) -> str:
+        return "".join(self.content) if isinstance(self.content, list) else self.content
+
+
+class PlaygroundDataset(Strict):
+    """A curated, synthetic dataset for the detection playground.
+
+    `expected_rules` is a contract, checked in CI: every listed rule must fire on the dataset.
+    Other rules may fire too; the playground shows them as "also matched".
+    """
+
+    slug: Slug
+    name: str = Field(min_length=3, max_length=80)
+    description: str = Field(min_length=30)
+    source_type: str = Field(min_length=3, description="What produced these logs, e.g. Sysmon EID 1")
+    kind: Literal["events", "files"] = "events"
+    difficulty: Difficulty = "beginner"
+    mitre: list[str] = Field(default_factory=list)
+    expected_rules: list[str] = Field(min_length=1)
+    try_this: list[str] = Field(default_factory=list, description="Suggested things to try")
+    events: list[ScenarioEvent] = Field(default_factory=list)
+    files: list[SampleFile] = Field(default_factory=list)
+
+    @field_validator("mitre")
+    @classmethod
+    def _mitre_shape(cls, values: list[str]) -> list[str]:
+        for v in values:
+            if not TECHNIQUE_RE.match(v):
+                raise ValueError(f"{v!r} is not a valid ATT&CK / ATLAS technique identifier")
+        return values
+
+    @model_validator(mode="after")
+    def _has_content(self) -> PlaygroundDataset:
+        if self.kind == "events" and not self.events:
+            raise ValueError("an events dataset needs `events`")
+        if self.kind == "files" and not self.files:
+            raise ValueError("a files dataset needs `files`")
+        return self

@@ -1,0 +1,12 @@
+tests:
+  - name: detects a privileged container start
+    event:
+      Image: debug-tools:latest
+      Privileged: true
+    expected: true
+
+  - name: ignores an unprivileged container start
+    event:
+      Image: web:latest
+      Privileged: false
+    expected: false

@@ -1,4 +1,4 @@
-import type { Dashboard } from "@cyberforge/types";
+import type { Dashboard, QualityResponse } from "@cyberforge/types";
 import {
   Button,
   Card,
@@ -13,7 +13,9 @@ import {
   ArrowRight,
   Crosshair,
   FlaskConical,
+  BookOpenCheck,
   Grid3x3,
+  MonitorPlay,
   ShieldAlert,
   Workflow,
 } from "lucide-react";
@@ -22,6 +24,7 @@ import Link from "next/link";
 import { InvestigationStatusBadge, SeverityBadge, SyntheticBadge } from "@/components/badges";
 import { TimelineChart } from "@/components/charts/lazy";
 import { GenerateTelemetryButton } from "@/components/dashboard/demo-actions";
+import { LiveStream } from "@/components/dashboard/live-stream";
 import { PostureGauge, postureTone } from "@/components/dashboard/posture-gauge";
 import { PageHeader } from "@/components/page-header";
 import { RelativeTime } from "@/components/relative-time";
@@ -39,7 +42,10 @@ const BREAKDOWN_LABELS: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
-  const data = await apiGet<Dashboard>("/dashboard");
+  const [data, quality] = await Promise.all([
+    apiGet<Dashboard>("/dashboard"),
+    apiGet<QualityResponse>("/detections/quality"),
+  ]);
   const kpi = Object.fromEntries(data.kpis.map((k) => [k.key, k]));
   const tone = postureTone(data.posture_score);
   const open = kpi["open_alerts"];
@@ -170,22 +176,97 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      <Card className="mt-4">
-        <CardContent className="flex flex-wrap items-center justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Attack → Log → Detection</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Follow one alert from simulation to raw event, parsed fields, rule match, MITRE
-              technique, investigation and mitigation.
+      <div className="mt-4 grid gap-4 xl:grid-cols-3">
+        <LiveStream />
+
+        <Card data-testid="detection-coverage">
+          <CardHeader>
+            <CardTitle>Detection test coverage</CardTitle>
+            <CardDescription>Calculated from the repository on every run.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-3xl font-semibold tabular-nums">
+              {quality.coverage.percent}
+              <span className="text-lg text-muted-foreground">%</span>
             </p>
-          </div>
-          <Button asChild variant="outline">
-            <Link href="/lifecycle">
-              <Workflow /> Open the lifecycle view <ArrowRight />
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+            <Progress
+              value={quality.coverage.tested}
+              max={Math.max(quality.coverage.rules, 1)}
+              label="Sigma rules with positive and negative tests"
+            />
+            <dl className="grid grid-cols-2 gap-2 text-xs">
+              <div className="rounded-md bg-muted/50 p-2">
+                <dt className="text-muted-foreground">Rules tested</dt>
+                <dd className="text-base font-semibold tabular-nums">
+                  {quality.coverage.tested}/{quality.coverage.rules}
+                </dd>
+              </div>
+              <div className="rounded-md bg-muted/50 p-2">
+                <dt className="text-muted-foreground">Tests</dt>
+                <dd className="text-base font-semibold tabular-nums">
+                  {quality.coverage.tests}
+                  {quality.coverage.failing ? (
+                    <span className="ml-1 text-xs font-normal text-sev-critical">
+                      {quality.coverage.failing} failing
+                    </span>
+                  ) : null}
+                </dd>
+              </div>
+            </dl>
+            <p className="text-[11px] text-muted-foreground">
+              {quality.checks_passed} of {quality.checks_total} quality checks pass.{" "}
+              <Link
+                href="/detections"
+                className="text-primary underline underline-offset-2 hover:no-underline"
+              >
+                See every rule
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {[
+          {
+            href: "/demo",
+            icon: MonitorPlay,
+            title: "Live demo",
+            text: "Watch a phishing-to-credential-theft incident unfold: telemetry, detections, alerts, MITRE and containment in 80 seconds.",
+          },
+          {
+            href: "/stories",
+            icon: BookOpenCheck,
+            title: "Attack stories",
+            text: "Investigate five complete incidents: reveal the evidence, answer the questions, make the calls.",
+          },
+          {
+            href: "/lifecycle",
+            icon: Workflow,
+            title: "Attack → Log → Detection",
+            text: "Follow one alert from simulation to raw event, rule match, MITRE technique and mitigation.",
+          },
+        ].map(({ href, icon: Icon, title, text }) => (
+          <Link
+            key={href}
+            href={href}
+            className="group rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Card className="h-full transition-colors group-hover:border-primary/40">
+              <CardContent className="flex h-full flex-col gap-1.5 p-4">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <Icon className="size-4 text-primary" aria-hidden /> {title}
+                  <ArrowRight
+                    className="ml-auto size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                    aria-hidden
+                  />
+                </p>
+                <p className="text-xs leading-relaxed text-muted-foreground">{text}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <section className="xl:col-span-2" aria-labelledby="recent-alerts">

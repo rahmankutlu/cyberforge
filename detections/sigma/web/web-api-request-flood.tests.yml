@@ -1,0 +1,22 @@
+tests:
+  - name: detects one hundred API requests from one client in a minute
+    events:
+      - repeat: 100
+        every: 0.5
+        fields: {c-ip: 198.51.100.20, cs-uri-stem: "/api/items/{i}", cs-method: GET}
+    expected: true
+    hits: 1
+
+  - name: ignores ninety-nine requests
+    events:
+      - repeat: 99
+        every: 0.5
+        fields: {c-ip: 198.51.100.20, cs-uri-stem: "/api/items/{i}", cs-method: GET}
+    expected: false
+
+  - name: ignores a flood of requests to non-API paths
+    events:
+      - repeat: 150
+        every: 0.2
+        fields: {c-ip: 198.51.100.20, cs-uri-stem: "/static/app.js", cs-method: GET}
+    expected: false

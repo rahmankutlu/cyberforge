@@ -1,0 +1,127 @@
+slug: cloud-audit-logs
+name: Cloud audit logs
+description: >
+  CloudTrail-style management events for a synthetic AWS account: routine reads and deployments,
+  then a root console login, a foreign-country console login, a key minted for another user, an
+  administrator policy attachment, a public bucket and audit logging switched off. Six cloud
+  rules, one account, one bad afternoon.
+source_type: AWS CloudTrail management events (synthetic)
+difficulty: intermediate
+mitre: [T1078.004, T1098, T1530, T1685.005]
+expected_rules:
+  - cloud-root-account-console-login
+  - cloud-console-login-from-unexpected-country
+  - cloud-access-key-created-for-another-user
+  - cloud-admin-policy-attached-to-user
+  - cloud-storage-bucket-made-public
+  - cloud-audit-logging-disabled
+try_this:
+  - "The access-key rule uses a field reference. Trace it: what is compared with what?"
+  - Which of these events would you page someone for, and which would you review the next day?
+  - Add a filter to the country rule for your travelling engineers' allowed countries.
+events:
+  # Routine activity by named users
+  - t: 0
+    repeat: 60
+    every: 90
+    category: cloud_audit
+    fields:
+      eventSource: ec2.amazonaws.com
+      eventName: DescribeInstances
+      userIdentity.type: IAMUser
+      userIdentity.userName: ops-ana
+      geo.country: US
+      sourceIPAddress: 192.0.2.10
+  - t: 40
+    repeat: 20
+    every: 250
+    category: cloud_audit
+    fields:
+      eventSource: s3.amazonaws.com
+      eventName: GetObject
+      userIdentity.type: IAMUser
+      userIdentity.userName: svc-reports
+      geo.country: US
+      sourceIPAddress: 192.0.2.44
+  - t: 300
+    repeat: 4
+    every: 1200
+    category: cloud_audit
+    fields:
+      eventSource: signin.amazonaws.com
+      eventName: ConsoleLogin
+      userIdentity.type: IAMUser
+      userIdentity.userName: dev-bob
+      responseElements.ConsoleLogin: Success
+      geo.country: GB
+      sourceIPAddress: 192.0.2.77
+    note: An expected country. The country rule excludes US, CA and GB.
+
+  # The bad afternoon
+  - t: 4000
+    category: cloud_audit
+    fields:
+      eventSource: signin.amazonaws.com
+      eventName: ConsoleLogin
+      userIdentity.type: Root
+      responseElements.ConsoleLogin: Success
+      geo.country: US
+      sourceIPAddress: 198.51.100.15
+    note: The root account signing in to the console.
+  - t: 4100
+    category: cloud_audit
+    fields:
+      eventSource: signin.amazonaws.com
+      eventName: ConsoleLogin
+      userIdentity.type: IAMUser
+      userIdentity.userName: dev-bob
+      responseElements.ConsoleLogin: Success
+      geo.country: KP
+      sourceIPAddress: 203.0.113.99
+    note: A successful login for an engineer who normally signs in from the UK.
+  - t: 4160
+    category: cloud_audit
+    fields:
+      eventSource: iam.amazonaws.com
+      eventName: CreateAccessKey
+      userIdentity.type: IAMUser
+      userIdentity.userName: dev-bob
+      requestParameters.userName: svc-deploy
+      geo.country: KP
+      sourceIPAddress: 203.0.113.99
+    note: A new programmatic key created for a different user.
+  - t: 4210
+    category: cloud_audit
+    fields:
+      eventSource: iam.amazonaws.com
+      eventName: AttachUserPolicy
+      userIdentity.type: IAMUser
+      userIdentity.userName: dev-bob
+      requestParameters.userName: svc-deploy
+      requestParameters.policyArn: 'arn:aws:iam::aws:policy/AdministratorAccess'
+      geo.country: KP
+      sourceIPAddress: 203.0.113.99
+    note: Full administrator rights for the account that just got a new key.
+  - t: 4300
+    category: cloud_audit
+    fields:
+      eventSource: s3.amazonaws.com
+      eventName: PutBucketAcl
+      userIdentity.type: IAMUser
+      userIdentity.userName: svc-deploy
+      requestParameters.bucketName: cf-lab-customer-exports
+      requestParameters.grantee_uri: 'http://acs.amazonaws.com/groups/global/AllUsers'
+      geo.country: KP
+      sourceIPAddress: 203.0.113.99
+    note: A bucket opened to the whole internet.
+  - t: 4380
+    category: cloud_audit
+    fields:
+      eventSource: cloudtrail.amazonaws.com
+      eventName: StopLogging
+      userIdentity.type: IAMUser
+      userIdentity.userName: svc-deploy
+      requestParameters.name: management-events
+      geo.country: KP
+      sourceIPAddress: 203.0.113.99
+    note: The audit trail switched off. Everything after this is unlogged.

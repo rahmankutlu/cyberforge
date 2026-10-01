@@ -2,28 +2,44 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload, selectinload
 
-from cyberforge.api.deps import BundleDep, SessionDep
+from cyberforge.api.deps import BundleDep, SessionDep, content_coverage
 from cyberforge.models import Alert, DetectionRule, Lab, MitreTactic, MitreTechnique
 from cyberforge.schemas.common import LabRef, RuleRef, TacticOut
 from cyberforge.schemas.misc import MatrixColumn, MatrixResponse, TechniqueCoverage, TechniqueDetail
 from cyberforge.schemas.soc import AlertSummary
+from cyberforge.services import content_coverage as cc
 from cyberforge.services import coverage as coverage_service
 
 router = APIRouter(tags=["mitre"])
 
 
-def _coverage_item(tech: MitreTechnique, cov: coverage_service.Coverage) -> TechniqueCoverage:
+DomainQuery = Annotated[
+    str | None, Query(pattern="^(Windows|Linux|Network|Web|Cloud|AI Security)$", description="Platform domain")
+]
+
+
+def _coverage_item(
+    tech: MitreTechnique, cov: coverage_service.Coverage, extra: cc.ContentCoverage | None = None
+) -> TechniqueCoverage:
+    extra = extra or cc.ContentCoverage()
+    covered_by_something = bool(cov.labs or cov.rules or extra.stories)
     return TechniqueCoverage(
         id=tech.id, name=tech.name, framework=tech.framework, is_subtechnique=tech.is_subtechnique,
         parent_id=tech.parent_id, tactic_ids=[t.id for t in tech.tactics], labs=len(cov.labs), rules=len(cov.rules),
-        alerts=len(cov.alerts), investigations=len(cov.investigations),
+        alerts=len(cov.alerts), investigations=len(cov.investigations), stories=len(extra.stories),
+        tested_rules=len(extra.tested_rules), lacking_tests=covered_by_something and not extra.tested_rules,
+        domains=[d for d in cc.DOMAINS if d in extra.domains],
     )  # fmt: skip
+
+
+def _in_domain(extra: dict[str, cc.ContentCoverage], technique_id: str, domain: str | None) -> bool:
+    return domain is None or domain in extra.get(technique_id, cc.ContentCoverage()).domains
 
 
 @router.get("/mitre/tactics", response_model=list[TacticOut], summary="List tactics")
@@ -46,7 +62,11 @@ def list_tactics(
 )
 def list_techniques(
     session: SessionDep,
+    request: Request,
+    bundle: BundleDep,
     framework: Annotated[str, Query(pattern="^(attack|atlas)$")] = "attack",
+    domain: DomainQuery = None,
+    lacking_tests: bool | None = None,
     tactic: Annotated[str | None, Query(max_length=32)] = None,
     q: Annotated[str | None, Query(max_length=100)] = None,
     covered: bool | None = None,
@@ -62,14 +82,19 @@ def list_techniques(
         .all()
     )
     cov = coverage_service.compute(session)
+    extra = content_coverage(request, bundle)
     out = []
     for t in techniques:
         if tactic and tactic not in [x.id for x in t.tactics]:
             continue
         if q and q.lower() not in f"{t.id} {t.name}".lower():
             continue
-        item = _coverage_item(t, cov[t.id])
+        if not _in_domain(extra, t.id, domain):
+            continue
+        item = _coverage_item(t, cov[t.id], extra.get(t.id))
         if covered is not None and (item.rules > 0) != covered:
+            continue
+        if lacking_tests is not None and item.lacking_tests != lacking_tests:
             continue
         out.append(item)
     return out
@@ -80,8 +105,10 @@ def list_techniques(
 )
 def matrix(
     session: SessionDep,
+    request: Request,
     bundle: BundleDep,
     framework: Annotated[str, Query(pattern="^(attack|atlas)$")] = "attack",
+    domain: DomainQuery = None,
 ) -> MatrixResponse:
     tactics = session.scalars(
         select(MitreTactic).where(MitreTactic.framework == framework).order_by(MitreTactic.position)
@@ -97,13 +124,15 @@ def matrix(
         .all()
     )
     cov = coverage_service.compute(session)
+    extra: dict[str, Any] = content_coverage(request, bundle)
+    techniques = [t for t in techniques if _in_domain(extra, t.id, domain)]
     columns = []
     for tactic in tactics:
         members = [t for t in techniques if any(x.id == tactic.id for x in t.tactics)]
         columns.append(
             MatrixColumn(
                 tactic=TacticOut.model_validate(tactic),
-                techniques=[_coverage_item(t, cov[t.id]) for t in members],
+                techniques=[_coverage_item(t, cov[t.id], extra.get(t.id)) for t in members],
             )
         )
     top = [t for t in techniques if not t.is_subtechnique]
@@ -119,6 +148,13 @@ def matrix(
             "covered": sum(1 for t in top if cov[t.id].rules),
             "with_labs": sum(1 for t in top if cov[t.id].labs),
             "with_alerts": sum(1 for t in top if cov[t.id].alerts),
+            "with_stories": sum(1 for t in top if extra[t.id].stories),
+            "with_tested_rules": sum(1 for t in top if extra[t.id].tested_rules),
+            "lacking_tests": sum(
+                1
+                for t in top
+                if (cov[t.id].labs or cov[t.id].rules or extra[t.id].stories) and not extra[t.id].tested_rules
+            ),
         },
     )
 
@@ -126,7 +162,9 @@ def matrix(
 @router.get(
     "/mitre/techniques/{technique_id}", response_model=TechniqueDetail, summary="Technique detail"
 )
-def get_technique(technique_id: str, session: SessionDep) -> TechniqueDetail:
+def get_technique(
+    technique_id: str, session: SessionDep, request: Request, bundle: BundleDep
+) -> TechniqueDetail:
     tech = session.scalar(
         select(MitreTechnique)
         .where(MitreTechnique.id == technique_id.upper())
@@ -135,6 +173,7 @@ def get_technique(technique_id: str, session: SessionDep) -> TechniqueDetail:
     if tech is None:
         raise HTTPException(404, "Technique not found")
     cov = coverage_service.compute(session)
+    extra = content_coverage(request, bundle)
     children = (
         session.scalars(
             select(MitreTechnique)
@@ -173,10 +212,10 @@ def get_technique(technique_id: str, session: SessionDep) -> TechniqueDetail:
         if c.alerts
         else []
     )
-    base = _coverage_item(tech, c)
+    base = _coverage_item(tech, c, extra.get(tech.id))
     return TechniqueDetail(
         **base.model_dump(), description=tech.description, url=tech.url, platforms=tech.platforms, mitigations=tech.mitigations,
         tactics=[TacticOut.model_validate(t) for t in tech.tactics], lab_refs=[LabRef.model_validate(x) for x in labs],
         rule_refs=[RuleRef.model_validate(r) for r in rules], recent_alerts=[AlertSummary.model_validate(a) for a in alerts],
-        sub_techniques=[_coverage_item(ch, cov[ch.id]) for ch in children],
+        sub_techniques=[_coverage_item(ch, cov[ch.id], extra.get(ch.id)) for ch in children],
     )  # fmt: skip

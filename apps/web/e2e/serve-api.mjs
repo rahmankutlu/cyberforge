@@ -6,7 +6,8 @@ import { join, resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../../..");
 const dataDir = join(root, ".data");
 mkdirSync(dataDir, { recursive: true });
-const db = join(dataDir, "e2e.sqlite");
+// E2E_DB lets another tool (pnpm screenshots) use its own throw-away database next to a dev server.
+const db = join(dataDir, process.env.E2E_DB ?? "e2e.sqlite");
 for (const suffix of ["", "-wal", "-shm"]) rmSync(db + suffix, { force: true });
 
 const child = spawn(process.execPath, [join(root, "scripts/dev-api.mjs")], {

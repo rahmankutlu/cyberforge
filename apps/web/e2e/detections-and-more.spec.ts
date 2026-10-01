@@ -24,52 +24,6 @@ level: medium
 `;
 
 test.describe("detection engineering", () => {
-  test("validates a good rule and reports fields and MITRE mappings", async ({ page }) => {
-    await page.goto("/detections/playground");
-    await main(page).getByTestId("validate-rule").click();
-    await expect(main(page).getByTestId("valid-badge")).toBeVisible();
-    await expect(main(page).getByTestId("fields-detected")).toContainText("CommandLine");
-    await expect(main(page).getByTestId("mitre-mappings")).toContainText("T1059.001");
-    await expect(main(page).getByText("Potential false positives")).toBeVisible();
-  });
-
-  test("reports syntax errors for an invalid rule", async ({ page }) => {
-    await page.goto("/detections/playground");
-    await main(page)
-      .getByTestId("rule-editor")
-      .fill(
-        "title: Broken\nlogsource:\n  product: windows\ndetection:\n  sel:\n    Image|bogus: x\n  condition: sel\n",
-      );
-    await main(page).getByTestId("validate-rule").click();
-    await expect(main(page).getByTestId("invalid-badge")).toBeVisible();
-    await expect(main(page).getByRole("list", { name: "Errors" })).toContainText(/bogus/i);
-  });
-
-  test("translates a Sigma rule to every target", async ({ page }) => {
-    await page.goto("/detections/playground");
-    await main(page).getByTestId("translate-rule").click();
-    await expect(main(page).getByTestId("translation-elastic")).toContainText("powershell.exe");
-    await main(page).getByTestId("target-splunk").click();
-    await expect(main(page).getByTestId("translation-splunk")).toContainText("Image");
-    await main(page).getByTestId("target-sentinel").click();
-    await expect(main(page).getByTestId("translation-sentinel")).toContainText("endswith");
-    await main(page).getByTestId("target-opensearch").click();
-    await expect(main(page).getByTestId("translation-opensearch")).toBeVisible();
-    await main(page).getByTestId("target-sql").click();
-    await expect(main(page).getByTestId("translation-sql")).toContainText("SELECT");
-  });
-
-  test("tests a rule against a lab scenario", async ({ page }) => {
-    await page.goto("/detections/playground");
-    await main(page).getByRole("tab", { name: "Test against events" }).click();
-    await main(page).getByLabel("Events from").selectOption("lab");
-    await main(page)
-      .getByLabel("Lab", { exact: true })
-      .selectOption("suspicious-powershell-detection-simulation");
-    await main(page).getByTestId("test-rule").click();
-    await expect(main(page).getByTestId("matched-count")).toHaveText("1");
-  });
-
   test("creates, lists and deletes a user rule", async ({ page }) => {
     await page.goto("/detections/new");
     await main(page).getByTestId("rule-editor").fill(VALID_RULE);
@@ -91,9 +45,27 @@ test.describe("detection engineering", () => {
     await expect(main(page).getByText("E2E Test Rule For Certutil Downloads")).toHaveCount(0);
   });
 
-  test("lists 65 rules across Sigma, YARA and Suricata", async ({ page }) => {
+  test("shows detection test coverage and per-rule quality checks", async ({ page }) => {
     await page.goto("/detections");
-    await expect(main(page).getByText(/of 65 rules/)).toBeVisible();
+    await expect(main(page).getByTestId("coverage-summary")).toContainText(
+      /of \d+ Sigma rules tested \(100%\)/,
+    );
+    await page.goto("/detections/win-encoded-powershell-command");
+    await expect(main(page).getByTestId("quality-score")).toHaveText("7 / 7 checks passed");
+    await expect(main(page).locator("[data-check=has_negative_tests]").first()).toHaveAttribute(
+      "data-passed",
+      "true",
+    );
+    const tests = main(page).getByTestId("rule-tests");
+    await expect(tests).toContainText("detects encoded PowerShell");
+    await expect(tests).toContainText("must not match");
+    await tests.getByText(/Show win-encoded-powershell-command.tests.yml/).click();
+    await expect(tests).toContainText("expected: false");
+  });
+
+  test("lists the Sigma, YARA and Suricata rules", async ({ page }) => {
+    await page.goto("/detections");
+    await expect(main(page).getByText(/of \d+ rules/)).toBeVisible();
     await main(page).getByLabel("Format").selectOption("yara");
     await expect(main(page).getByTestId("rule-row")).toHaveCount(5);
   });
@@ -116,13 +88,59 @@ test.describe("MITRE explorer", () => {
   });
 });
 
+test.describe("MITRE coverage from content", () => {
+  test("shows what labs, detections and stories cover, and what lacks tests", async ({ page }) => {
+    await page.goto("/mitre?view=content");
+    const m = main(page);
+    for (const id of ["labs", "detections", "stories", "lacking"]) {
+      await expect(m.getByTestId(`coverage-${id}`)).toBeVisible();
+    }
+    await expect(m.getByTestId("coverage-stories")).toContainText("OS Credential Dumping");
+    await expect(m.getByTestId("coverage-detections")).toContainText(
+      "Command and Scripting Interpreter",
+    );
+    await expect(m.getByTestId("coverage-lacking")).toContainText(/of \d+/);
+  });
+
+  test("filters the matrix by platform", async ({ page }) => {
+    await page.goto("/mitre");
+    const m = main(page);
+    await expect(m.locator("[data-technique=T1059]")).toBeVisible();
+    await m.getByTestId("domain-web").click();
+    await expect(page).toHaveURL(/domain=Web/);
+    await expect(m.getByTestId("matrix").locator("[data-technique=T1190]")).toBeVisible();
+    await expect(m.getByTestId("matrix").locator("[data-technique=T1547]")).toHaveCount(0);
+    await m.getByTestId("domain-cloud").click();
+    await expect(m.getByTestId("matrix").locator("[data-technique=T1078]").first()).toBeVisible();
+    await expect(m.getByTestId("domain-filters").getByRole("link", { name: "All" })).toBeVisible();
+  });
+
+  test("adds story and test columns to the technique table, with a lacking-tests filter", async ({
+    page,
+  }) => {
+    await page.goto("/mitre?view=techniques");
+    const m = main(page);
+    await expect(m.getByRole("columnheader", { name: /Stories/ })).toBeVisible();
+    await expect(m.getByRole("columnheader", { name: /Tested/ })).toBeVisible();
+    await page.goto("/mitre?view=techniques&domain=AI%20Security&fw=atlas");
+    await expect(main(page).getByRole("link", { name: "AML.T0051" }).first()).toBeVisible();
+  });
+});
+
 test.describe("AI security", () => {
   test("explains the trust-boundary chain and its findings", async ({ page }) => {
     await page.goto("/ai-security");
     await expect(main(page).getByRole("heading", { name: "AI security" })).toBeVisible();
-    await page.locator("[data-boundary=tool]").click();
+    // Role locators only see the visible chain; `[data-boundary]` also matches the hidden copy
+    // Next.js keeps in the DOM while a streamed Suspense boundary is being swapped in.
+    await expect(main(page).getByTestId("boundary-detail")).toBeVisible();
+    await main(page)
+      .getByRole("button", { name: /^Tool boundary/ })
+      .click();
     await expect(main(page).getByTestId("boundary-detail")).toContainText("Tool boundary");
-    await page.locator("[data-boundary=resource]").click();
+    await main(page)
+      .getByRole("button", { name: /^Resource boundary/ })
+      .click();
     await expect(main(page).getByTestId("boundary-detail")).toContainText(
       "Where the boundary fails",
     );

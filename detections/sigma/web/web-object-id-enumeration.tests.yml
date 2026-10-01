@@ -1,0 +1,21 @@
+tests:
+  - name: detects one client reading ten different invoices in a minute
+    events:
+      - repeat: 10
+        every: 2
+        fields: {c-ip: 203.0.113.9, cs-method: GET, cs-uri-stem: "/api/invoices/{i+1000}", sc-status: 200}
+    expected: true
+
+  - name: ignores the same invoice read ten times
+    events:
+      - repeat: 10
+        every: 2
+        fields: {c-ip: 203.0.113.9, cs-method: GET, cs-uri-stem: /api/invoices/1001, sc-status: 200}
+    expected: false
+
+  - name: ignores enumeration attempts that are all denied
+    events:
+      - repeat: 10
+        every: 2
+        fields: {c-ip: 203.0.113.9, cs-method: GET, cs-uri-stem: "/api/invoices/{i+1000}", sc-status: 403}
+    expected: false

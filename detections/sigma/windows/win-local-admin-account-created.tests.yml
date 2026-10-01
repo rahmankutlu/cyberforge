@@ -1,0 +1,39 @@
+tests:
+  - name: detects a new account added to Administrators shortly after creation
+    events:
+      - t: 0
+        fields: {EventID: 4720, Computer: SRV-APP-01, TargetUserName: support$svc}
+      - t: 120
+        fields: {EventID: 4732, Computer: SRV-APP-01, TargetUserName: Administrators, MemberName: support$svc}
+    expected: true
+    hits: 1
+
+  - name: ignores an account created but never made an administrator
+    events:
+      - t: 0
+        fields: {EventID: 4720, Computer: SRV-APP-01, TargetUserName: new.hire}
+    expected: false
+
+  - name: ignores the events in the wrong order
+    events:
+      - t: 0
+        fields: {EventID: 4732, Computer: SRV-APP-01, TargetUserName: Administrators}
+      - t: 120
+        fields: {EventID: 4720, Computer: SRV-APP-01, TargetUserName: support$svc}
+    expected: false
+
+  - name: ignores the two events on different computers
+    events:
+      - t: 0
+        fields: {EventID: 4720, Computer: SRV-APP-01, TargetUserName: support$svc}
+      - t: 120
+        fields: {EventID: 4732, Computer: SRV-DB-02, TargetUserName: Administrators}
+    expected: false
+
+  - name: ignores group membership changes further apart than thirty minutes
+    events:
+      - t: 0
+        fields: {EventID: 4720, Computer: SRV-APP-01, TargetUserName: support$svc}
+      - t: 3600
+        fields: {EventID: 4732, Computer: SRV-APP-01, TargetUserName: Administrators}
+    expected: false

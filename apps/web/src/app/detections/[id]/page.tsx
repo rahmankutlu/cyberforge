@@ -1,4 +1,4 @@
-import type { RuleDetail } from "@cyberforge/types";
+import type { RuleDetail, RuleTests } from "@cyberforge/types";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@cyberforge/ui";
 import { ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
@@ -8,6 +8,7 @@ import { notFound } from "next/navigation";
 import { FormatBadge, SeverityBadge, TechniqueChip } from "@/components/badges";
 import { CodeBlock } from "@/components/code-block";
 import { RuleActions } from "@/components/detections/rule-actions";
+import { QualityCard, RuleTestsCard } from "@/components/detections/rule-quality";
 import { PageHeader } from "@/components/page-header";
 import { apiGetOrNull } from "@/lib/api";
 
@@ -23,6 +24,7 @@ export default async function RulePage({ params }: Props) {
   const { id } = await params;
   const rule = await apiGetOrNull<RuleDetail>(`/detections/${id}`);
   if (!rule) notFound();
+  const tests = rule.format === "sigma" ? await apiGetOrNull<RuleTests>(`/detections/${id}/tests`) : null;
   const language = rule.format === "sigma" ? "sigma.yml" : rule.format === "yara" ? "rule.yar" : "suricata.rules";
 
   return (
@@ -47,6 +49,7 @@ export default async function RulePage({ params }: Props) {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-4">
           <CodeBlock code={rule.content} title={language} maxHeight="34rem" />
+          {tests ? <RuleTestsCard tests={tests} /> : null}
           <Card>
             <CardHeader><CardTitle>Potential false positives</CardTitle></CardHeader>
             <CardContent>
@@ -62,6 +65,7 @@ export default async function RulePage({ params }: Props) {
         </div>
 
         <div className="space-y-4">
+          {tests?.quality ? <QualityCard quality={tests.quality} /> : null}
           <Card>
             <CardHeader><CardTitle>MITRE mapping</CardTitle></CardHeader>
             <CardContent className="flex flex-col gap-2">

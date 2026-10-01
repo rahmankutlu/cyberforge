@@ -1,0 +1,28 @@
+tests:
+  - name: detects an HTTP POST the guardrail flagged as not allow-listed
+    event:
+      event_type: tool_call
+      tool_name: http_post
+      guardrail_flags: [destination_not_allowlisted]
+    expected: true
+
+  - name: detects an outbound email to an unlisted destination
+    event:
+      event_type: tool_call
+      tool_name: send_email
+      guardrail_flags: [destination_not_allowlisted, pii_in_body]
+    expected: true
+
+  - name: ignores an HTTP POST to an allow-listed destination
+    event:
+      event_type: tool_call
+      tool_name: http_post
+      guardrail_flags: []
+    expected: false
+
+  - name: ignores a flagged call from a tool that cannot send data out
+    event:
+      event_type: tool_call
+      tool_name: search_docs
+      guardrail_flags: [destination_not_allowlisted]
+    expected: false

