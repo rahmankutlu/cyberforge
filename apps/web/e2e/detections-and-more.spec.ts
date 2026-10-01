@@ -131,9 +131,16 @@ test.describe("AI security", () => {
   test("explains the trust-boundary chain and its findings", async ({ page }) => {
     await page.goto("/ai-security");
     await expect(main(page).getByRole("heading", { name: "AI security" })).toBeVisible();
-    await page.locator("[data-boundary=tool]").click();
+    // Role locators only see the visible chain; `[data-boundary]` also matches the hidden copy
+    // Next.js keeps in the DOM while a streamed Suspense boundary is being swapped in.
+    await expect(main(page).getByTestId("boundary-detail")).toBeVisible();
+    await main(page)
+      .getByRole("button", { name: /^Tool boundary/ })
+      .click();
     await expect(main(page).getByTestId("boundary-detail")).toContainText("Tool boundary");
-    await page.locator("[data-boundary=resource]").click();
+    await main(page)
+      .getByRole("button", { name: /^Resource boundary/ })
+      .click();
     await expect(main(page).getByTestId("boundary-detail")).toContainText(
       "Where the boundary fails",
     );
