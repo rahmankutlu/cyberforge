@@ -33,6 +33,7 @@
     "sonner": "^2.0.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@cyberforge/config": "workspace:*",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",

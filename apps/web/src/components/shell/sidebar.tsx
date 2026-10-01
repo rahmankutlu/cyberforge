@@ -14,7 +14,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     <nav aria-label="Primary" className="flex flex-1 flex-col gap-5 overflow-y-auto px-2 py-3">
       {NAV.map((group) => (
         <div key={group.label} className="flex flex-col gap-0.5">
-          <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/80">
+          <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
             {group.label}
           </p>
           {group.items.map((item) => {
@@ -66,7 +66,7 @@ export function SidebarFooter({
           {item.label}
         </Link>
       ))}
-      <p className="px-2 pt-2 text-[10px] text-muted-foreground/70">
+      <p className="px-2 pt-2 text-[10px] text-muted-foreground">
         v{version ?? "0.2.0"} · MIT · Local-first
       </p>
     </div>

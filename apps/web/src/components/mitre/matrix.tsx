@@ -23,7 +23,7 @@ function Cell({ t, metric, depth = 0 }: { t: TechniqueCoverage; metric: Metric; 
       )}
     >
       <span className="flex items-baseline justify-between gap-1.5">
-        <span className="font-mono text-[10px] opacity-80">{t.id}</span>
+        <span className="font-mono text-[10px]">{t.id}</span>
         {count > 0 ? <span className="font-mono text-[10px] tabular-nums">{count}</span> : null}
       </span>
       <span className="line-clamp-2 text-[11px] leading-tight">{t.name}</span>

@@ -10,7 +10,7 @@ import type {
 import { Badge, Button, Card, cn } from "@cyberforge/ui";
 import { CheckCircle2, Flag, Lightbulb, MinusCircle } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import { SeverityBadge, TechniqueChip } from "@/components/badges";
 import { CodeBlock } from "@/components/code-block";
@@ -265,7 +265,7 @@ function Decision({
   );
 }
 
-export function StepCard({
+function StepCardImpl({
   step,
   index,
   total,
@@ -326,7 +326,12 @@ export function StepCard({
         <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
           Telemetry ({step.events.length} event{step.events.length === 1 ? "" : "s"})
         </summary>
-        <div className="max-h-72 overflow-auto border-t border-border">
+        <div
+          role="region"
+          aria-label="Telemetry events, scrollable"
+          tabIndex={0}
+          className="max-h-72 overflow-auto border-t border-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
           <table className="w-full text-xs">
             <caption className="sr-only">Telemetry events for this step</caption>
             <thead className="sticky top-0 bg-card">
@@ -441,3 +446,31 @@ export function StepCard({
     </Card>
   );
 }
+
+/** The part of the progress a step actually shows: its evidence marks, answers and decision. */
+export function stepProgressKey(step: StoryStep, progress: StoryProgress): string {
+  const parts: string[] = [];
+  for (const e of step.evidence) if (progress.found.includes(e.id)) parts.push(`f:${e.id}`);
+  for (const q of step.questions) {
+    parts.push(
+      `q:${q.id}:${(progress.answers[q.id] ?? []).join(",")}:${progress.checked.includes(q.id)}`,
+    );
+  }
+  if (step.decision) parts.push(`d:${progress.decisions[step.decision.id] ?? ""}`);
+  return parts.join("|");
+}
+
+/**
+ * Re-renders only when this step's own slice of progress changes, so marking evidence in one step
+ * does not re-render every step above it (and its code blocks and tables).
+ */
+export const StepCard = memo(
+  StepCardImpl,
+  (a, b) =>
+    a.step === b.step &&
+    a.index === b.index &&
+    a.total === b.total &&
+    a.latest === b.latest &&
+    a.dispatch === b.dispatch &&
+    stepProgressKey(a.step, a.progress) === stepProgressKey(b.step, b.progress),
+);

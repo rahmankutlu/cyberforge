@@ -28,7 +28,7 @@ export function heatLevel(count: number): 0 | 1 | 2 | 3 | 4 {
   return 4;
 }
 
-const ALPHA = { 0: 0, 1: 14, 2: 28, 3: 46, 4: 68 } as const;
+const ALPHA = { 0: 0, 1: 14, 2: 26, 3: 38, 4: 50 } as const;
 
 export function heatBackground(count: number): string | undefined {
   const level = heatLevel(count);
