@@ -332,7 +332,10 @@ function Postmortem({ story, progress }: { story: Story; progress: StoryProgress
             </ul>
             <p className="mt-1.5 text-[11px] text-muted-foreground">
               Write one in the{" "}
-              <Link href="/detections/playground" className="text-primary hover:underline">
+              <Link
+                href="/detections/playground"
+                className="text-primary underline underline-offset-2 hover:no-underline"
+              >
                 playground
               </Link>
               .

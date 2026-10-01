@@ -886,12 +886,17 @@ export function Playground({
                     {selectedItem.host ? ` · ${selectedItem.host}` : ""}
                     {selectedItem.user ? ` · ${selectedItem.user}` : ""}
                   </p>
-                  <p className="max-h-28 overflow-auto break-all font-mono text-[11px] leading-snug">
+                  <div
+                    role="region"
+                    aria-label="Raw event text"
+                    tabIndex={0}
+                    className="max-h-28 overflow-auto break-all rounded-sm font-mono text-[11px] leading-snug outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
                     <Highlighted
                       text={selectedItem.raw.slice(0, 1500)}
                       needles={explainMatchedValues}
                     />
-                  </p>
+                  </div>
                   {selectedItem.note ? (
                     <p className="mt-1.5 text-[11px] italic text-muted-foreground">
                       {selectedItem.note}

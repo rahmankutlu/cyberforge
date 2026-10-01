@@ -29,7 +29,7 @@ export function StoryFlow({ counts }: { counts: Pipeline }) {
             <div
               className={cn(
                 "min-w-[5.5rem] rounded-md px-2.5 py-1.5 transition-colors",
-                active ? "bg-primary/10" : "opacity-60",
+                active && "bg-primary/10",
               )}
             >
               <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">

@@ -215,7 +215,10 @@ export default async function DashboardPage() {
             </dl>
             <p className="text-[11px] text-muted-foreground">
               {quality.checks_passed} of {quality.checks_total} quality checks pass.{" "}
-              <Link href="/detections" className="text-primary hover:underline">
+              <Link
+                href="/detections"
+                className="text-primary underline underline-offset-2 hover:no-underline"
+              >
                 See every rule
               </Link>
             </p>

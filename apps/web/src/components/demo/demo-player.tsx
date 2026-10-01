@@ -590,11 +590,17 @@ export function DemoPlayer({
             <p className="text-[11px] text-muted-foreground">
               Generated from the telemetry above by templates: no AI and no external service.
               Explore the same events in the{" "}
-              <Link href="/detections/playground" className="text-primary hover:underline">
+              <Link
+                href="/detections/playground"
+                className="text-primary underline underline-offset-2 hover:no-underline"
+              >
                 playground
               </Link>{" "}
               or follow a longer case in{" "}
-              <Link href="/stories" className="text-primary hover:underline">
+              <Link
+                href="/stories"
+                className="text-primary underline underline-offset-2 hover:no-underline"
+              >
                 Stories
               </Link>
               .
