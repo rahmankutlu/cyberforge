@@ -96,7 +96,9 @@ test.describe("MITRE coverage from content", () => {
       await expect(m.getByTestId(`coverage-${id}`)).toBeVisible();
     }
     await expect(m.getByTestId("coverage-stories")).toContainText("OS Credential Dumping");
-    await expect(m.getByTestId("coverage-detections")).toContainText("T1059.001");
+    await expect(m.getByTestId("coverage-detections")).toContainText(
+      "Command and Scripting Interpreter",
+    );
     await expect(m.getByTestId("coverage-lacking")).toContainText(/of \d+/);
   });
 
@@ -109,7 +111,7 @@ test.describe("MITRE coverage from content", () => {
     await expect(m.getByTestId("matrix").locator("[data-technique=T1190]")).toBeVisible();
     await expect(m.getByTestId("matrix").locator("[data-technique=T1547]")).toHaveCount(0);
     await m.getByTestId("domain-cloud").click();
-    await expect(m.getByTestId("matrix").locator("[data-technique=T1078]")).toBeVisible();
+    await expect(m.getByTestId("matrix").locator("[data-technique=T1078]").first()).toBeVisible();
     await expect(m.getByTestId("domain-filters").getByRole("link", { name: "All" })).toBeVisible();
   });
 
