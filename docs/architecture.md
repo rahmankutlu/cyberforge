@@ -161,6 +161,6 @@ Cross-cutting concerns live in `security.py` middleware: security headers, the O
 | UI logic     | Vitest     | Formatting, URL state, highlighting, progress, the lifecycle component, tables and filters.                                                                          |
 | Whole system | Playwright | Dashboard → labs → simulation → alert → lifecycle → MITRE → Sigma validate/translate/test → investigation → notes → report export → AI fallback, on a fresh backend. |
 
-## Known limitations of v0.1
+## Known limitations of 1.x
 
 See [ROADMAP.md](../ROADMAP.md). In short: no user accounts, a single-node design, the vulnerable lab is one web app, Sigma field mapping pipelines are not applied automatically, and API response types are hand-maintained in `packages/types` (drift is caught by the end-to-end tests; generating them from OpenAPI is planned).

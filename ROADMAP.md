@@ -2,15 +2,21 @@
 
 Direction, not a promise. Priorities follow contributions and feedback; open an issue to argue for something. Ideas that are ready to build are in the [contributor backlog](docs/contributor-backlog.md).
 
-## v0.1
+## Before 1.0
+
+### v0.1
 
 Shipped: the cyber range, mini SOC, detection workbench with a Sigma engine, MITRE ATT&CK and ATLAS explorer, AI security labs, threat-intel workspace, learning tracks and the Docker Compose setup.
 
-## v0.2
+### v0.2
 
 Shipped (see the [changelog](CHANGELOG.md)): a detection playground with match traces, tests for every Sigma rule with a CI gate and coverage, attack stories, a deterministic demo mode with a live event stream, the community lab SDK, MITRE coverage from labs, detections, stories and tests, richer search, and reproducible screenshots and demo GIF.
 
-## v0.3 priorities
+## v1.0
+
+Shipped: the 0.1 and 0.2 work above as the first stable release, plus Turkish language support for the interface and all authored content, with a reviewed terminology glossary, translation tooling and a CI gate. See [Localization](docs/localization.md).
+
+## v1.1 priorities
 
 - **Sigma pipelines:** per-target field mapping (ECS, Splunk CIM, Sentinel ASIM) so translated queries are field-correct, and a playground tab that shows the mapped query.
 - **Tests for YARA and Suricata rules:** a small file-based format (samples that must and must not match) and a CI gate, like Sigma has.

@@ -2,7 +2,11 @@
 
 All notable changes to CyberForge are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.0] - Unreleased
+## [Unreleased]
+
+## [1.0.0] - 2026-10-05
+
+The first stable release. It includes everything developed for the planned 0.2 line and adds Turkish language support. Every v0.1 lab, rule and dataset keeps working unchanged.
 
 The release theme is _understanding and trusting detections_: see why a rule matched, prove it with tests, follow whole incidents, and make it easy to contribute.
 
@@ -76,4 +80,5 @@ First release.
 - GitHub Actions for CI (lint, type checks, Vitest, Pytest, build, content validation, PostgreSQL migrations, container build), Playwright end-to-end tests, CodeQL, dependency review and tagged releases; Dependabot.
 
 [0.1.0]: https://github.com/rahmankutlu/cyberforge/releases/tag/v0.1.0
-[0.2.0]: https://github.com/rahmankutlu/cyberforge/compare/v0.1.0...v0.2.0
+[Unreleased]: https://github.com/rahmankutlu/cyberforge/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/rahmankutlu/cyberforge/compare/v0.1.0...v1.0.0

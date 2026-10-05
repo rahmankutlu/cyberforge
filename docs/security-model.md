@@ -4,7 +4,7 @@ CyberForge is a security tool that ships intentionally vulnerable content, so it
 
 ## Scope and assumptions
 
-- **A local, single-user tool.** It runs on your machine or a trusted lab host. It has no user accounts, no roles and no authentication in v0.1.
+- **A local, single-user tool.** It runs on your machine or a trusted lab host. It has no user accounts, no roles and no authentication in 1.x.
 - **Do not expose it to the internet.** Everything is bound to `127.0.0.1` by default. If you put it on a shared network, put an authenticating reverse proxy in front and set `CYBERFORGE_ENV=production`.
 - **Synthetic by default.** Seeded telemetry is fabricated; real telemetry only enters through the lab ingest endpoint.
 
@@ -62,7 +62,7 @@ All configuration is environment-driven and validated at start-up (`Settings`). 
 
 ## What is deliberately not protected
 
-- There is **no authentication or authorisation** in v0.1. Anyone who can reach the API can read and change everything. Do not expose it.
+- There is **no authentication or authorisation** in 1.x. Anyone who can reach the API can read and change everything. Do not expose it.
 - Analysts are demo personas; "acting as" an analyst is a convenience, not identity.
 - The AI analyst sends telemetry to the provider you configure when you click Analyze.
 - The intentionally vulnerable app is vulnerable on purpose; its safety comes from isolation.

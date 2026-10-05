@@ -1,6 +1,6 @@
 name: Release
 
-# Pushing a tag like v0.2.0 verifies the build, publishes container images to GHCR
+# Pushing a tag like v1.0.0 verifies the build, publishes container images to GHCR
 # and drafts a GitHub release from CHANGELOG.md. Nothing is published from branches.
 on:
   push:

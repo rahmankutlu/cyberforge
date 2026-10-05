@@ -1,6 +1,6 @@
 {
   "name": "@cyberforge/config",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Shared TypeScript and ESLint configuration for CyberForge packages.",
   "license": "MIT",
