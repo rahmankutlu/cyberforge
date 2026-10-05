@@ -99,6 +99,38 @@ test.describe("detection playground", () => {
     await expect(m.getByTestId("translation-sql")).toContainText("SELECT");
   });
 
+  test("maps fields to each SIEM's schema and lets you change the pipeline", async ({ page }) => {
+    await page.goto("/detections/playground");
+    const m = main(page);
+    await expect(m.getByTestId("matched-count")).toHaveText("1");
+    await m.getByTestId("tab-translations").click();
+
+    // Elastic: the ECS pipeline renames the fields and says what it did.
+    await expect(m.getByTestId("pipeline-badge-elastic")).toContainText(
+      "Mapped with ECS (Windows)",
+    );
+    await expect(m.getByTestId("translation-elastic")).toContainText("process.command_line");
+    await expect(m.getByTestId("field-mapping-elastic")).toContainText("CommandLine");
+    await expect(m.getByTestId("field-mapping-elastic")).toContainText("process.command_line");
+
+    // Switching to "None" gives the unmapped query back.
+    await m.getByTestId("pipeline-elastic").selectOption("none");
+    await expect(m.getByTestId("pipeline-badge-elastic")).toContainText("Field names unchanged");
+    await expect(m.getByTestId("translation-elastic")).toContainText("CommandLine");
+    await expect(m.getByTestId("field-mapping-elastic")).toHaveCount(0);
+
+    // Sentinel: "auto" skips ASIM, which has no equivalent for OriginalFileName, and finds Defender XDR.
+    await m.getByTestId("target-sentinel").click();
+    await expect(m.getByTestId("pipeline-badge-sentinel")).toContainText("Microsoft Defender XDR");
+    await expect(m.getByTestId("translation-sentinel")).toContainText("ProcessCommandLine");
+
+    // Asking for ASIM explicitly explains the refusal and still shows the unmapped query.
+    await m.getByTestId("pipeline-sentinel").selectOption("sentinel_asim");
+    await expect(m.getByTestId("pipeline-error-sentinel")).toContainText("could not map this rule");
+    await expect(m.getByTestId("pipeline-error-sentinel")).toContainText("Microsoft Sentinel ASIM");
+    await expect(m.getByTestId("translation-sentinel")).toContainText("CommandLine");
+  });
+
   test("shows the MITRE mapping and dataset relevance", async ({ page }) => {
     await page.goto("/detections/playground");
     const m = main(page);

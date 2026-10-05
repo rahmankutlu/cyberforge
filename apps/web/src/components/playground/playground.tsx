@@ -26,14 +26,18 @@ import {
   Textarea,
   cn,
 } from "@cyberforge/ui";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { FlaskConical, Languages, Play, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { TranslationView } from "@/components/detections/translation-view";
+import {
+  TranslationView,
+  translateBody,
+  type PipelineSelection,
+} from "@/components/detections/translation-view";
 import { Highlighted, Mark, TraceView } from "@/components/playground/trace-view";
 import { apiGet, apiSend } from "@/lib/api";
 import { useLocale } from "@/components/i18n/locale-provider";
@@ -257,12 +261,17 @@ export function Playground({
     staleTime: Infinity,
   });
 
+  const [pipelines, setPipelines] = useState<PipelineSelection>({});
   const translations = useQuery({
-    queryKey: ["pg-translate", lastRun?.body.content],
+    queryKey: ["pg-translate", lastRun?.body.content, pipelines],
     queryFn: () =>
-      apiSend<TranslateResponse>("POST", "/detections/translate", {
-        content: lastRun!.body.content,
-      }),
+      apiSend<TranslateResponse>(
+        "POST",
+        "/detections/translate",
+        translateBody(lastRun!.body.content, pipelines),
+      ),
+    // Keep showing the current tab while a different pipeline is applied.
+    placeholderData: keepPreviousData,
     enabled:
       rightTab === "translations" && lastRun?.body.format === "sigma" && !!lastRun?.result.valid,
     staleTime: Infinity,
@@ -942,7 +951,13 @@ export function Playground({
                   className="py-10"
                 />
               ) : translations.data ? (
-                <TranslationView result={translations.data} />
+                <TranslationView
+                  result={translations.data}
+                  selection={pipelines}
+                  onSelect={(target, id) =>
+                    setPipelines((current) => ({ ...current, [target]: id }))
+                  }
+                />
               ) : translations.isFetching ? (
                 <p className="text-xs text-muted-foreground" role="status">
                   {c("Translating…")}

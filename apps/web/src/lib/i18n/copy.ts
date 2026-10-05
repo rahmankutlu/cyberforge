@@ -984,6 +984,27 @@ export const trCopy = {
   "{{count}} matches": "{{count}} eşleşme",
   "{{count}} fields": "{{count}} alan",
   "{{count}} actions": "{{count}} eylem",
+  "Field mapping pipeline": "Alan eşleme işleme hattı",
+  "Auto (best fit)": "Otomatik (en uygun)",
+  "None (field names unchanged)": "Yok (alan adları değişmez)",
+  "Field mapping": "Alan eşlemesi",
+  "Rule field": "Kural alanı",
+  "Maps to": "Eşlendiği alan",
+  unchanged: "değişmedi",
+  "Added by the pipeline: {{fields}}": "İşleme hattının eklediği alanlar: {{fields}}",
+  "Not carried over by the pipeline: {{fields}}": "İşleme hattının taşımadığı alanlar: {{fields}}",
+  "Mapped with {{pipeline}}": "{{pipeline}} ile eşlendi",
+  "Field names unchanged": "Alan adları değişmedi",
+  "The pipeline could not map this rule. The query below is unmapped.":
+    "İşleme hattı bu kuralı eşleyemedi. Aşağıdaki sorgu eşlenmemiş hâlidir.",
+  "Field names are passed through unchanged. Choose a processing pipeline (ECS, Splunk, ASIM, ...) to map them to your platform's schema before running this against production data.":
+    "Alan adları değiştirilmeden aktarılır. Üretim verisinde çalıştırmadan önce alanları platformunuzun şemasına eşlemek için bir işleme hattı (ECS, Splunk, ASIM, ...) seçin.",
+  "Illustrative representation for review and teaching; function names such as REGEXP_LIKE and CIDR_MATCH vary by engine.":
+    "İnceleme ve öğretim için örnek bir gösterimdir; REGEXP_LIKE ve CIDR_MATCH gibi işlev adları motora göre değişir.",
+  "Field names follow the {{pipeline}} schema. Check them against your own data source before running this in production.":
+    "Alan adları {{pipeline}} şemasını izler. Üretimde çalıştırmadan önce kendi veri kaynağınızla karşılaştırın.",
+  "No {{pipeline}} pipeline changes this rule's fields ({{logsource}}), so field names are passed through unchanged.":
+    "Hiçbir {{pipeline}} işleme hattı bu kuralın alanlarını ({{logsource}}) değiştirmez; bu yüzden alan adları değiştirilmeden aktarılır.",
   "Nothing urgent": "Acil bir şey yok",
   "No critical or high alerts are open. Run a lab to generate some.":
     "Açık kritik veya yüksek önem dereceli uyarı yok. Uyarı üretmek için bir laboratuvar çalıştırın.",

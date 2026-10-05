@@ -36,7 +36,11 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { TranslationView } from "@/components/detections/translation-view";
+import {
+  TranslationView,
+  translateBody,
+  type PipelineSelection,
+} from "@/components/detections/translation-view";
 import { apiGet, apiSend } from "@/lib/api";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { countLabel } from "@/lib/i18n/copy";
@@ -280,6 +284,7 @@ export function SigmaWorkbench({ mode, initialContent, presets, labs }: Workbenc
   const [tab, setTab] = useState("validate");
   const [validation, setValidation] = useState<ValidateResponse | null>(null);
   const [translation, setTranslation] = useState<TranslateResponse | null>(null);
+  const [pipelines, setPipelines] = useState<PipelineSelection>({});
   const [testResult, setTestResult] = useState<TestResponse | null>(null);
   const [source, setSource] = useState<"lab" | "custom">("custom");
   const [labSlug, setLabSlug] = useState(labs[0]?.slug ?? "");
@@ -305,7 +310,12 @@ export function SigmaWorkbench({ mode, initialContent, presets, labs }: Workbenc
   });
 
   const translate = useMutation({
-    mutationFn: () => apiSend<TranslateResponse>("POST", "/detections/translate", { content }),
+    mutationFn: (selection: PipelineSelection) =>
+      apiSend<TranslateResponse>(
+        "POST",
+        "/detections/translate",
+        translateBody(content, selection),
+      ),
     onSuccess: (data) => {
       setTranslation(data);
       setValidation(data.validation);
@@ -424,7 +434,7 @@ export function SigmaWorkbench({ mode, initialContent, presets, labs }: Workbenc
             </Button>
             <Button
               variant="outline"
-              onClick={() => translate.mutate()}
+              onClick={() => translate.mutate(pipelines)}
               disabled={busy || !content.trim() || format !== "sigma"}
               data-testid="translate-rule"
             >
@@ -468,7 +478,15 @@ export function SigmaWorkbench({ mode, initialContent, presets, labs }: Workbenc
 
           <TabsContent value="translate">
             {translation ? (
-              <TranslationView result={translation} />
+              <TranslationView
+                result={translation}
+                selection={pipelines}
+                onSelect={(target, id) => {
+                  const next = { ...pipelines, [target]: id };
+                  setPipelines(next);
+                  translate.mutate(next);
+                }}
+              />
             ) : (
               <EmptyState
                 icon={<Languages />}

@@ -415,6 +415,12 @@ export interface ValidateResponse {
 
 export type TranslateTarget = "elastic" | "splunk" | "sentinel" | "opensearch" | "sql";
 
+export interface FieldChange {
+  source: string;
+  targets: string[];
+  changed: boolean;
+}
+
 export interface Translation {
   target: TranslateTarget;
   label: string;
@@ -422,7 +428,25 @@ export interface Translation {
   queries: string[];
   error: string | null;
   notes: string[];
+  /** The processing pipeline that mapped the rule's fields, if one did. */
+  pipeline: string | null;
+  pipeline_label: string | null;
+  field_changes: FieldChange[];
+  added_fields: string[];
+  dropped_fields: string[];
+  /** Why a requested pipeline could not be used; the query is then unmapped. */
+  pipeline_error: string | null;
 }
+
+export interface TranslationPipeline {
+  id: string;
+  label: string;
+  description: string;
+  /** Tried when a client asks for `auto`. */
+  auto: boolean;
+}
+
+export type TranslationPipelines = Record<string, TranslationPipeline[]>;
 
 export interface TranslateResponse {
   validation: ValidateResponse;
