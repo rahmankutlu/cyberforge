@@ -33,7 +33,7 @@ jobs:
       - run: pnpm build
 
   api:
-    name: API (ruff, mypy, pytest with coverage, OpenAPI contract)
+    name: API (ruff, mypy, pytest, OpenAPI)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
