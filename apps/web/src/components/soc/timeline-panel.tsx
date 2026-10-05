@@ -18,6 +18,7 @@ import { toast } from "sonner";
 
 import { apiSend } from "@/lib/api";
 import { formatDateTimeFull } from "@/lib/format";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const KINDS: Record<TimelineEntry["kind"], { label: string; icon: LucideIcon; tone: string }> = {
   detection: { label: "Detection", icon: Radar, tone: "text-sev-high" },
@@ -35,6 +36,7 @@ export function TimelinePanel({
   entries: TimelineEntry[];
 }) {
   const router = useRouter();
+  const { c, locale } = useLocale();
   const [kind, setKind] = useState<TimelineEntry["kind"]>("note");
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
@@ -49,11 +51,11 @@ export function TimelinePanel({
     onSuccess: () => {
       setTitle("");
       setDetail("");
-      toast.success("Timeline entry added");
+      toast.success(c("Timeline entry added"));
       router.refresh();
     },
     onError: (error: Error) =>
-      toast.error("Could not add the entry", { description: error.message }),
+      toast.error(c("Could not add the entry"), { description: error.message }),
   });
 
   return (
@@ -61,8 +63,10 @@ export function TimelinePanel({
       {entries.length === 0 ? (
         <EmptyState
           icon={<Eye />}
-          title="The timeline is empty"
-          description="Add the key moments of the incident in order: detection, evidence, containment."
+          title={c("The timeline is empty")}
+          description={c(
+            "Add the key moments of the incident in order: detection, evidence, containment.",
+          )}
         />
       ) : (
         <ol className="relative space-y-4 border-l border-border pl-6" data-testid="timeline">
@@ -79,7 +83,8 @@ export function TimelinePanel({
                   <meta.icon className="size-3.5" />
                 </span>
                 <p className="font-mono text-[11px] text-muted-foreground">
-                  {formatDateTimeFull(entry.timestamp)} · {meta.label}
+                  {formatDateTimeFull(entry.timestamp, locale)} ·{" "}
+                  {c(meta.label as "Detection" | "Evidence" | "Containment" | "Note" | "Status")}
                 </p>
                 <p className="mt-0.5 text-[13px] font-medium">{entry.title}</p>
                 {entry.detail ? (
@@ -98,35 +103,35 @@ export function TimelinePanel({
           if (title.trim()) add.mutate();
         }}
       >
-        <p className="text-xs font-medium text-muted-foreground">Add a timeline entry</p>
+        <p className="text-xs font-medium text-muted-foreground">{c("Add a timeline entry")}</p>
         <NativeSelect
-          aria-label="Entry type"
+          aria-label={c("Entry type")}
           value={kind}
           onChange={(e) => setKind(e.target.value as TimelineEntry["kind"])}
         >
           {Object.entries(KINDS).map(([k, v]) => (
             <option key={k} value={k}>
-              {v.label}
+              {c(v.label as "Detection" | "Evidence" | "Containment" | "Note" | "Status")}
             </option>
           ))}
         </NativeSelect>
         <Input
-          aria-label="Entry title"
-          placeholder="What happened?"
+          aria-label={c("Entry title")}
+          placeholder={c("What happened?")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={200}
         />
         <Textarea
-          aria-label="Entry detail"
-          placeholder="Details (optional)"
+          aria-label={c("Entry detail")}
+          placeholder={c("Details (optional)")}
           value={detail}
           onChange={(e) => setDetail(e.target.value)}
           rows={3}
           maxLength={4000}
         />
         <Button type="submit" className="w-full" disabled={!title.trim() || add.isPending}>
-          Add entry
+          {c("Add entry")}
         </Button>
       </form>
     </div>

@@ -14,6 +14,7 @@ import { toast } from "sonner";
 
 import { apiGet, apiSend } from "@/lib/api";
 import { formatDateTimeFull } from "@/lib/format";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 function List({ title, items }: { title: string; items: string[] }) {
   if (items.length === 0) return null;
@@ -32,48 +33,49 @@ function List({ title, items }: { title: string; items: string[] }) {
 }
 
 function AnalysisView({ analysis, meta }: { analysis: AIAnalysisContent; meta: string }) {
+  const { c } = useLocale();
   // Every field is rendered as plain text by React; model output is never interpreted as HTML.
   return (
     <Card data-testid="ai-analysis">
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="accent">
-            <Sparkles className="size-3" /> AI-generated analysis
+            <Sparkles className="size-3" /> {c("AI-generated analysis")}
           </Badge>
           <span className="text-xs text-muted-foreground">{meta}</span>
         </div>
         <div>
           <h4 className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Summary
+            {c("Summary")}
           </h4>
           <p className="text-[13px] leading-relaxed">{analysis.summary}</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <h4 className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Severity explanation
+              {c("Severity explanation")}
             </h4>
             <p className="text-[13px] leading-relaxed">{analysis.severity_explanation}</p>
           </div>
           <div>
             <h4 className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Likely MITRE technique
+              {c("Likely MITRE technique")}
             </h4>
             <p className="text-[13px] leading-relaxed">{analysis.likely_technique}</p>
           </div>
         </div>
         <div>
           <h4 className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Why the rule triggered
+            {c("Why the rule triggered")}
           </h4>
           <p className="text-[13px] leading-relaxed">{analysis.why_rule_triggered}</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <List title="Evidence worth reviewing" items={analysis.evidence_to_review} />
-          <List title="Recommended investigation steps" items={analysis.investigation_steps} />
-          <List title="Potential false positives" items={analysis.false_positives} />
+          <List title={c("Evidence worth reviewing")} items={analysis.evidence_to_review} />
+          <List title={c("Recommended investigation steps")} items={analysis.investigation_steps} />
+          <List title={c("Potential false positives")} items={analysis.false_positives} />
           <List
-            title="Containment suggestions (for a human to decide)"
+            title={c("Containment suggestions (for a human to decide)")}
             items={analysis.containment_suggestions}
           />
         </div>
@@ -89,6 +91,7 @@ export function AiAnalysisPanel({
   alertId: number;
   latest: AIAnalysisRecord | null;
 }) {
+  const { locale, c } = useLocale();
   const status = useQuery({
     queryKey: ["ai-status"],
     queryFn: () => apiGet<AIStatus>("/ai/status"),
@@ -99,10 +102,10 @@ export function AiAnalysisPanel({
     mutationFn: () => apiSend<AnalyzeResponse>("POST", "/ai/analyze-alert", { alert_id: alertId }),
     onSuccess: (data) => {
       setResult(data);
-      if (data.available) toast.success("AI analysis complete");
+      if (data.available) toast.success(c("AI analysis complete"));
     },
     onError: (error: Error) =>
-      toast.error("Analysis request failed", { description: error.message }),
+      toast.error(c("Analysis request failed"), { description: error.message }),
   });
 
   const shown: AnalyzeResponse | null = result;
@@ -113,15 +116,15 @@ export function AiAnalysisPanel({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-[13px] font-medium">
-            <Bot className="size-4 text-primary" /> AI SOC analyst{" "}
-            <Badge variant="outline">optional</Badge>
+            <Bot className="size-4 text-primary" /> {c("AI SOC analyst")}{" "}
+            <Badge variant="outline">{c("optional")}</Badge>
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {status.isLoading
-              ? "Checking provider…"
+              ? c("Checking provider…")
               : enabled
-                ? `Provider: ${status.data?.provider} · model ${status.data?.model}. Sends this alert's telemetry to that provider when you click Analyze.`
-                : "Not configured. CyberForge works fully without AI."}
+                ? `${c("Provider")}: ${status.data?.provider} · ${c("model")} ${status.data?.model}. ${c("Sends this alert's telemetry to that provider when you click Analyze.")}`
+                : c("Not configured. CyberForge works fully without AI.")}
           </p>
         </div>
         <Button
@@ -130,15 +133,15 @@ export function AiAnalysisPanel({
           data-testid="analyze-ai"
         >
           <Sparkles />
-          {analyze.isPending ? "Analyzing…" : "Analyze with AI"}
+          {analyze.isPending ? c("Analyzing…") : c("Analyze with AI")}
         </Button>
       </div>
 
       {shown && !shown.available ? (
         <EmptyState
           icon={<ShieldAlert />}
-          title="AI analysis is unavailable"
-          description={shown.reason ?? "The provider could not be reached."}
+          title={c("AI analysis is unavailable")}
+          description={shown.reason ?? c("The provider could not be reached.")}
           className="py-8"
         />
       ) : null}
@@ -146,19 +149,19 @@ export function AiAnalysisPanel({
       {shown?.available && shown.analysis ? (
         <AnalysisView
           analysis={shown.analysis}
-          meta={`${shown.provider} · ${shown.model}${shown.created_at ? ` · ${formatDateTimeFull(shown.created_at)}` : ""}`}
+          meta={`${shown.provider} · ${shown.model}${shown.created_at ? ` · ${formatDateTimeFull(shown.created_at, locale)}` : ""}`}
         />
       ) : latest && !shown ? (
         <AnalysisView
           analysis={latest.content}
-          meta={`Previous analysis · ${latest.provider} · ${latest.model} · ${formatDateTimeFull(latest.created_at)}`}
+          meta={`${c("Previous analysis")} · ${latest.provider} · ${latest.model} · ${formatDateTimeFull(latest.created_at, locale)}`}
         />
       ) : null}
 
       <ul className="space-y-1 text-[11px] text-muted-foreground">
         {(
           status.data?.safety ?? [
-            "Advisory only: suggestions are never executed and AI cannot run commands.",
+            c("Advisory only: suggestions are never executed and AI cannot run commands."),
           ]
         ).map((line) => (
           <li key={line} className="flex gap-1.5">

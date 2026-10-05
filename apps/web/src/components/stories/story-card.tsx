@@ -9,8 +9,11 @@ import { DifficultyBadge } from "@/components/badges";
 import { STORY_DOMAIN_LABEL } from "@/lib/format";
 import { completion } from "@/lib/story-state";
 import { useAllStoryProgress } from "@/lib/use-story-progress";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { localizeKnownCopy } from "@/lib/i18n/copy";
 
 export function StoryGrid({ stories }: { stories: StorySummary[] }) {
+  const { locale, c } = useLocale();
   const progress = useAllStoryProgress(stories.map((s) => s.slug));
   return (
     <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="story-grid">
@@ -30,7 +33,7 @@ export function StoryGrid({ stories }: { stories: StorySummary[] }) {
               >
                 <div className="flex items-start justify-between gap-2">
                   <Badge variant="outline">
-                    {STORY_DOMAIN_LABEL[story.domain] ?? story.domain}
+                    {localizeKnownCopy(locale, STORY_DOMAIN_LABEL[story.domain] ?? story.domain)}
                   </Badge>
                   <DifficultyBadge difficulty={story.difficulty} />
                 </div>
@@ -44,27 +47,29 @@ export function StoryGrid({ stories }: { stories: StorySummary[] }) {
                 </div>
                 <ul
                   className="mt-auto flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground"
-                  aria-label="Story facts"
+                  aria-label={c("Story facts")}
                 >
                   <li className="inline-flex items-center gap-1">
-                    <Clock className="size-3" aria-hidden /> ~{story.duration_minutes} min
+                    <Clock className="size-3" aria-hidden /> ~{story.duration_minutes} {c("min")}
                   </li>
                   <li className="inline-flex items-center gap-1">
-                    <Radio className="size-3" aria-hidden /> {story.step_count} steps ·{" "}
-                    {story.event_count} events
+                    <Radio className="size-3" aria-hidden /> {story.step_count} {c("steps")} ·{" "}
+                    {story.event_count} {c("events")}
                   </li>
                   <li className="inline-flex items-center gap-1">
-                    <Crosshair className="size-3" aria-hidden /> {story.detection_count} detections
+                    <Crosshair className="size-3" aria-hidden /> {story.detection_count}{" "}
+                    {c("detections")}
                   </li>
                   <li className="inline-flex items-center gap-1">
-                    <Grid3x3 className="size-3" aria-hidden /> {story.techniques.length} techniques
+                    <Grid3x3 className="size-3" aria-hidden /> {story.techniques.length}{" "}
+                    {c("techniques")}
                   </li>
                 </ul>
                 {started ? (
                   <div>
                     <Progress value={pct} max={100} label={`${story.title} progress`} />
                     <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">
-                      {p?.submitted ? "Completed" : `${pct}% through`}
+                      {p?.submitted ? c("Completed") : `%${pct}`}
                     </p>
                   </div>
                 ) : null}

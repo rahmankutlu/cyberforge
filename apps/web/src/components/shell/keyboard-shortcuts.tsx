@@ -2,10 +2,11 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle, Kbd } from "@cyberforge/ui";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { OPEN_PALETTE_EVENT } from "@/components/shell/command-palette";
-import { ALL_NAV } from "@/lib/nav";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { getAllNavigation } from "@/lib/nav";
 
 const SHOW_EVENT = "cyberforge:show-shortcuts";
 
@@ -19,6 +20,8 @@ function isTyping(target: EventTarget | null): boolean {
 export function KeyboardShortcuts() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const { locale, t } = useLocale();
+  const allNav = useMemo(() => getAllNavigation(locale), [locale]);
   const pendingG = useRef<number | null>(null);
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export function KeyboardShortcuts() {
       if (pendingG.current !== null) {
         window.clearTimeout(pendingG.current);
         pendingG.current = null;
-        const target = ALL_NAV.find((item) => item.shortcut === e.key.toLowerCase());
+        const target = allNav.find((item) => item.shortcut === e.key.toLowerCase());
         if (target) {
           e.preventDefault();
           router.push(target.href);
@@ -52,20 +55,26 @@ export function KeyboardShortcuts() {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener(SHOW_EVENT, onShow);
     };
-  }, [router]);
+  }, [allNav, router]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-md">
-        <DialogTitle>Keyboard shortcuts</DialogTitle>
-        <DialogDescription>Shortcuts are disabled while typing in a field.</DialogDescription>
+        <DialogTitle>{t("shortcuts.title")}</DialogTitle>
+        <DialogDescription>{t("shortcuts.description")}</DialogDescription>
         <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1.5 text-[13px]">
-          <Row label="Command palette / search" keys={["⌘/Ctrl", "K"]} />
-          <Row label="Search" keys={["/"]} />
-          <Row label="This help" keys={["?"]} />
-          {ALL_NAV.filter((i) => i.shortcut).map((item) => (
-            <Row key={item.href} label={`Go to ${item.label}`} keys={["g", item.shortcut!]} />
-          ))}
+          <Row label={t("shortcuts.palette")} keys={["⌘/Ctrl", "K"]} />
+          <Row label={t("shortcuts.search")} keys={["/"]} />
+          <Row label={t("shortcuts.help")} keys={["?"]} />
+          {allNav
+            .filter((i) => i.shortcut)
+            .map((item) => (
+              <Row
+                key={item.href}
+                label={t("shortcuts.goTo", { page: item.label })}
+                keys={["g", item.shortcut!]}
+              />
+            ))}
         </dl>
       </DialogContent>
     </Dialog>

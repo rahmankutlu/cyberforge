@@ -33,8 +33,13 @@ import {
   type Metric,
 } from "@/lib/mitre";
 import { first, hrefWith, type SearchParams } from "@/lib/params";
+import { createCopyTranslator, localizeKnownCopy, type CopyTranslate } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
 
-export const metadata = { title: "MITRE ATT&CK explorer" };
+export async function generateMetadata() {
+  const c = createCopyTranslator(await getLocale());
+  return { title: c("MITRE ATT&CK explorer") };
+}
 
 const VIEWS = [
   { value: "matrix", label: "Coverage map" },
@@ -46,6 +51,8 @@ const VIEWS = [
 type View = (typeof VIEWS)[number]["value"];
 
 export default async function MitrePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
   const sp = await searchParams;
   const view: View = VIEWS.some((v) => v.value === first(sp.view))
     ? (first(sp.view) as View)
@@ -85,13 +92,17 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
   return (
     <>
       <PageHeader
-        title="MITRE ATT&CK explorer"
-        description={`See which techniques CyberForge's labs, rules and alerts cover. ${framework === "attack" ? `ATT&CK Enterprise v${matrix.version}` : `ATLAS v${matrix.version} (AI systems)`} · identifiers come straight from MITRE's data.`}
+        title={c("MITRE ATT&CK explorer")}
+        description={
+          locale === "tr"
+            ? `CyberForge laboratuvarlarının, kurallarının ve uyarılarının hangi teknikleri kapsadığını görün. ${framework === "attack" ? `ATT&CK Enterprise v${matrix.version}` : `ATLAS v${matrix.version} (Yapay zekâ sistemleri)`} · tanımlayıcılar doğrudan MITRE verilerinden gelir.`
+            : `See which techniques CyberForge's labs, rules and alerts cover. ${framework === "attack" ? `ATT&CK Enterprise v${matrix.version}` : `ATLAS v${matrix.version} (AI systems)`} · identifiers come straight from MITRE's data.`
+        }
         actions={
           <div
             className="inline-flex rounded-md border border-border bg-muted/50 p-0.5"
             role="group"
-            aria-label="Framework"
+            aria-label={c("Framework")}
           >
             {(["attack", "atlas"] as const).map((fw) => (
               <Link
@@ -114,48 +125,52 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <StatCard
-          label="Techniques (top-level)"
+          label={c("Techniques (top-level)")}
           value={summary.total}
-          hint="Curated subset mapped by CyberForge"
+          hint={c("Curated subset mapped by CyberForge")}
         />
         <StatCard
-          label="With a detection rule"
+          label={c("With a detection rule")}
           value={`${summary.covered} · ${summary.pct}%`}
           tone={summary.pct >= 50 ? "ok" : "high"}
-          hint="At least one enabled rule"
+          hint={c("At least one enabled rule")}
         />
-        <StatCard label="Taught by a lab" value={matrix.totals.with_labs} hint="Hands-on labs" />
         <StatCard
-          label="Taught by a story"
+          label={c("Taught by a lab")}
+          value={matrix.totals.with_labs}
+          hint={c("Hands-on labs")}
+        />
+        <StatCard
+          label={c("Taught by a story")}
           value={matrix.totals.with_stories}
-          hint="Attack stories"
+          hint={c("Attack stories")}
         />
         <StatCard
-          label="Lacking tests"
+          label={c("Lacking tests")}
           value={matrix.totals.lacking_tests}
           tone={matrix.totals.lacking_tests === 0 ? "ok" : "high"}
-          hint="Covered, but no tested rule"
+          hint={c("Covered, but no tested rule")}
         />
         <StatCard
-          label="Seen in alerts"
+          label={c("Seen in alerts")}
           value={matrix.totals.with_alerts}
-          hint="Raised on this instance"
+          hint={c("Raised on this instance")}
         />
       </div>
 
       <div
         className="mb-3 flex flex-wrap items-center gap-2"
         role="group"
-        aria-label="Filter by platform"
+        aria-label={c("Filter by platform")}
         data-testid="domain-filters"
       >
-        <span className="text-xs text-muted-foreground">Platform</span>
+        <span className="text-xs text-muted-foreground">{c("Platform")}</span>
         <Link
           href={link({ domain: null })}
           aria-current={domain ? undefined : "true"}
           className={tabClass(!domain)}
         >
-          All
+          {c("All")}
         </Link>
         {(framework === "atlas" ? (["AI Security"] as const) : DOMAINS).map((d) => (
           <Link
@@ -172,7 +187,7 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <nav
-          aria-label="Views"
+          aria-label={c("Views")}
           className="inline-flex flex-wrap rounded-md border border-border bg-muted/50 p-0.5"
         >
           {VIEWS.map((v) => (
@@ -183,7 +198,7 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
               className={tabClass(view === v.value)}
               data-testid={`view-${v.value}`}
             >
-              {v.label}
+              {localizeKnownCopy(locale, v.label)}
             </Link>
           ))}
         </nav>
@@ -192,17 +207,17 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
             <div
               className="inline-flex rounded-md border border-border bg-muted/50 p-0.5"
               role="group"
-              aria-label="Heatmap metric"
+              aria-label={c("Heatmap metric")}
             >
               {METRICS.map((m) => (
                 <Link
                   key={m.value}
                   href={link({ metric: m.value === "rules" ? null : m.value })}
-                  title={m.hint}
+                  title={localizeKnownCopy(locale, m.hint)}
                   aria-current={metric === m.value ? "true" : undefined}
                   className={tabClass(metric === m.value)}
                 >
-                  {m.label}
+                  {localizeKnownCopy(locale, m.label)}
                 </Link>
               ))}
             </div>
@@ -210,7 +225,7 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
               href={link({ sub: showSub ? null : "1" })}
               className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
             >
-              {showSub ? "Hide sub-techniques" : "Show sub-techniques"}
+              {showSub ? c("Hide sub-techniques") : c("Show sub-techniques")}
             </Link>
           </div>
         ) : null}
@@ -230,7 +245,7 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardContent className="space-y-3 p-4">
-              <h2 className="text-sm font-semibold">Coverage by tactic</h2>
+              <h2 className="text-sm font-semibold">{c("Coverage by tactic")}</h2>
               {matrix.columns
                 .filter((c) => c.techniques.length)
                 .map(({ tactic, techniques: ts }) => {
@@ -256,11 +271,12 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
           <Card>
             <CardContent className="p-4">
               <h2 className="text-sm font-semibold">
-                Gaps: no detection rule yet ({summary.gaps.length})
+                {c("Gaps: no detection rule yet")} ({summary.gaps.length})
               </h2>
               <p className="mb-3 mt-1 text-xs text-muted-foreground">
-                Techniques worth writing a rule for next. Prioritise by the threats you actually
-                face.
+                {c(
+                  "Techniques worth writing a rule for next. Prioritise by the threats you actually face.",
+                )}
               </p>
               <ul className="grid gap-x-4 gap-y-1.5 sm:grid-cols-2" data-testid="gap-list">
                 {summary.gaps.map((t) => (
@@ -270,7 +286,7 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
                 ))}
                 {summary.gaps.length === 0 ? (
                   <li className="text-xs text-muted-foreground">
-                    Every curated technique has a rule.
+                    {c("Every curated technique has a rule.")}
                   </li>
                 ) : null}
               </ul>
@@ -279,7 +295,7 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
         </div>
       ) : null}
 
-      {view === "content" ? <ContentCoverage techniques={unique} /> : null}
+      {view === "content" ? <ContentCoverage techniques={unique} c={c} /> : null}
 
       {view === "tactics" ? (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -299,8 +315,12 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
                   </p>
                   <div className="mt-3">
                     <div className="mb-1 flex justify-between text-[11px] text-muted-foreground">
-                      <span>{s.total} techniques mapped</span>
-                      <span>{s.covered} with rules</span>
+                      <span>
+                        {s.total} {c("techniques mapped")}
+                      </span>
+                      <span>
+                        {s.covered} {c("with rules")}
+                      </span>
                     </div>
                     <Progress
                       value={s.covered}
@@ -315,7 +335,7 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
                       rel="noopener noreferrer"
                       className="mt-3 inline-block text-[11px] text-primary hover:underline"
                     >
-                      View on MITRE
+                      {c("View on MITRE")}
                     </a>
                   ) : null}
                 </Card>
@@ -330,35 +350,35 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
           <Suspense>
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <UrlSearch
-                placeholder="Search techniques…"
+                placeholder={c("Search techniques…")}
                 className="w-full sm:w-72"
-                label="Search techniques"
+                label={c("Search techniques")}
               />
               <UrlSelect
                 param="tactic"
-                label="Tactic"
+                label={c("Tactic")}
                 options={matrix.columns.map((c) => ({ value: c.tactic.id, label: c.tactic.name }))}
                 className="w-52"
               />
               <UrlSelect
                 param="covered"
-                label="Coverage"
+                label={c("Coverage")}
                 options={[
-                  { value: "yes", label: "Has a rule" },
-                  { value: "no", label: "No rule (gap)" },
+                  { value: "yes", label: c("Has a rule") },
+                  { value: "no", label: c("No rule (gap)") },
                 ]}
                 className="w-48"
               />
               <UrlSelect
                 param="tests"
-                label="Tests"
-                options={[{ value: "lacking", label: "Lacking tests" }]}
+                label={c("Tests")}
+                options={[{ value: "lacking", label: c("Lacking tests") }]}
                 className="w-44"
               />
               <ClearFilters keys={["q", "tactic", "covered", "tests"]} />
             </div>
           </Suspense>
-          <TechniquesTable techniques={techniques} params={sp} />
+          <TechniquesTable techniques={techniques} params={sp} c={c} />
         </>
       ) : null}
     </>
@@ -368,9 +388,11 @@ export default async function MitrePage({ searchParams }: { searchParams: Promis
 function TechniquesTable({
   techniques,
   params,
+  c,
 }: {
   techniques: TechniqueCoverage[];
   params: SearchParams;
+  c: CopyTranslate;
 }) {
   const sort = [
     "id",
@@ -394,52 +416,53 @@ function TechniquesTable({
         : String(av).localeCompare(String(bv));
     return order === "asc" ? cmp : -cmp;
   });
-  if (sorted.length === 0) return <EmptyState icon={<Grid3x3 />} title="No techniques match" />;
+  if (sorted.length === 0)
+    return <EmptyState icon={<Grid3x3 />} title={c("No techniques match")} />;
   const sorting = { path: "/mitre", params, sort, order } as const;
   return (
     <Table>
       <THead>
         <TR className="hover:bg-transparent">
-          <SortTh label="ID" column="id" className="w-32" {...sorting} />
-          <SortTh label="Technique" column="name" {...sorting} />
-          <TH className="w-24">Tactic</TH>
+          <SortTh label={c("ID")} column="id" className="w-32" {...sorting} />
+          <SortTh label={c("Technique")} column="name" {...sorting} />
+          <TH className="w-24">{c("Tactic")}</TH>
           <SortTh
-            label="Labs"
+            label={c("Labs")}
             column="labs"
             className="w-16 text-right"
             defaultOrder="desc"
             {...sorting}
           />
           <SortTh
-            label="Rules"
+            label={c("Rules")}
             column="rules"
             className="w-16 text-right"
             defaultOrder="desc"
             {...sorting}
           />
           <SortTh
-            label="Tested"
+            label={c("Tested")}
             column="tested_rules"
             className="w-20 text-right"
             defaultOrder="desc"
             {...sorting}
           />
           <SortTh
-            label="Stories"
+            label={c("Stories")}
             column="stories"
             className="w-20 text-right"
             defaultOrder="desc"
             {...sorting}
           />
           <SortTh
-            label="Alerts"
+            label={c("Alerts")}
             column="alerts"
             className="w-16 text-right"
             defaultOrder="desc"
             {...sorting}
           />
           <SortTh
-            label="Investigations"
+            label={c("Investigations")}
             column="investigations"
             className="w-32 text-right"
             defaultOrder="desc"
@@ -468,7 +491,7 @@ function TechniquesTable({
                 "text-right tabular-nums",
                 t.lacking_tests && "font-medium text-sev-medium",
               )}
-              title={t.lacking_tests ? "Covered, but no rule with tests" : undefined}
+              title={t.lacking_tests ? c("Covered, but no rule with tests") : undefined}
             >
               {t.tested_rules}
             </TD>
@@ -482,32 +505,34 @@ function TechniquesTable({
   );
 }
 
-function ContentCoverage({ techniques }: { techniques: TechniqueCoverage[] }) {
-  const c = contentCoverage(techniques);
+function ContentCoverage({ techniques, c }: { techniques: TechniqueCoverage[]; c: CopyTranslate }) {
+  const coverage = contentCoverage(techniques);
   const blocks = [
     {
       id: "labs",
-      title: "Covered by labs",
-      note: "Hands-on labs teach these techniques.",
-      items: c.labs,
+      title: c("Covered by labs"),
+      note: c("Hands-on labs teach these techniques."),
+      items: coverage.labs,
     },
     {
       id: "detections",
-      title: "Covered by detections",
-      note: "At least one enabled rule maps to them.",
-      items: c.detections,
+      title: c("Covered by detections"),
+      note: c("At least one enabled rule maps to them."),
+      items: coverage.detections,
     },
     {
       id: "stories",
-      title: "Covered by stories",
-      note: "An attack story walks through them.",
-      items: c.stories,
+      title: c("Covered by stories"),
+      note: c("An attack story walks through them."),
+      items: coverage.stories,
     },
     {
       id: "lacking",
-      title: "Lacking tests",
-      note: "Covered by something, but no rule with positive and negative tests. Write tests, or a tested rule.",
-      items: c.lackingTests,
+      title: c("Lacking tests"),
+      note: c(
+        "Covered by something, but no rule with positive and negative tests. Write tests, or a tested rule.",
+      ),
+      items: coverage.lackingTests,
     },
   ];
   return (
@@ -518,13 +543,13 @@ function ContentCoverage({ techniques }: { techniques: TechniqueCoverage[] }) {
             <div className="flex items-baseline justify-between gap-2">
               <h2 className="text-sm font-semibold">{b.title}</h2>
               <span className="text-xs tabular-nums text-muted-foreground">
-                {b.items.length} of {c.total}
+                {b.items.length} {c("of")} {coverage.total}
               </span>
             </div>
             <Progress
               value={b.items.length}
-              max={Math.max(c.total, 1)}
-              label={`${b.title}: ${b.items.length} of ${c.total} techniques`}
+              max={Math.max(coverage.total, 1)}
+              label={`${b.title}: ${c("{{count}} of {{total}} techniques", { count: b.items.length, total: coverage.total })}`}
             />
             <p className="text-xs text-muted-foreground">{b.note}</p>
             <ul className="grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
@@ -535,7 +560,9 @@ function ContentCoverage({ techniques }: { techniques: TechniqueCoverage[] }) {
               ))}
               {b.items.length === 0 ? (
                 <li className="text-xs text-muted-foreground">
-                  {b.id === "lacking" ? "Every covered technique has a tested rule." : "None."}
+                  {b.id === "lacking"
+                    ? c("Every covered technique has a tested rule.")
+                    : c("None.")}
                 </li>
               ) : null}
             </ul>

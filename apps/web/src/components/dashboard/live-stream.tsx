@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { SeverityBadge } from "@/components/badges";
+import { useLocale } from "@/components/i18n/locale-provider";
 import { clock, parseStreamEvent, pushEvent } from "@/lib/live-stream";
 
 type Status = "connecting" | "live" | "reconnecting";
@@ -28,6 +29,7 @@ export function LiveStream() {
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [paused, setPaused] = useState(false);
   const [status, setStatus] = useState<Status>("connecting");
+  const { t } = useLocale();
 
   useEffect(() => {
     if (paused) return;
@@ -43,18 +45,16 @@ export function LiveStream() {
     return () => source.close();
   }, [paused]);
 
-  const label = paused ? "paused" : status;
+  const label = paused ? t("stream.paused") : t(`stream.${status}`);
 
   return (
     <Card className="xl:col-span-2" data-testid="live-stream" data-status={label}>
       <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
         <div>
           <CardTitle className="flex items-center gap-2">
-            <Radio className="size-4 text-primary" aria-hidden /> Live event stream
+            <Radio className="size-4 text-primary" aria-hidden /> {t("stream.title")}
           </CardTitle>
-          <CardDescription>
-            Synthetic telemetry replayed over Server-Sent Events, with the rule that matched.
-          </CardDescription>
+          <CardDescription>{t("stream.description")}</CardDescription>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[11px] capitalize text-muted-foreground" role="status">
@@ -68,36 +68,36 @@ export function LiveStream() {
               setStatus("connecting");
             }}
             data-testid="stream-toggle"
-            aria-label={paused ? "Resume live stream" : "Pause live stream"}
+            aria-label={paused ? t("stream.resumeAria") : t("stream.pauseAria")}
           >
             {paused ? <Play /> : <Pause />}
-            {paused ? "Resume" : "Pause"}
+            {paused ? t("stream.resume") : t("stream.pause")}
           </Button>
         </div>
       </CardHeader>
       <CardContent>
         <div className="overflow-hidden rounded-lg border border-border">
           <table className="w-full table-fixed text-xs">
-            <caption className="sr-only">Most recent synthetic events, newest first</caption>
+            <caption className="sr-only">{t("stream.caption")}</caption>
             <thead>
               <tr className="border-b border-border text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                 <th scope="col" className="w-[4.5rem] px-2 py-1.5">
-                  Time
+                  {t("stream.time")}
                 </th>
                 <th scope="col" className="w-[6rem] px-2 py-1.5">
-                  Source
+                  {t("stream.source")}
                 </th>
                 <th scope="col" className="w-[6.5rem] px-2 py-1.5">
-                  Host
+                  {t("stream.host")}
                 </th>
                 <th scope="col" className="w-[7rem] px-2 py-1.5">
-                  Event type
+                  {t("stream.eventType")}
                 </th>
                 <th scope="col" className="px-2 py-1.5">
-                  Rule
+                  {t("stream.rule")}
                 </th>
                 <th scope="col" className="w-[5.5rem] px-2 py-1.5">
-                  Severity
+                  {t("stream.severity")}
                 </th>
               </tr>
             </thead>
@@ -105,7 +105,7 @@ export function LiveStream() {
               {events.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-2 py-8 text-center text-muted-foreground">
-                    {paused ? "Paused." : "Connecting to the stream…"}
+                    {paused ? t("stream.pausedMessage") : t("stream.connectingMessage")}
                   </td>
                 </tr>
               ) : null}
@@ -138,7 +138,7 @@ export function LiveStream() {
                       </Link>
                     ) : (
                       <span className="text-muted-foreground" title={e.message}>
-                        {e.message || "no rule matched"}
+                        {e.message || t("stream.noRule")}
                       </span>
                     )}
                   </td>
@@ -146,7 +146,7 @@ export function LiveStream() {
                     {e.rule ? (
                       <SeverityBadge severity={e.severity as Severity} />
                     ) : (
-                      <span className="text-muted-foreground">normal</span>
+                      <span className="text-muted-foreground">{t("stream.normal")}</span>
                     )}
                   </td>
                 </tr>

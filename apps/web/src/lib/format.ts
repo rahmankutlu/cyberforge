@@ -1,31 +1,8 @@
 import type { AlertStatus, InvestigationStatus, Severity } from "@cyberforge/types";
+import type { Locale } from "@/lib/i18n";
 
 // All timestamps render in UTC. That is the SOC convention, and it keeps server-rendered and
 // client-rendered output identical (no hydration mismatches from differing time zones).
-const dateTime = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-  timeZone: "UTC",
-});
-const dateTimeFull = new Intl.DateTimeFormat("en-GB", {
-  year: "numeric",
-  month: "short",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: false,
-  timeZone: "UTC",
-});
-const dateOnly = new Intl.DateTimeFormat("en-GB", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
 const timeOnly = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
   minute: "2-digit",
@@ -34,22 +11,66 @@ const timeOnly = new Intl.DateTimeFormat("en-GB", {
   timeZone: "UTC",
 });
 
-export const formatDateTime = (iso: string) => `${dateTime.format(new Date(iso))} UTC`;
-export const formatDateTimeFull = (iso: string) => `${dateTimeFull.format(new Date(iso))} UTC`;
-export const formatDate = (iso: string) => dateOnly.format(new Date(iso));
+export const formatDateTime = (iso: string, locale: Locale = "en") =>
+  `${new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  }).format(new Date(iso))} UTC`;
+export const formatDateTimeFull = (iso: string, locale: Locale = "en") =>
+  `${new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-GB", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+  }).format(new Date(iso))} UTC`;
+export const formatDate = (iso: string, locale: Locale = "en") =>
+  new Intl.DateTimeFormat(locale === "tr" ? "tr-TR" : "en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(iso));
 export const formatTime = (iso: string) => `${timeOnly.format(new Date(iso))}`;
 
-export function formatRelative(iso: string, now: number = Date.now()): string {
+export function formatRelative(
+  iso: string,
+  now: number = Date.now(),
+  locale: Locale = "en",
+): string {
   const seconds = Math.round((now - new Date(iso).getTime()) / 1000);
   const abs = Math.abs(seconds);
-  const suffix = seconds >= 0 ? "ago" : "from now";
-  if (abs < 45) return seconds >= 0 ? "just now" : "in a moment";
-  const units: [number, string][] = [
-    [60, "m"],
-    [3600, "h"],
-    [86400, "d"],
-    [604800, "w"],
-  ];
+  const suffix =
+    locale === "tr" ? (seconds >= 0 ? "önce" : "sonra") : seconds >= 0 ? "ago" : "from now";
+  if (abs < 45)
+    return locale === "tr"
+      ? seconds >= 0
+        ? "az önce"
+        : "birazdan"
+      : seconds >= 0
+        ? "just now"
+        : "in a moment";
+  const units: [number, string][] =
+    locale === "tr"
+      ? [
+          [60, "dk"],
+          [3600, "sa"],
+          [86400, "g"],
+          [604800, "hf"],
+        ]
+      : [
+          [60, "m"],
+          [3600, "h"],
+          [86400, "d"],
+          [604800, "w"],
+        ];
   let value = abs / 60;
   let unit = "m";
   for (const [size, label] of units) {
@@ -61,14 +82,16 @@ export function formatRelative(iso: string, now: number = Date.now()): string {
   return `${Math.floor(value)}${unit} ${suffix}`;
 }
 
-export function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`;
+export function formatDuration(minutes: number, locale: Locale = "en"): string {
+  if (minutes < 60) return `${minutes} ${locale === "tr" ? "dk" : "min"}`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
+  if (locale === "tr") return m ? `${h} sa ${m} dk` : `${h} sa`;
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
-export const formatNumber = (n: number) => new Intl.NumberFormat("en-US").format(n);
+export const formatNumber = (n: number, locale: Locale = "en") =>
+  new Intl.NumberFormat(locale === "tr" ? "tr-TR" : "en-US").format(n);
 
 export function titleCase(text: string): string {
   return text.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

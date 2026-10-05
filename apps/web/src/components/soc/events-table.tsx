@@ -10,19 +10,22 @@ import { SortTh } from "@/components/data/sort-th";
 import { apiGet } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
 import type { SearchParams } from "@/lib/params";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 function EventDetails({ id }: { id: number }) {
+  const { c } = useLocale();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["event", id],
     queryFn: () => apiGet<SecurityEvent>(`/events/${id}`),
   });
   if (isLoading) return <Skeleton className="h-20 w-full" />;
-  if (isError || !data) return <p className="text-xs text-sev-high">Could not load this event.</p>;
+  if (isError || !data)
+    return <p className="text-xs text-sev-high">{c("Could not load this event.")}</p>;
   return (
     <div className="grid gap-3 lg:grid-cols-2">
       <div>
         <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          Raw
+          {c("Raw")}
         </p>
         <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px] leading-5">
           {data.raw}
@@ -31,7 +34,7 @@ function EventDetails({ id }: { id: number }) {
       </div>
       <div>
         <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-          Parsed fields
+          {c("Parsed fields")}
         </p>
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded-md border border-border p-2.5 text-[11px]">
           {Object.entries(data.fields).map(([k, v]) => (
@@ -56,12 +59,13 @@ export function EventsTable({
   sorting: { path: string; params: SearchParams; sort: string; order: "asc" | "desc" };
 }) {
   const [open, setOpen] = useState<number | null>(null);
+  const { c, locale } = useLocale();
   if (events.length === 0) {
     return (
       <EmptyState
         icon={<Activity />}
-        title="No events match"
-        description="Adjust the filters, or run a lab to generate telemetry."
+        title={c("No events match")}
+        description={c("Adjust the filters, or run a lab to generate telemetry.")}
       />
     );
   }
@@ -70,20 +74,20 @@ export function EventsTable({
       <THead>
         <TR className="hover:bg-transparent">
           <TH className="w-8">
-            <span className="sr-only">Expand</span>
+            <span className="sr-only">{c("Expand")}</span>
           </TH>
           <SortTh
-            label="Time"
+            label={c("Time")}
             column="timestamp"
             defaultOrder="desc"
             className="w-40"
             {...sorting}
           />
-          <SortTh label="Source" column="source" className="w-32" {...sorting} />
-          <SortTh label="Host" column="host" className="w-36" {...sorting} />
-          <SortTh label="User" column="user" className="w-36" {...sorting} />
-          <TH>Event</TH>
-          <SortTh label="Outcome" column="outcome" className="w-24" {...sorting} />
+          <SortTh label={c("Source")} column="source" className="w-32" {...sorting} />
+          <SortTh label={c("Host")} column="host" className="w-36" {...sorting} />
+          <SortTh label={c("User")} column="user" className="w-36" {...sorting} />
+          <TH>{c("Event")}</TH>
+          <SortTh label={c("Outcome")} column="outcome" className="w-24" {...sorting} />
         </TR>
       </THead>
       <TBody>
@@ -96,7 +100,7 @@ export function EventsTable({
                   <button
                     type="button"
                     aria-expanded={expanded}
-                    aria-label={expanded ? "Hide raw event" : "Show raw event"}
+                    aria-label={expanded ? c("Hide raw event") : c("Show raw event")}
                     onClick={() => setOpen(expanded ? null : e.id)}
                     className="rounded p-0.5 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                   >
@@ -106,7 +110,7 @@ export function EventsTable({
                   </button>
                 </TD>
                 <TD className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-                  {formatDateTime(e.timestamp)}
+                  {formatDateTime(e.timestamp, locale)}
                 </TD>
                 <TD>
                   <Badge variant="outline" className="font-mono">
@@ -120,9 +124,9 @@ export function EventsTable({
                     {e.synthetic ? null : (
                       <Badge
                         variant="success"
-                        title="Received from a local lab container, not synthetic"
+                        title={c("Received from a local lab container, not synthetic")}
                       >
-                        live
+                        {c("live")}
                       </Badge>
                     )}
                     <span className="truncate">{e.message}</span>

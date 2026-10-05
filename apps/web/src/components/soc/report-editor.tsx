@@ -21,6 +21,7 @@ import { toast } from "sonner";
 
 import { Markdown } from "@/components/markdown";
 import { apiGet, apiSend } from "@/lib/api";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const lines = (text: string) =>
   text
@@ -104,6 +105,7 @@ export function ReportEditor({
   investigationId: number;
   report: IncidentReport;
 }) {
+  const { c } = useLocale();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [form, setForm] = useState<Form>(() => toForm(report));
@@ -118,12 +120,12 @@ export function ReportEditor({
       apiSend<IncidentReport>("PUT", `/investigations/${investigationId}/report`, toPayload(form)),
     onSuccess: () => {
       setDirty(false);
-      toast.success("Report saved");
+      toast.success(c("Report saved"));
       void queryClient.invalidateQueries({ queryKey: ["report-preview", investigationId] });
       router.refresh();
     },
     onError: (error: Error) =>
-      toast.error("Could not save the report", { description: error.message }),
+      toast.error(c("Could not save the report"), { description: error.message }),
   });
 
   const preview = useQuery({
@@ -140,15 +142,15 @@ export function ReportEditor({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <NativeSelect
-            aria-label="Report status"
+            aria-label={c("Report status")}
             value={form.status}
             onChange={(e) => set("status", e.target.value as "draft" | "final")}
             className="w-32"
           >
-            <option value="draft">Draft</option>
-            <option value="final">Final</option>
+            <option value="draft">{c("Draft")}</option>
+            <option value="final">{c("Final")}</option>
           </NativeSelect>
-          {dirty ? <span className="text-xs text-sev-medium">Unsaved changes</span> : null}
+          {dirty ? <span className="text-xs text-sev-medium">{c("Unsaved changes")}</span> : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild variant="outline" size="sm">
@@ -157,7 +159,7 @@ export function ReportEditor({
               download={`incident-${investigationId}.md`}
               data-testid="export-markdown"
             >
-              <Download /> Export Markdown
+              <Download /> {c("Export Markdown")}
             </a>
           </Button>
           <Button asChild variant="outline" size="sm">
@@ -166,31 +168,31 @@ export function ReportEditor({
               download={`incident-${investigationId}.json`}
               data-testid="export-json"
             >
-              <FileJson /> Export JSON
+              <FileJson /> {c("Export JSON")}
             </a>
           </Button>
           <Button
             variant="outline"
             size="sm"
             disabled
-            title="PDF export is an extension point: see docs/architecture.md"
+            title={c("PDF export is an extension point: see docs/architecture.md")}
           >
-            PDF (extension point)
+            {c("PDF (extension point)")}
           </Button>
           <Button
             onClick={() => save.mutate()}
             disabled={!dirty || save.isPending}
             data-testid="save-report"
           >
-            <Save /> {save.isPending ? "Saving…" : "Save report"}
+            <Save /> {save.isPending ? c("Saving…") : c("Save report")}
           </Button>
         </div>
       </div>
 
       <Tabs defaultValue="edit">
         <TabsList>
-          <TabsTrigger value="edit">Edit</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
+          <TabsTrigger value="edit">{c("Edit")}</TabsTrigger>
+          <TabsTrigger value="preview">{c("Preview")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="edit">
@@ -198,8 +200,8 @@ export function ReportEditor({
             <div className="space-y-4">
               <Section
                 id="rep-summary"
-                label="Executive summary"
-                hint="Three sentences for someone who will read nothing else."
+                label={c("Executive summary")}
+                hint={c("Three sentences for someone who will read nothing else.")}
               >
                 <Textarea
                   id="rep-summary"
@@ -208,7 +210,7 @@ export function ReportEditor({
                   onChange={(e) => set("executive_summary", e.target.value)}
                 />
               </Section>
-              <Section id="rep-assets" label="Affected assets" hint="One per line.">
+              <Section id="rep-assets" label={c("Affected assets")} hint={c("One per line.")}>
                 <Textarea
                   id="rep-assets"
                   rows={3}
@@ -218,8 +220,8 @@ export function ReportEditor({
               </Section>
               <Section
                 id="rep-ind"
-                label="Indicators"
-                hint="One per line: addresses, domains, hashes, accounts."
+                label={c("Indicators")}
+                hint={c("One per line: addresses, domains, hashes, accounts.")}
               >
                 <Textarea
                   id="rep-ind"
@@ -231,8 +233,10 @@ export function ReportEditor({
               </Section>
               <Section
                 id="rep-mitre"
-                label="MITRE techniques"
-                hint="Comma-separated identifiers, e.g. T1059.001, T1110.001. Unknown identifiers are rejected."
+                label={c("MITRE techniques")}
+                hint={c(
+                  "Comma-separated identifiers, e.g. T1059.001, T1110.001. Unknown identifiers are rejected.",
+                )}
               >
                 <Input
                   id="rep-mitre"
@@ -241,7 +245,7 @@ export function ReportEditor({
                   className="font-mono"
                 />
               </Section>
-              <Section id="rep-evidence" label="Evidence">
+              <Section id="rep-evidence" label={c("Evidence")}>
                 <Textarea
                   id="rep-evidence"
                   rows={4}
@@ -252,12 +256,12 @@ export function ReportEditor({
             </div>
             <div className="space-y-4">
               <div className="space-y-1">
-                <Label>Incident timeline</Label>
+                <Label>{c("Incident timeline")}</Label>
                 <div className="space-y-1.5">
                   {form.timeline.map((row, i) => (
                     <div key={i} className="flex items-center gap-1.5">
                       <Input
-                        aria-label={`Timeline time ${i + 1}`}
+                        aria-label={`${c("Timeline time")} ${i + 1}`}
                         value={row.time}
                         onChange={(e) =>
                           set(
@@ -271,7 +275,7 @@ export function ReportEditor({
                         className="w-52 font-mono text-xs"
                       />
                       <Input
-                        aria-label={`Timeline event ${i + 1}`}
+                        aria-label={`${c("Timeline event")} ${i + 1}`}
                         value={row.event}
                         onChange={(e) =>
                           set(
@@ -281,12 +285,12 @@ export function ReportEditor({
                             ),
                           )
                         }
-                        placeholder="What happened"
+                        placeholder={c("What happened")}
                       />
                       <Button
                         variant="ghost"
                         size="icon"
-                        aria-label={`Remove timeline row ${i + 1}`}
+                        aria-label={`${c("Remove timeline row")} ${i + 1}`}
                         onClick={() =>
                           set(
                             "timeline",
@@ -303,11 +307,11 @@ export function ReportEditor({
                     size="sm"
                     onClick={() => set("timeline", [...form.timeline, { time: "", event: "" }])}
                   >
-                    <Plus /> Add row
+                    <Plus /> {c("Add row")}
                   </Button>
                 </div>
               </div>
-              <Section id="rep-root" label="Root cause">
+              <Section id="rep-root" label={c("Root cause")}>
                 <Textarea
                   id="rep-root"
                   rows={3}
@@ -315,7 +319,7 @@ export function ReportEditor({
                   onChange={(e) => set("root_cause", e.target.value)}
                 />
               </Section>
-              <Section id="rep-contain" label="Containment">
+              <Section id="rep-contain" label={c("Containment")}>
                 <Textarea
                   id="rep-contain"
                   rows={3}
@@ -323,7 +327,7 @@ export function ReportEditor({
                   onChange={(e) => set("containment", e.target.value)}
                 />
               </Section>
-              <Section id="rep-remed" label="Remediation">
+              <Section id="rep-remed" label={c("Remediation")}>
                 <Textarea
                   id="rep-remed"
                   rows={3}
@@ -331,7 +335,7 @@ export function ReportEditor({
                   onChange={(e) => set("remediation", e.target.value)}
                 />
               </Section>
-              <Section id="rep-lessons" label="Lessons learned">
+              <Section id="rep-lessons" label={c("Lessons learned")}>
                 <Textarea
                   id="rep-lessons"
                   rows={3}
@@ -346,7 +350,7 @@ export function ReportEditor({
         <TabsContent value="preview">
           {dirty ? (
             <p className="rounded-lg border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-              Save the report to refresh the preview.
+              {c("Save the report to refresh the preview.")}
             </p>
           ) : preview.isLoading ? (
             <Skeleton className="h-64 w-full" />

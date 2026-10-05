@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useMemo } from "react";
+import { localizeKnownCopy } from "@/lib/i18n/copy";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 import {
   buildGraph,
@@ -54,6 +56,7 @@ const STYLE: Record<GraphNodeType, { icon: LucideIcon; label: string; tone: stri
 type NodeData = { label: string; type: GraphNodeType; fresh: boolean };
 
 function StoryNode({ data }: NodeProps<Node<NodeData>>) {
+  const { locale } = useLocale();
   const style = STYLE[data.type];
   const Icon = style.icon;
   return (
@@ -63,7 +66,7 @@ function StoryNode({ data }: NodeProps<Node<NodeData>>) {
         style.tone,
         data.fresh && "ring-2 ring-primary/40",
       )}
-      title={`${style.label}: ${data.label}`}
+      title={`${localizeKnownCopy(locale, style.label)}: ${data.label}`}
     >
       <Handle type="target" position={Position.Left} className="!size-1.5 !border-0 !bg-border" />
       <Icon className="size-3.5 shrink-0" aria-hidden />
@@ -81,6 +84,7 @@ const NODE_TYPES = { story: StoryNode };
  * It grows as steps are revealed; the newest additions are ringed. A text version follows.
  */
 export function AttackGraph({ steps, className }: { steps: StoryStep[]; className?: string }) {
+  const { locale, c } = useLocale();
   const { resolvedTheme } = useTheme();
   const { nodes, edges } = useMemo(() => buildGraph(steps), [steps]);
   const latest = steps.length - 1;
@@ -118,12 +122,15 @@ export function AttackGraph({ steps, className }: { steps: StoryStep[]; classNam
   const text = useMemo(() => describeEdges(nodes, edges), [nodes, edges]);
 
   return (
-    <section className={className} aria-label="Investigation graph" data-testid="attack-graph">
+    <section className={className} aria-label={c("Investigation graph")} data-testid="attack-graph">
       <div
         className="overflow-hidden rounded-lg border border-border bg-card"
         style={{ height: graphHeight(nodes) }}
         role="group"
-        aria-label={`Graph of ${nodes.length} entities and ${edges.length} relationships`}
+        aria-label={c("Graph of {{entities}} entities, {{relationships}} relationships", {
+          entities: nodes.length,
+          relationships: edges.length,
+        })}
       >
         <ReactFlow
           nodes={flowNodes}
@@ -145,13 +152,13 @@ export function AttackGraph({ steps, className }: { steps: StoryStep[]; classNam
       </div>
       <ul
         className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground"
-        aria-label="Legend"
+        aria-label={c("Legend")}
       >
         {(Object.keys(STYLE) as GraphNodeType[]).map((t) => {
           const { icon: Icon, label } = STYLE[t];
           return (
             <li key={t} className="inline-flex items-center gap-1">
-              <Icon className="size-3" aria-hidden /> {label}
+              <Icon className="size-3" aria-hidden /> {localizeKnownCopy(locale, label)}
             </li>
           );
         })}
@@ -159,7 +166,7 @@ export function AttackGraph({ steps, className }: { steps: StoryStep[]; classNam
       </ul>
       <details className="mt-2 text-xs">
         <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-          Relationships as text ({text.length})
+          {c("Relationships as text")} ({text.length})
         </summary>
         <ul
           className="mt-1.5 list-disc space-y-0.5 pl-5 text-muted-foreground"

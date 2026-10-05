@@ -31,8 +31,14 @@ import { AlertsTable } from "@/components/soc/alerts-table";
 import { apiGet, apiGetOrNull } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { first, hrefWith, positiveInt, type SearchParams } from "@/lib/params";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { localizeContentTree } from "@/lib/i18n/content";
+import { getLocale } from "@/lib/i18n/server";
 
-export const metadata = { title: "Threat intelligence" };
+export async function generateMetadata() {
+  const c = createCopyTranslator(await getLocale());
+  return { title: c("Threat intelligence") };
+}
 const PAGE_SIZE = 15;
 const TYPES = ["ip", "domain", "url", "sha256", "email", "cve", "asn"];
 
@@ -41,11 +47,13 @@ export default async function ThreatIntelPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
   const sp = await searchParams;
   const sort = first(sp.sort) ?? "last_seen";
   const order = first(sp.order) === "asc" ? "asc" : "desc";
   const type = first(sp.type);
-  const result = await apiGet<Page<Indicator>>("/indicators", {
+  const sourceResult = await apiGet<Page<Indicator>>("/indicators", {
     page: positiveInt(sp.page, 1),
     page_size: PAGE_SIZE,
     sort,
@@ -55,21 +63,25 @@ export default async function ThreatIntelPage({
     type: type && TYPES.includes(type) ? type : undefined,
   });
   const selectedId = Number.parseInt(first(sp.selected) ?? "", 10);
-  const selected = Number.isFinite(selectedId)
+  const sourceSelected = Number.isFinite(selectedId)
     ? await apiGetOrNull<IndicatorDetail>(`/indicators/${selectedId}`)
     : null;
+  const result = localizeContentTree(locale, sourceResult);
+  const selected = localizeContentTree(locale, sourceSelected);
   const sorting = { path: "/threat-intel", params: sp, sort, order } as const;
 
   return (
     <>
       <PageHeader
-        title="Threat intelligence"
-        description="A small local workspace for indicators: seeded synthetic examples, plus anything you import. Indicators are matched against your own telemetry locally."
+        title={c("Threat intelligence")}
+        description={c(
+          "A small local workspace for indicators: seeded synthetic examples, plus anything you import. Indicators are matched against your own telemetry locally.",
+        )}
         actions={<ImportIndicatorDialog />}
         meta={
           <Badge variant="outline" className="gap-1">
-            <Lock className="size-3" /> No automatic enrichment: your telemetry is never sent to
-            third parties
+            <Lock className="size-3" />{" "}
+            {c("No automatic enrichment: your telemetry is never sent to third parties")}
           </Badge>
         }
       />
@@ -77,21 +89,21 @@ export default async function ThreatIntelPage({
         <PersistFilters storageKey="intel" />
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <UrlSearch
-            placeholder="Search value, notes, source…"
+            placeholder={c("Search value, notes, source…")}
             className="w-full sm:w-72"
-            label="Search indicators"
+            label={c("Search indicators")}
           />
           <UrlSelect
             param="type"
-            label="Type"
+            label={c("Type")}
             options={TYPES.map((t) => ({ value: t, label: t }))}
             className="w-40"
           />
           <UrlSearch
             param="tag"
-            placeholder="Tag, e.g. dns-tunnel"
+            placeholder={c("Tag, e.g. dns-tunnel")}
             className="w-full sm:w-44"
-            label="Filter by tag"
+            label={c("Filter by tag")}
           />
           <ClearFilters keys={["q", "type", "tag"]} storageKey="intel" />
         </div>
@@ -102,26 +114,26 @@ export default async function ThreatIntelPage({
           {result.items.length === 0 ? (
             <EmptyState
               icon={<Target />}
-              title="No indicators match"
-              description="Import one manually or clear the filters."
+              title={c("No indicators match")}
+              description={c("Import one manually or clear the filters.")}
             />
           ) : (
             <Table>
               <THead>
                 <TR className="hover:bg-transparent">
-                  <SortTh label="Type" column="type" className="w-20" {...sorting} />
-                  <SortTh label="Indicator" column="value" {...sorting} />
+                  <SortTh label={c("Type")} column="type" className="w-20" {...sorting} />
+                  <SortTh label={c("Indicator")} column="value" {...sorting} />
                   <SortTh
-                    label="Confidence"
+                    label={c("Confidence")}
                     column="confidence"
                     className="w-36"
                     defaultOrder="desc"
                     {...sorting}
                   />
-                  <TH>Tags</TH>
-                  <TH className="w-28">Source</TH>
+                  <TH>{c("Tags")}</TH>
+                  <TH className="w-28">{c("Source")}</TH>
                   <SortTh
-                    label="Last seen"
+                    label={c("Last seen")}
                     column="last_seen"
                     className="w-28 text-right"
                     defaultOrder="desc"
@@ -151,7 +163,7 @@ export default async function ThreatIntelPage({
                       </Link>
                       {ind.synthetic ? null : (
                         <Badge variant="success" className="mt-0.5 py-0">
-                          imported
+                          {c("imported")}
                         </Badge>
                       )}
                     </TD>
@@ -160,7 +172,7 @@ export default async function ThreatIntelPage({
                         <Progress
                           value={ind.confidence}
                           className="w-16"
-                          label={`Confidence ${ind.confidence}`}
+                          label={`${c("Confidence")} ${ind.confidence}`}
                         />
                         <span className="text-xs tabular-nums text-muted-foreground">
                           {ind.confidence}
@@ -216,20 +228,20 @@ export default async function ThreatIntelPage({
             <CardContent className="space-y-4">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                 <div>
-                  <dt className="text-muted-foreground">Confidence</dt>
+                  <dt className="text-muted-foreground">{c("Confidence")}</dt>
                   <dd className="tabular-nums">{selected.confidence}/100</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Source</dt>
+                  <dt className="text-muted-foreground">{c("Source")}</dt>
                   <dd>{selected.source}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">First seen</dt>
-                  <dd>{formatDate(selected.first_seen)}</dd>
+                  <dt className="text-muted-foreground">{c("First seen")}</dt>
+                  <dd>{formatDate(selected.first_seen, locale)}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">Last seen</dt>
-                  <dd>{formatDate(selected.last_seen)}</dd>
+                  <dt className="text-muted-foreground">{c("Last seen")}</dt>
+                  <dd>{formatDate(selected.last_seen, locale)}</dd>
                 </div>
               </dl>
               {selected.tags.length ? (
@@ -248,13 +260,13 @@ export default async function ThreatIntelPage({
               ) : null}
               <div>
                 <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Related alerts ({selected.related_alerts.length})
+                  {c("Related alerts")} ({selected.related_alerts.length})
                 </h3>
                 {selected.related_alerts.length ? (
                   <AlertsTable alerts={selected.related_alerts} compact />
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    No local alerts mention this indicator.
+                    {c("No local alerts mention this indicator.")}
                   </p>
                 )}
               </div>

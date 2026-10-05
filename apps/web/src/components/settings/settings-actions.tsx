@@ -8,23 +8,25 @@ import { toast } from "sonner";
 
 import { apiGet, apiSend } from "@/lib/api";
 import { getProfileId, useLearningProgress } from "@/lib/learning-progress";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export function LearningProgressActions() {
+  const { t } = useLocale();
   const { completed, reset } = useLearningProgress();
   const backup = useMutation({
     mutationFn: () => apiSend("PUT", `/learning/progress/${getProfileId()}`, { completed }),
-    onSuccess: () => toast.success("Progress backed up to this CyberForge instance"),
-    onError: (e: Error) => toast.error("Backup failed", { description: e.message }),
+    onSuccess: () => toast.success(t("settings.progressBackedUp")),
+    onError: (e: Error) => toast.error(t("settings.backupFailed"), { description: e.message }),
   });
   const restore = useMutation({
     mutationFn: () => apiGet<{ completed: string[] }>(`/learning/progress/${getProfileId()}`),
     onSuccess: (data) => {
       window.localStorage.setItem("cyberforge:learning:completed", JSON.stringify(data.completed));
       window.dispatchEvent(new StorageEvent("storage", { key: "cyberforge:learning:completed" }));
-      toast.success(`Restored ${data.completed.length} completed modules`);
+      toast.success(t("settings.restored", { count: data.completed.length }));
       window.location.reload();
     },
-    onError: (e: Error) => toast.error("Restore failed", { description: e.message }),
+    onError: (e: Error) => toast.error(t("settings.restoreFailed"), { description: e.message }),
   });
 
   return (
@@ -35,7 +37,7 @@ export function LearningProgressActions() {
         onClick={() => backup.mutate()}
         disabled={backup.isPending}
       >
-        <CloudUpload /> Back up ({completed.length})
+        <CloudUpload /> {t("settings.backup", { count: completed.length })}
       </Button>
       <Button
         variant="outline"
@@ -43,17 +45,17 @@ export function LearningProgressActions() {
         onClick={() => restore.mutate()}
         disabled={restore.isPending}
       >
-        <RotateCcw /> Restore
+        <RotateCcw /> {t("settings.restore")}
       </Button>
       <Button
         variant="ghost"
         size="sm"
         onClick={() => {
           reset();
-          toast.success("Local progress cleared");
+          toast.success(t("settings.progressCleared"));
         }}
       >
-        <Trash2 /> Clear local progress
+        <Trash2 /> {t("settings.clearProgress")}
       </Button>
     </div>
   );
@@ -61,13 +63,14 @@ export function LearningProgressActions() {
 
 export function DemoResetButton() {
   const router = useRouter();
+  const { t } = useLocale();
   const reset = useMutation({
     mutationFn: () => apiSend<{ detail: string }>("POST", "/demo/reset"),
     onSuccess: (d) => {
-      toast.success("Demo data reset", { description: d.detail });
+      toast.success(t("settings.demoReset"), { description: d.detail });
       router.refresh();
     },
-    onError: (e: Error) => toast.error("Reset failed", { description: e.message }),
+    onError: (e: Error) => toast.error(t("settings.resetFailed"), { description: e.message }),
   });
   return (
     <Button
@@ -75,15 +78,10 @@ export function DemoResetButton() {
       size="sm"
       disabled={reset.isPending}
       onClick={() => {
-        if (
-          window.confirm(
-            "Reset all synthetic alerts, events and investigations and reseed the demo data? Rules and notes you created are removed with them.",
-          )
-        )
-          reset.mutate();
+        if (window.confirm(t("settings.resetConfirm"))) reset.mutate();
       }}
     >
-      <RotateCcw /> {reset.isPending ? "Resetting…" : "Reset demo data"}
+      <RotateCcw /> {reset.isPending ? t("settings.resetting") : t("settings.resetDemo")}
     </Button>
   );
 }

@@ -36,6 +36,8 @@ import { toast } from "sonner";
 import { TranslationView } from "@/components/detections/translation-view";
 import { Highlighted, Mark, TraceView } from "@/components/playground/trace-view";
 import { apiGet, apiSend } from "@/lib/api";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { countLabel } from "@/lib/i18n/copy";
 import { formatOffset, matchNeedles, verdictLabel, type Filter } from "@/lib/playground";
 import { readStorage, writeStorage } from "@/lib/persistent-storage";
 
@@ -83,10 +85,11 @@ interface RunBody {
 
 /** Rendered only while the Notes tab is open, so it can read storage without a hydration mismatch. */
 function ScratchNotes() {
+  const { c } = useLocale();
   const [notes, setNotes] = useState(() => readStorage(NOTES_KEY) ?? "");
   return (
     <div>
-      <Label htmlFor="scratch-notes">Your notes (kept in this browser only)</Label>
+      <Label htmlFor="scratch-notes">{c("Your notes (kept in this browser only)")}</Label>
       <Textarea
         id="scratch-notes"
         value={notes}
@@ -95,7 +98,7 @@ function ScratchNotes() {
           writeStorage(NOTES_KEY, e.target.value || null);
         }}
         className="mt-1 min-h-28 text-xs"
-        placeholder="Ideas for filters, events to add, questions for the team…"
+        placeholder={c("Ideas for filters, events to add, questions for the team…")}
       />
     </div>
   );
@@ -127,6 +130,7 @@ export function Playground({
   presets,
   datasets,
 }: PlaygroundProps) {
+  const { c } = useLocale();
   const router = useRouter();
   const [content, setContent] = useState(initialContent);
   const [format, setFormat] = useState<RuleFormat>(initialFormat);
@@ -239,7 +243,7 @@ export function Playground({
       setSelected(firstMatch?.index ?? (result.results.length ? 0 : null));
       setRightTab("trace");
     },
-    onError: (e: Error) => toast.error("Could not run the rule", { description: e.message }),
+    onError: (e: Error) => toast.error(c("Could not run the rule"), { description: e.message }),
   });
 
   const explain = useQuery({
@@ -295,16 +299,16 @@ export function Playground({
       autoRan.current = false;
       toast.message(`Loaded ${rule.title}`);
     },
-    onError: (e: Error) => toast.error("Could not load the rule", { description: e.message }),
+    onError: (e: Error) => toast.error(c("Could not load the rule"), { description: e.message }),
   });
 
   const save = useMutation({
     mutationFn: () => apiSend<RuleDetail>("POST", "/detections", { content, format: "sigma" }),
     onSuccess: (rule) => {
-      toast.success("Rule saved", { description: rule.title });
+      toast.success(c("Rule saved"), { description: rule.title });
       router.push(`/detections/${rule.slug}`);
     },
-    onError: (e: Error) => toast.error("Could not save the rule", { description: e.message }),
+    onError: (e: Error) => toast.error(c("Could not save the rule"), { description: e.message }),
   });
 
   const changeFormat = (next: RuleFormat) => {
@@ -356,29 +360,29 @@ export function Playground({
       data-testid="playground"
     >
       {/* LEFT: rule */}
-      <section aria-label="Rule editor" className="min-w-0">
+      <section aria-label={c("Rule editor")} className="min-w-0">
         <Card className="p-4">
           <Tabs defaultValue="rule">
             <TabsList>
               <TabsTrigger value="rule" data-testid="tab-rule">
-                Rule
+                {c("Rule")}
               </TabsTrigger>
               <TabsTrigger value="notes" data-testid="tab-notes">
-                Notes
+                {c("Notes")}
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="rule" className="space-y-3">
               <div className="flex flex-wrap items-end gap-2">
                 <div className="min-w-40 flex-1">
-                  <Label htmlFor="preset">Load an existing rule</Label>
+                  <Label htmlFor="preset">{c("Load an existing rule")}</Label>
                   <NativeSelect
                     id="preset"
                     value=""
                     onChange={(e) => e.target.value && load.mutate(e.target.value)}
                     className="mt-1"
                   >
-                    <option value="">Choose a rule…</option>
+                    <option value="">{c("Choose a rule…")}</option>
                     {(["sigma", "yara", "suricata"] as const).map((f) => (
                       <optgroup key={f} label={f.toUpperCase()}>
                         {presets
@@ -393,7 +397,7 @@ export function Playground({
                   </NativeSelect>
                 </div>
                 <div className="w-28">
-                  <Label htmlFor="format">Format</Label>
+                  <Label htmlFor="format">{c("Format")}</Label>
                   <NativeSelect
                     id="format"
                     value={format}
@@ -408,7 +412,7 @@ export function Playground({
               </div>
 
               <Textarea
-                aria-label="Rule source"
+                aria-label={c("Rule source")}
                 data-testid="rule-editor"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
@@ -429,7 +433,9 @@ export function Playground({
                     tooLarge ? "text-sev-critical" : "text-muted-foreground",
                   )}
                 >
-                  {content.length.toLocaleString()} characters · runs locally
+                  {c("{{count}} characters · runs locally", {
+                    count: content.length.toLocaleString(),
+                  })}
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   {format === "sigma" ? (
@@ -440,7 +446,7 @@ export function Playground({
                       disabled={save.isPending || !content.trim() || tooLarge || !result?.valid}
                       data-testid="save-rule"
                     >
-                      <Save /> Save
+                      <Save /> {c("Save")}
                     </Button>
                   ) : null}
                   <Button
@@ -448,14 +454,14 @@ export function Playground({
                     disabled={run.isPending || !content.trim() || tooLarge}
                     data-testid="run-rule"
                   >
-                    <Play /> {run.isPending ? "Running…" : "Run rule"}
+                    <Play /> {run.isPending ? c("Running…") : c("Run rule")}
                     <Kbd className="ml-1 hidden sm:inline-flex">⌘↵</Kbd>
                   </Button>
                 </div>
               </div>
 
               {result && !result.valid ? (
-                <ul className="space-y-1.5" aria-label="Errors" data-testid="rule-errors">
+                <ul className="space-y-1.5" aria-label={c("Errors")} data-testid="rule-errors">
                   {result.errors.map((e, i) => (
                     <li
                       key={i}
@@ -467,7 +473,7 @@ export function Playground({
                 </ul>
               ) : null}
               {result?.valid && result.warnings.length ? (
-                <ul className="space-y-1.5" aria-label="Warnings">
+                <ul className="space-y-1.5" aria-label={c("Warnings")}>
                   {result.warnings.map((w, i) => (
                     <li
                       key={i}
@@ -480,7 +486,7 @@ export function Playground({
               ) : null}
               {stale ? (
                 <p className="text-[11px] text-sev-medium" role="status">
-                  The rule changed since the last run. Run it again to refresh the results.
+                  {c("The rule changed since the last run. Run it again to refresh the results.")}
                 </p>
               ) : null}
             </TabsContent>
@@ -504,7 +510,7 @@ export function Playground({
                         <Badge variant="outline">{result.meta.status}</Badge>
                       ) : null}
                       {result.meta.is_correlation ? (
-                        <Badge variant="accent">correlation</Badge>
+                        <Badge variant="accent">{c("correlation")}</Badge>
                       ) : null}
                     </p>
                   </div>
@@ -513,7 +519,7 @@ export function Playground({
                   ) : null}
                   <div>
                     <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Known false positives
+                      {c("Known false positives")}
                     </h4>
                     {result.meta.falsepositives.length ? (
                       <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
@@ -523,14 +529,14 @@ export function Playground({
                       </ul>
                     ) : (
                       <p className="mt-1 text-muted-foreground">
-                        None documented. Add <code>falsepositives</code> to help analysts.
+                        {c("None documented. Add falsepositives to help analysts.")}
                       </p>
                     )}
                   </div>
                   {result.meta.references.length ? (
                     <div>
                       <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        References
+                        {c("References")}
                       </h4>
                       <ul className="mt-1 space-y-0.5">
                         {result.meta.references.map((r) => (
@@ -551,7 +557,7 @@ export function Playground({
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Run the rule to see its description, false positives and references.
+                  {c("Run the rule to see its description, false positives and references.")}
                 </p>
               )}
               <ScratchNotes />
@@ -561,17 +567,17 @@ export function Playground({
       </section>
 
       {/* CENTER: test data */}
-      <section aria-label="Test data" className="min-w-0">
+      <section aria-label={c("Test data")} className="min-w-0">
         <Card className="p-4">
           <Tabs defaultValue="data">
             <TabsList>
               <TabsTrigger value="data" data-testid="tab-test-data">
-                Test Data
+                {c("Test Data")}
               </TabsTrigger>
             </TabsList>
             <TabsContent value="data" className="space-y-3">
               <div>
-                <Label htmlFor="dataset">Dataset</Label>
+                <Label htmlFor="dataset">{c("Dataset")}</Label>
                 <NativeSelect
                   id="dataset"
                   value={source}
@@ -589,8 +595,8 @@ export function Playground({
                       key={kind}
                       label={
                         kind === "events"
-                          ? "Event datasets (Sigma, Suricata)"
-                          : "File datasets (YARA)"
+                          ? c("Event datasets (Sigma, Suricata)")
+                          : c("File datasets (YARA)")
                       }
                     >
                       {datasets
@@ -603,7 +609,7 @@ export function Playground({
                         ))}
                     </optgroup>
                   ))}
-                  <option value={CUSTOM}>Custom…</option>
+                  <option value={CUSTOM}>{c("Custom…")}</option>
                 </NativeSelect>
               </div>
 
@@ -628,7 +634,7 @@ export function Playground({
                     ))}
                   </p>
                   <div>
-                    <p className="font-medium text-foreground/80">Expected to match</p>
+                    <p className="font-medium text-foreground/80">{c("Expected to match")}</p>
                     <ul className="mt-1 flex flex-wrap gap-1.5">
                       {dataset.expected_rules.map((r) => (
                         <li key={r.slug}>
@@ -636,7 +642,7 @@ export function Playground({
                             type="button"
                             onClick={() => load.mutate(r.slug)}
                             className="rounded-md border border-border px-1.5 py-0.5 text-left hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-                            title={`Load ${r.title}`}
+                            title={`${c("Load")} ${r.title}`}
                           >
                             <span className="text-[10px] uppercase text-muted-foreground">
                               {r.format}
@@ -650,7 +656,7 @@ export function Playground({
                   {dataset.try_this.length ? (
                     <details>
                       <summary className="cursor-pointer font-medium text-foreground/80">
-                        Try this
+                        {c("Try this")}
                       </summary>
                       <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
                         {dataset.try_this.map((t) => (
@@ -664,7 +670,7 @@ export function Playground({
                 <div>
                   {format === "yara" ? (
                     <>
-                      <Label htmlFor="custom-file">Sample file (text)</Label>
+                      <Label htmlFor="custom-file">{c("Sample file (text)")}</Label>
                       <Textarea
                         id="custom-file"
                         value={customFile}
@@ -677,7 +683,7 @@ export function Playground({
                   ) : (
                     <>
                       <Label htmlFor="custom-events">
-                        Events (JSON array of {"{category, host?, fields}"})
+                        {c("Events (JSON array of objects)")} {"{category, host?, fields}"}
                       </Label>
                       <Textarea
                         id="custom-events"
@@ -689,8 +695,9 @@ export function Playground({
                         data-testid="custom-events"
                       />
                       <p className="mt-1 text-[11px] text-muted-foreground">
-                        Field names follow the Sigma vocabulary (Image, CommandLine, c-ip…). The
-                        category selects the logsource.
+                        {c(
+                          "Field names follow the Sigma vocabulary (Image, CommandLine, c-ip…). The category selects the logsource.",
+                        )}
                       </p>
                     </>
                   )}
@@ -700,7 +707,7 @@ export function Playground({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div
                   role="group"
-                  aria-label="Filter events"
+                  aria-label={c("Filter events")}
                   className="inline-flex rounded-md border border-border p-0.5"
                 >
                   {(["all", "matched", "unmatched"] as const).map((f) => (
@@ -718,23 +725,23 @@ export function Playground({
                       )}
                     >
                       {f === "all"
-                        ? `All ${items.length}`
+                        ? `${c("All")} ${items.length}`
                         : f === "matched"
-                          ? `Matched ${matchedCount}`
-                          : `Not matched ${Math.max(0, items.length - matchedCount)}`}
+                          ? `${c("Matched")} ${matchedCount}`
+                          : `${c("Not matched")} ${Math.max(0, items.length - matchedCount)}`}
                     </button>
                   ))}
                 </div>
                 <div className="w-40">
                   <Label htmlFor="event-search" className="sr-only">
-                    Search events
+                    {c("Search events")}
                   </Label>
                   <input
                     id="event-search"
                     type="search"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search events…"
+                    placeholder={c("Search events…")}
                     className="h-7 w-full rounded-md border border-border bg-background px-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
@@ -746,20 +753,21 @@ export function Playground({
                     <span className="font-semibold tabular-nums" data-testid="matched-count">
                       {matchedCount}
                     </span>{" "}
-                    of {result.item_count} {items[0]?.kind === "file" ? "files" : "events"} matched
+                    {c("of")} {result.item_count}{" "}
+                    {items[0]?.kind === "file" ? c("files") : c("events")} {c("matched")}
                     {result.correlation
-                      ? ` · ${result.correlation.hits.length} correlation hit${result.correlation.hits.length === 1 ? "" : "s"}`
+                      ? ` · ${countLabel(c, result.correlation.hits.length, "{{count}} correlation hit", "{{count}} correlation hits")}`
                       : ""}
                   </>
                 ) : result ? (
                   <span className="text-sev-critical">
-                    The rule is not valid, so nothing was evaluated.
+                    {c("The rule is not valid, so nothing was evaluated.")}
                   </span>
                 ) : (
                   <span className="text-muted-foreground">
                     {detail.isLoading
-                      ? "Loading dataset…"
-                      : "Run the rule to see which items match."}
+                      ? c("Loading dataset…")
+                      : c("Run the rule to see which items match.")}
                   </span>
                 )}
               </p>
@@ -779,21 +787,21 @@ export function Playground({
               >
                 <table className="w-full text-xs" data-testid="event-table">
                   <caption className="sr-only">
-                    Events in the selected dataset. Use the arrow keys to move between rows.
+                    {c("Events in the selected dataset. Use the arrow keys to move between rows.")}
                   </caption>
                   <thead className="sticky top-0 z-10 bg-card">
                     <tr className="border-b border-border text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                       <th scope="col" className="w-16 px-2 py-1.5">
-                        Time
+                        {c("Time")}
                       </th>
                       <th scope="col" className="px-2 py-1.5">
-                        {items[0]?.kind === "file" ? "File" : "Host"}
+                        {items[0]?.kind === "file" ? c("File") : c("Host")}
                       </th>
                       <th scope="col" className="px-2 py-1.5">
-                        Event
+                        {c("Event")}
                       </th>
                       <th scope="col" className="w-24 px-2 py-1.5">
-                        Result
+                        {c("Result")}
                       </th>
                     </tr>
                   </thead>
@@ -828,7 +836,7 @@ export function Playground({
                               }}
                               onClick={() => setSelected(it.index)}
                               aria-pressed={active}
-                              aria-label={`${it.kind === "file" ? "File" : "Event"} ${it.index + 1}: ${it.title}`}
+                              aria-label={`${it.kind === "file" ? c("File") : c("Event")} ${it.index + 1}: ${it.title}`}
                               className="block w-full truncate rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                               {it.kind === "file" ? it.title : it.title}
@@ -847,7 +855,7 @@ export function Playground({
                     {visible.length === 0 ? (
                       <tr>
                         <td colSpan={4} className="px-2 py-6 text-center text-muted-foreground">
-                          {items.length ? "Nothing matches this filter." : "No data yet."}
+                          {items.length ? c("Nothing matches this filter.") : c("No data yet.")}
                         </td>
                       </tr>
                     ) : null}
@@ -860,15 +868,15 @@ export function Playground({
       </section>
 
       {/* RIGHT: explanation */}
-      <section aria-label="Match explanation" className="min-w-0">
+      <section aria-label={c("Match explanation")} className="min-w-0">
         <Card className="p-4">
           <Tabs value={rightTab} onValueChange={setRightTab}>
             <TabsList>
               <TabsTrigger value="trace" data-testid="tab-trace">
-                Match Trace
+                {c("Match Trace")}
               </TabsTrigger>
               <TabsTrigger value="translations" data-testid="tab-translations">
-                Translations
+                {c("Translations")}
               </TabsTrigger>
               <TabsTrigger value="mitre" data-testid="tab-mitre">
                 MITRE
@@ -882,13 +890,14 @@ export function Playground({
                   data-testid="selected-event"
                 >
                   <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {selectedItem.kind === "file" ? "Sample" : "Raw event"} {selectedItem.index + 1}
+                    {selectedItem.kind === "file" ? c("Sample") : c("Raw event")}{" "}
+                    {selectedItem.index + 1}
                     {selectedItem.host ? ` · ${selectedItem.host}` : ""}
                     {selectedItem.user ? ` · ${selectedItem.user}` : ""}
                   </p>
                   <div
                     role="region"
-                    aria-label="Raw event text"
+                    aria-label={c("Raw event text")}
                     tabIndex={0}
                     className="max-h-28 overflow-auto break-all rounded-sm font-mono text-[11px] leading-snug outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
@@ -906,7 +915,7 @@ export function Playground({
               ) : null}
               {explain.isFetching && !explain.data ? (
                 <p className="text-xs text-muted-foreground" role="status">
-                  Tracing…
+                  {c("Tracing…")}
                 </p>
               ) : explain.data && selected !== null ? (
                 <TraceView data={explain.data} />
@@ -915,8 +924,10 @@ export function Playground({
               ) : (
                 <EmptyState
                   icon={<FlaskConical />}
-                  title="Explain a match"
-                  description="Run the rule, then pick an event to see which selections matched, which field and value decided it, and how the condition resolved."
+                  title={c("Explain a match")}
+                  description={c(
+                    "Run the rule, then pick an event to see which selections matched, which field and value decided it, and how the condition resolved.",
+                  )}
                   className="py-10"
                 />
               )}
@@ -926,21 +937,23 @@ export function Playground({
               {lastRun?.body.format !== "sigma" ? (
                 <EmptyState
                   icon={<Languages />}
-                  title="Sigma only"
-                  description="Translations are generated from Sigma rules."
+                  title={c("Sigma only")}
+                  description={c("Translations are generated from Sigma rules.")}
                   className="py-10"
                 />
               ) : translations.data ? (
                 <TranslationView result={translations.data} />
               ) : translations.isFetching ? (
                 <p className="text-xs text-muted-foreground" role="status">
-                  Translating…
+                  {c("Translating…")}
                 </p>
               ) : (
                 <EmptyState
                   icon={<Languages />}
-                  title="Translate to your SIEM"
-                  description="Run a valid Sigma rule to get Elastic, Splunk, Sentinel, OpenSearch and SQL-like queries."
+                  title={c("Translate to your SIEM")}
+                  description={c(
+                    "Run a valid Sigma rule to get Elastic, Splunk, Sentinel, OpenSearch and SQL-like queries.",
+                  )}
                   className="py-10"
                 />
               )}
@@ -950,7 +963,7 @@ export function Playground({
               <div className="space-y-3 text-[13px]" data-testid="mitre-panel">
                 <div>
                   <h3 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    This rule maps to
+                    {c("This rule maps to")}
                   </h3>
                   {result?.mitre?.length ? (
                     <ul className="mt-1.5 space-y-1.5">
@@ -964,7 +977,7 @@ export function Playground({
                               {m.id}
                             </Badge>
                             <span className="text-xs">
-                              {m.name ?? "not in the curated dataset"}
+                              {m.name ?? c("not in the curated dataset")}
                             </span>
                           </Link>
                         </li>
@@ -973,15 +986,15 @@ export function Playground({
                   ) : (
                     <p className="mt-1 text-xs text-muted-foreground">
                       {result
-                        ? "No ATT&CK tags on this rule."
-                        : "Run the rule to see its ATT&CK mapping."}
+                        ? c("No ATT&CK tags on this rule.")
+                        : c("Run the rule to see its ATT&CK mapping.")}
                     </p>
                   )}
                 </div>
                 {dataset ? (
                   <div>
                     <h3 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      This dataset exercises
+                      {c("This dataset exercises")}
                     </h3>
                     <ul className="mt-1.5 flex flex-wrap gap-1.5">
                       {dataset.mitre.map((m) => (

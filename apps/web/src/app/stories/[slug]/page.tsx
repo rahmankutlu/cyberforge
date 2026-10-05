@@ -9,34 +9,50 @@ import { PageHeader } from "@/components/page-header";
 import { StoryPlayer } from "@/components/stories/story-player";
 import { apiGetOrNull } from "@/lib/api";
 import { STORY_DOMAIN_LABEL } from "@/lib/format";
+import { createCopyTranslator, localizeKnownCopy } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
+import { localizeContent, localizeContentTree } from "@/lib/i18n/content";
 
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const story = await apiGetOrNull<Story>(`/stories/${slug}`).catch(() => null);
-  return { title: story?.title ?? "Attack story" };
+  const locale = await getLocale();
+  return {
+    title: story
+      ? localizeContent(locale, story.title)
+      : createCopyTranslator(locale)("Attack stories"),
+  };
 }
 
 export default async function StoryPage({ params }: Props) {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
   const { slug } = await params;
-  const story = await apiGetOrNull<Story>(`/stories/${slug}`);
-  if (!story) notFound();
+  const sourceStory = await apiGetOrNull<Story>(`/stories/${slug}`);
+  if (!sourceStory) notFound();
+  const story = localizeContentTree(locale, sourceStory);
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: "Stories", href: "/stories" }, { label: story.title }]}
-        title={story.title}
-        description={story.summary}
+        breadcrumbs={[
+          { label: c("Stories"), href: "/stories" },
+          { label: localizeContent(locale, story.title) },
+        ]}
+        title={localizeContent(locale, story.title)}
+        description={localizeContent(locale, story.summary)}
         meta={
           <>
             <DifficultyBadge difficulty={story.difficulty} />
-            <Badge variant="outline">{STORY_DOMAIN_LABEL[story.domain] ?? story.domain}</Badge>
-            <Badge variant="outline" className="gap-1">
-              <Clock className="size-3" /> ~{story.duration_minutes} min
+            <Badge variant="outline">
+              {localizeKnownCopy(locale, STORY_DOMAIN_LABEL[story.domain] ?? story.domain)}
             </Badge>
             <Badge variant="outline" className="gap-1">
-              <Radio className="size-3" /> {story.step_count} steps
+              <Clock className="size-3" /> ~{c("{{count}} min", { count: story.duration_minutes })}
+            </Badge>
+            <Badge variant="outline" className="gap-1">
+              <Radio className="size-3" /> {c("{{count}} steps", { count: story.step_count })}
             </Badge>
           </>
         }

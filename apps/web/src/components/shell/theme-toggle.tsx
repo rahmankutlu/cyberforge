@@ -5,10 +5,13 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSyncExternalStore } from "react";
 
+import { useLocale } from "@/components/i18n/locale-provider";
+
 const noop = () => () => {};
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
+  const { t } = useLocale();
   // Avoid a hydration mismatch: the resolved theme is only known on the client.
   const mounted = useSyncExternalStore(
     noop,
@@ -21,8 +24,8 @@ export function ThemeToggle() {
     <Button
       variant="ghost"
       size="icon"
-      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
-      title="Toggle theme"
+      aria-label={dark ? t("theme.light") : t("theme.dark")}
+      title={t("theme.toggle")}
       onClick={() => setTheme(dark ? "light" : "dark")}
     >
       {dark ? <Sun /> : <Moon />}

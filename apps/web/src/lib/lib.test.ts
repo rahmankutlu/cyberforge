@@ -42,6 +42,8 @@ describe("format", () => {
     expect(formatDuration(45)).toBe("45 min");
     expect(formatDuration(60)).toBe("1h");
     expect(formatDuration(95)).toBe("1h 35m");
+    expect(formatDuration(45, "tr")).toBe("45 dk");
+    expect(formatDuration(95, "tr")).toBe("1 sa 35 dk");
     expect(titleCase("windows-sim")).toBe("Windows Sim");
     expect(titleCase("false_positive")).toBe("False Positive");
     expect(truncate("abcdefghij", 5)).toBe("abcd…");

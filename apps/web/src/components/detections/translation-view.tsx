@@ -5,6 +5,7 @@ import { EmptyState, Tabs, TabsContent, TabsList, TabsTrigger } from "@cyberforg
 import { XCircle } from "lucide-react";
 
 import { CodeBlock } from "@/components/code-block";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export const TARGETS: { id: TranslateTarget; label: string }[] = [
   { id: "elastic", label: "Elastic" },
@@ -15,22 +16,34 @@ export const TARGETS: { id: TranslateTarget; label: string }[] = [
 ];
 
 export function TranslationView({ result }: { result: TranslateResponse }) {
+  const { c } = useLocale();
   if (!result.validation.valid) {
-    return <EmptyState icon={<XCircle />} title="Fix the validation errors first" description="A rule must be valid before it can be translated." className="py-8" />;
+    return (
+      <EmptyState
+        icon={<XCircle />}
+        title={c("Fix the validation errors first")}
+        description={c("A rule must be valid before it can be translated.")}
+        className="py-8"
+      />
+    );
   }
   return (
     <Tabs defaultValue={result.translations[0]?.target ?? "elastic"}>
       <TabsList className="h-auto flex-wrap justify-start">
         {result.translations.map((t) => (
-          <TabsTrigger key={t.target} value={t.target} data-testid={`target-${t.target}`}>{TARGETS.find((x) => x.id === t.target)?.label ?? t.label}</TabsTrigger>
+          <TabsTrigger key={t.target} value={t.target} data-testid={`target-${t.target}`}>
+            {TARGETS.find((x) => x.id === t.target)?.label ?? t.label}
+          </TabsTrigger>
         ))}
       </TabsList>
       {result.translations.map((t) => (
         <TabsContent key={t.target} value={t.target}>
-          <p className="mb-2 text-xs text-muted-foreground">{t.label} · {t.language}</p>
+          <p className="mb-2 text-xs text-muted-foreground">
+            {t.label} · {t.language}
+          </p>
           {t.error ? (
             <div className="rounded-md border border-sev-medium/30 bg-sev-medium/8 p-3 text-xs">
-              <p className="font-medium">Not supported by this backend</p>
+              <p className="font-medium">{c("Not supported by this backend")}</p>
               <p className="mt-1 break-words text-muted-foreground">{t.error}</p>
             </div>
           ) : (
@@ -41,7 +54,9 @@ export function TranslationView({ result }: { result: TranslateResponse }) {
             </div>
           )}
           {t.notes.map((n) => (
-            <p key={n} className="mt-2 text-[11px] leading-snug text-muted-foreground">{n}</p>
+            <p key={n} className="mt-2 text-[11px] leading-snug text-muted-foreground">
+              {n}
+            </p>
           ))}
         </TabsContent>
       ))}

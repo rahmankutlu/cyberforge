@@ -1,4 +1,7 @@
+"use client";
+
 import { cn } from "@cyberforge/ui";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /**
  * CyberForge mark: an "F" drawn as a small connected-node graph. Deliberately abstract: no
@@ -35,6 +38,7 @@ export function BrandWordmark({
   className?: string;
   tagline?: boolean;
 }) {
+  const { c } = useLocale();
   return (
     <span className={cn("flex flex-col leading-none", className)}>
       <span className="text-[15px] tracking-tight">
@@ -43,7 +47,7 @@ export function BrandWordmark({
       </span>
       {tagline ? (
         <span className="mt-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-          Open Cybersecurity Lab
+          {c("Open Cybersecurity Lab")}
         </span>
       ) : null}
     </span>

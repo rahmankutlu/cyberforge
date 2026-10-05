@@ -22,15 +22,23 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { apiSend } from "@/lib/api";
-import { SEVERITY_LABEL } from "@/lib/format";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export function NewInvestigationDialog({ analysts }: { analysts: Analyst[] }) {
   const router = useRouter();
+  const { t, c } = useLocale();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [severity, setSeverity] = useState<Severity>("medium");
   const [lead, setLead] = useState("");
+  const severityLabels: Record<Severity, string> = {
+    critical: t("severity.critical"),
+    high: t("severity.high"),
+    medium: t("severity.medium"),
+    low: t("severity.low"),
+    informational: t("severity.informational"),
+  };
 
   const create = useMutation({
     mutationFn: () =>
@@ -42,27 +50,28 @@ export function NewInvestigationDialog({ analysts }: { analysts: Analyst[] }) {
         alert_ids: [],
       }),
     onSuccess: (inv) => {
-      toast.success("Investigation created");
+      toast.success(c("Investigation created"));
       setOpen(false);
       router.push(`/soc/investigations/${inv.id}`);
     },
     onError: (error: Error) =>
-      toast.error("Could not create the investigation", { description: error.message }),
+      toast.error(c("Could not create the investigation"), { description: error.message }),
   });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button data-testid="new-investigation">
-          <Plus /> New investigation
+          <Plus /> {c("New investigation")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New investigation</DialogTitle>
+          <DialogTitle>{c("New investigation")}</DialogTitle>
           <DialogDescription>
-            Start an empty case. You can attach alerts from the alert queue or an alert page
-            afterwards.
+            {c(
+              "Start an empty case. You can attach alerts from the alert queue or an alert page afterwards.",
+            )}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -73,19 +82,19 @@ export function NewInvestigationDialog({ analysts }: { analysts: Analyst[] }) {
           }}
         >
           <div className="space-y-1">
-            <Label htmlFor="inv-title">Title</Label>
+            <Label htmlFor="inv-title">{c("Title")}</Label>
             <Input
               id="inv-title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={200}
-              placeholder="e.g. Suspicious logons on the bastion"
+              placeholder={c("e.g. Suspicious logons on the bastion")}
               required
               minLength={3}
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="inv-summary">Summary</Label>
+            <Label htmlFor="inv-summary">{c("Summary")}</Label>
             <Textarea
               id="inv-summary"
               value={summary}
@@ -96,7 +105,7 @@ export function NewInvestigationDialog({ analysts }: { analysts: Analyst[] }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label htmlFor="inv-severity">Severity</Label>
+              <Label htmlFor="inv-severity">{c("Severity")}</Label>
               <NativeSelect
                 id="inv-severity"
                 value={severity}
@@ -104,15 +113,15 @@ export function NewInvestigationDialog({ analysts }: { analysts: Analyst[] }) {
               >
                 {SEVERITIES.map((s) => (
                   <option key={s} value={s}>
-                    {SEVERITY_LABEL[s]}
+                    {severityLabels[s]}
                   </option>
                 ))}
               </NativeSelect>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="inv-lead">Lead analyst</Label>
+              <Label htmlFor="inv-lead">{c("Lead analyst")}</Label>
               <NativeSelect id="inv-lead" value={lead} onChange={(e) => setLead(e.target.value)}>
-                <option value="">None</option>
+                <option value="">{c("None")}</option>
                 {analysts.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
@@ -123,10 +132,10 @@ export function NewInvestigationDialog({ analysts }: { analysts: Analyst[] }) {
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
+              {c("Cancel")}
             </Button>
             <Button type="submit" disabled={title.trim().length < 3 || create.isPending}>
-              {create.isPending ? "Creating…" : "Create"}
+              {create.isPending ? c("Creating…") : c("Create")}
             </Button>
           </div>
         </form>

@@ -18,8 +18,14 @@ import { TrackProgress } from "@/components/learn/progress";
 import { PageHeader } from "@/components/page-header";
 import { apiGet } from "@/lib/api";
 import { formatDuration } from "@/lib/format";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
+import { localizeContent } from "@/lib/i18n/content";
 
-export const metadata = { title: "Learn" };
+export async function generateMetadata() {
+  const c = createCopyTranslator(await getLocale());
+  return { title: c("Learn") };
+}
 
 const ICONS: Record<string, LucideIcon> = {
   compass: Compass,
@@ -32,14 +38,18 @@ const ICONS: Record<string, LucideIcon> = {
 };
 
 export default async function LearnPage() {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
   const data = await apiGet<LearningOverview>("/learning");
 
   return (
     <>
       <PageHeader
-        title="Learn"
-        description="Six tracks and a 30-day plan that connect theory to the labs, rules and MITRE techniques in CyberForge. No account needed: your progress is kept in this browser."
-        meta={<Badge variant="outline">Progress stays on this device</Badge>}
+        title={c("Learn")}
+        description={c(
+          "Six tracks and a 30-day plan that connect theory to the labs, rules and MITRE techniques in CyberForge. No account needed: your progress is kept in this browser.",
+        )}
+        meta={<Badge variant="outline">{c("Progress stays on this device")}</Badge>}
       />
 
       {data.thirty_days ? (
@@ -47,10 +57,11 @@ export default async function LearnPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="max-w-2xl">
               <p className="flex items-center gap-2 text-sm font-semibold">
-                <BookOpen className="size-4 text-primary" /> {data.thirty_days.title}
+                <BookOpen className="size-4 text-primary" />{" "}
+                {localizeContent(locale, data.thirty_days.title)}
               </p>
               <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                {data.thirty_days.summary}
+                {localizeContent(locale, data.thirty_days.summary)}
               </p>
               <TrackProgress
                 slugs={data.thirty_days.modules.map((m) => m.slug)}
@@ -59,7 +70,7 @@ export default async function LearnPage() {
             </div>
             <Button asChild>
               <Link href="/learn/30-days">
-                Open the plan <ArrowRight />
+                {c("Open the plan")} <ArrowRight />
               </Link>
             </Button>
           </div>
@@ -79,16 +90,21 @@ export default async function LearnPage() {
                   <span className="flex size-8 items-center justify-center rounded-md border border-border bg-muted/50">
                     <Icon className="size-4 text-primary" />
                   </span>
-                  <h2 className="mt-3 text-sm font-semibold">{track.title}</h2>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{track.audience}</p>
+                  <h2 className="mt-3 text-sm font-semibold">
+                    {localizeContent(locale, track.title)}
+                  </h2>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    {localizeContent(locale, track.audience)}
+                  </p>
                   <p className="mt-2 flex-1 text-xs leading-relaxed text-muted-foreground">
-                    {track.summary}
+                    {localizeContent(locale, track.summary)}
                   </p>
                 </Link>
                 <div className="mt-4">
                   <TrackProgress slugs={track.modules.map((m) => m.slug)} />
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    {track.modules.length} modules · {formatDuration(track.total_minutes)}
+                    {c("{{count}} modules", { count: track.modules.length })} ·{" "}
+                    {formatDuration(track.total_minutes, locale)}
                   </p>
                 </div>
               </Card>

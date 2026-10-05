@@ -26,6 +26,9 @@ import {
   type StoryProgress,
 } from "@/lib/story-state";
 import { useStoryProgress } from "@/lib/use-story-progress";
+import { localizeKnownCopy } from "@/lib/i18n/copy";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { renderRich } from "@/lib/i18n/rich";
 
 // React Flow is only needed once a story is open, and only in the browser.
 const AttackGraph = dynamic(
@@ -44,6 +47,7 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 function Board({ story, progress }: { story: Story; progress: StoryProgress }) {
+  const { c } = useLocale();
   const steps = revealedSteps(story, progress);
   const findings = steps.flatMap((s) => s.evidence).filter((e) => progress.found.includes(e.id));
   const techniques = [
@@ -53,29 +57,36 @@ function Board({ story, progress }: { story: Story; progress: StoryProgress }) {
   return (
     <aside
       className="space-y-4 xl:sticky xl:top-4 xl:self-start"
-      aria-label="Investigation board"
+      aria-label={c("Investigation board")}
       data-testid="board"
     >
       <Card className="p-4">
-        <h2 className="text-sm font-semibold">Investigation board</h2>
+        <h2 className="text-sm font-semibold">{c("Investigation board")}</h2>
         <div className="mt-3">
-          <Progress value={progress.revealed} max={story.steps.length} label="Steps revealed" />
+          <Progress
+            value={progress.revealed}
+            max={story.steps.length}
+            label={c("Steps revealed")}
+          />
           <p
             className="mt-1.5 text-[11px] tabular-nums text-muted-foreground"
             data-testid="steps-revealed"
           >
-            {progress.revealed} of {story.steps.length} steps revealed
+            {c("{{revealed}} of {{total}} steps revealed", {
+              revealed: progress.revealed,
+              total: story.steps.length,
+            })}
           </p>
         </div>
         <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <div className="rounded-md bg-muted/50 p-2">
-            <dt className="text-muted-foreground">Findings marked</dt>
+            <dt className="text-muted-foreground">{c("Findings marked")}</dt>
             <dd className="text-base font-semibold tabular-nums" data-testid="findings-count">
               {findings.length}
             </dd>
           </div>
           <div className="rounded-md bg-muted/50 p-2">
-            <dt className="text-muted-foreground">Techniques seen</dt>
+            <dt className="text-muted-foreground">{c("Techniques seen")}</dt>
             <dd className="text-base font-semibold tabular-nums">{techniques.length}</dd>
           </div>
         </dl>
@@ -83,7 +94,7 @@ function Board({ story, progress }: { story: Story; progress: StoryProgress }) {
 
       <Card className="p-4">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Findings
+          {c("Findings")}
         </h3>
         {findings.length ? (
           <ul className="mt-2 space-y-1.5" data-testid="findings">
@@ -96,14 +107,14 @@ function Board({ story, progress }: { story: Story; progress: StoryProgress }) {
           </ul>
         ) : (
           <p className="mt-2 text-xs text-muted-foreground">
-            Mark evidence as a finding when it changes what you think happened.
+            {c("Mark evidence as a finding when it changes what you think happened.")}
           </p>
         )}
       </Card>
 
       <Card className="p-4">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          MITRE ATT&amp;CK so far
+          {c("MITRE ATT&CK so far")}
         </h3>
         {techniques.length ? (
           <div className="mt-2 flex flex-col gap-1.5" data-testid="board-techniques">
@@ -112,11 +123,11 @@ function Board({ story, progress }: { story: Story; progress: StoryProgress }) {
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-xs text-muted-foreground">None yet.</p>
+          <p className="mt-2 text-xs text-muted-foreground">{c("None yet.")}</p>
         )}
         {done ? null : (
           <p className="mt-3 text-[11px] text-muted-foreground">
-            More will appear as you reveal steps.
+            {c("More will appear as you reveal steps.")}
           </p>
         )}
       </Card>
@@ -133,16 +144,18 @@ function Containment({
   progress: StoryProgress;
   dispatch: (a: StoryAction) => void;
 }) {
+  const { locale, c } = useLocale();
   const chosen = new Set(progress.containment);
   const missed = story.containment.filter((c) => c.quality === "recommended" && !chosen.has(c.id));
   return (
     <Card className="p-4" data-testid="containment" aria-labelledby="containment-h">
       <h2 id="containment-h" className="text-base font-semibold">
-        Containment
+        {c("Containment")}
       </h2>
       <p className="mt-1 text-[13px] text-muted-foreground">
-        You have seen the whole sequence. Choose the actions you would take now. Order and
-        proportion matter: contain first, preserve evidence, then eradicate.
+        {c(
+          "You have seen the whole sequence. Choose the actions you would take now. Order and proportion matter: contain first, preserve evidence, then eradicate.",
+        )}
       </p>
       <ul className="mt-3 space-y-2">
         {story.containment.map((c) => {
@@ -170,7 +183,9 @@ function Containment({
                 <span className="min-w-0">
                   <span className="flex flex-wrap items-center gap-2">
                     {c.action}
-                    <Badge variant="outline">{CATEGORY_LABEL[c.category] ?? c.category}</Badge>
+                    <Badge variant="outline">
+                      {localizeKnownCopy(locale, CATEGORY_LABEL[c.category] ?? c.category)}
+                    </Badge>
                   </span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">{c.effect}</span>
                   {shown && on ? (
@@ -206,7 +221,7 @@ function Containment({
             className="mt-3 rounded-lg border border-border bg-muted/40 p-3 text-xs"
             data-testid="containment-missed"
           >
-            <p className="font-medium">Recommended actions you did not choose</p>
+            <p className="font-medium">{c("Recommended actions you did not choose")}</p>
             <ul className="mt-1.5 list-disc space-y-1 pl-5 text-muted-foreground">
               {missed.map((m) => (
                 <li key={m.id}>
@@ -217,8 +232,8 @@ function Containment({
           </div>
         ) : (
           <p className="mt-3 flex items-center gap-2 text-xs text-ok" role="status">
-            <ShieldCheck className="size-4" aria-hidden /> Every recommended action was in your
-            plan.
+            <ShieldCheck className="size-4" aria-hidden />{" "}
+            {c("Every recommended action was in your plan.")}
           </p>
         )
       ) : (
@@ -228,7 +243,7 @@ function Containment({
             disabled={progress.containment.length === 0}
             data-testid="submit-containment"
           >
-            Submit containment plan
+            {c("Submit containment plan")}
           </Button>
           {!progress.skipped ? (
             <Button
@@ -237,7 +252,7 @@ function Containment({
               onClick={() => dispatch({ type: "skip-to-review" })}
               data-testid="skip-review"
             >
-              Read the post-incident explanation without submitting
+              {c("Read the post-incident explanation without submitting")}
             </Button>
           ) : null}
         </div>
@@ -247,34 +262,35 @@ function Containment({
 }
 
 function Postmortem({ story, progress }: { story: Story; progress: StoryProgress }) {
+  const { c } = useLocale();
   const r = review(story, progress);
   const pm = story.postmortem;
   return (
     <Card className="p-4" data-testid="postmortem" aria-labelledby="pm-h">
       <h2 id="pm-h" className="text-base font-semibold">
-        Post-incident explanation
+        {c("Post-incident explanation")}
       </h2>
       <p className="mt-2 text-[13px]">{pm.summary}</p>
 
-      <section className="mt-4" aria-label="Attack chain">
+      <section className="mt-4" aria-label={c("Attack chain")}>
         <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          The attack chain
+          {c("The attack chain")}
         </h3>
         <div className="overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-xs" data-testid="attack-chain">
             <caption className="sr-only">
-              Attack chain: tactic, technique and what the intruder did
+              {c("Attack chain: tactic, technique and what the intruder did")}
             </caption>
             <thead>
               <tr className="border-b border-border text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                 <th scope="col" className="px-2 py-1.5">
-                  Tactic
+                  {c("Tactic")}
                 </th>
                 <th scope="col" className="px-2 py-1.5">
-                  Technique
+                  {c("Technique")}
                 </th>
                 <th scope="col" className="px-2 py-1.5">
-                  What happened
+                  {c("What happened")}
                 </th>
               </tr>
             </thead>
@@ -294,15 +310,15 @@ function Postmortem({ story, progress }: { story: Story; progress: StoryProgress
       </section>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <section aria-label="Root cause">
+        <section aria-label={c("Root cause")}>
           <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Root cause
+            {c("Root cause")}
           </h3>
           <p className="text-[13px] text-muted-foreground">{pm.root_cause}</p>
         </section>
-        <section aria-label="What worked">
+        <section aria-label={c("What worked")}>
           <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            What worked
+            {c("What worked")}
           </h3>
           <ul className="list-disc space-y-1 pl-5 text-[13px] text-muted-foreground">
             {pm.what_worked.map((w) => (
@@ -310,9 +326,9 @@ function Postmortem({ story, progress }: { story: Story; progress: StoryProgress
             ))}
           </ul>
         </section>
-        <section aria-label="What to improve">
+        <section aria-label={c("What to improve")}>
           <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            What to improve
+            {c("What to improve")}
           </h3>
           <ul className="list-disc space-y-1 pl-5 text-[13px] text-muted-foreground">
             {pm.what_to_improve.map((w) => (
@@ -321,9 +337,9 @@ function Postmortem({ story, progress }: { story: Story; progress: StoryProgress
           </ul>
         </section>
         {pm.detections_to_add.length ? (
-          <section aria-label="Detections to add">
+          <section aria-label={c("Detections to add")}>
             <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Detections to add
+              {c("Detections to add")}
             </h3>
             <ul className="list-disc space-y-1 pl-5 text-[13px] text-muted-foreground">
               {pm.detections_to_add.map((w) => (
@@ -331,22 +347,24 @@ function Postmortem({ story, progress }: { story: Story; progress: StoryProgress
               ))}
             </ul>
             <p className="mt-1.5 text-[11px] text-muted-foreground">
-              Write one in the{" "}
-              <Link
-                href="/detections/playground"
-                className="text-primary underline underline-offset-2 hover:no-underline"
-              >
-                playground
-              </Link>
-              .
+              {renderRich(c("Write one in the <playground>playground</playground>."), {
+                playground: (text) => (
+                  <Link
+                    href="/detections/playground"
+                    className="text-primary underline underline-offset-2 hover:no-underline"
+                  >
+                    {text}
+                  </Link>
+                ),
+              })}
             </p>
           </section>
         ) : null}
       </div>
 
-      <section className="mt-4" aria-label="Lessons learned">
+      <section className="mt-4" aria-label={c("Lessons learned")}>
         <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Lessons learned
+          {c("Lessons learned")}
         </h3>
         <ol className="list-decimal space-y-1 pl-5 text-[13px]" data-testid="lessons">
           {pm.lessons.map((l) => (
@@ -357,39 +375,43 @@ function Postmortem({ story, progress }: { story: Story; progress: StoryProgress
 
       <section
         className="mt-4 rounded-lg border border-border bg-muted/30 p-3"
-        aria-label="Your investigation"
+        aria-label={c("Your investigation")}
         data-testid="review"
       >
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Your investigation
+          {c("Your investigation")}
         </h3>
         <dl className="mt-2 grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
           <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Questions answered correctly</dt>
+            <dt className="text-muted-foreground">{c("Questions answered correctly")}</dt>
             <dd className="tabular-nums">
-              {r.questionsCorrect} of {r.questionsAnswered} answered ({r.questionsTotal} in total)
+              {c("{{correct}} of {{answered}} answered ({{total}} in total)", {
+                correct: r.questionsCorrect,
+                answered: r.questionsAnswered,
+                total: r.questionsTotal,
+              })}
             </dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Key evidence marked</dt>
+            <dt className="text-muted-foreground">{c("Key evidence marked")}</dt>
             <dd className="tabular-nums">
-              {r.keyEvidenceFound} of {r.keyEvidenceTotal}
+              {r.keyEvidenceFound} {c("of")} {r.keyEvidenceTotal}
             </dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Decisions: best option</dt>
+            <dt className="text-muted-foreground">{c("Decisions: best option")}</dt>
             <dd className="tabular-nums">
-              {r.decisionsBest} of {r.decisionsTotal}
+              {r.decisionsBest} {c("of")} {r.decisionsTotal}
             </dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Recommended containment chosen</dt>
+            <dt className="text-muted-foreground">{c("Recommended containment chosen")}</dt>
             <dd className="tabular-nums">
-              {r.recommendedChosen} of {r.recommendedTotal}
+              {r.recommendedChosen} {c("of")} {r.recommendedTotal}
             </dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Harmful actions chosen</dt>
+            <dt className="text-muted-foreground">{c("Harmful actions chosen")}</dt>
             <dd className="tabular-nums">{r.harmfulChosen}</dd>
           </div>
         </dl>
@@ -399,8 +421,9 @@ function Postmortem({ story, progress }: { story: Story; progress: StoryProgress
           ) : (
             <XCircle className="size-3.5 text-sev-high" aria-hidden />
           )}
-          Counts, not a grade: the aim is to see where your reasoning differed from the analysis
-          above.
+          {c(
+            "Counts, not a grade: the aim is to see where your reasoning differed from the analysis above.",
+          )}
         </p>
       </section>
     </Card>
@@ -408,6 +431,7 @@ function Postmortem({ story, progress }: { story: Story; progress: StoryProgress
 }
 
 export function StoryPlayer({ story }: { story: Story }) {
+  const { c } = useLocale();
   const { progress, dispatch } = useStoryProgress(story.slug, story);
   const steps = useMemo(() => revealedSteps(story, progress), [story, progress]);
   const counts = useMemo(() => pipelineCounts(story, progress), [story, progress]);
@@ -433,7 +457,7 @@ export function StoryPlayer({ story }: { story: Story }) {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-4">
           <Card className="p-4" data-testid="briefing">
-            <h2 className="text-sm font-semibold">Briefing</h2>
+            <h2 className="text-sm font-semibold">{c("Briefing")}</h2>
             <p className="mt-1 text-[13px] text-foreground/90">{story.briefing}</p>
           </Card>
 
@@ -443,7 +467,7 @@ export function StoryPlayer({ story }: { story: Story }) {
                 className="size-4 transition-transform group-[&:not([open])]:-rotate-90"
                 aria-hidden
               />
-              Investigation graph
+              {c("Investigation graph")}
             </summary>
             <AttackGraph steps={steps} />
           </details>
@@ -470,7 +494,8 @@ export function StoryPlayer({ story }: { story: Story }) {
                 onClick={() => dispatch({ type: "reveal-next", total: story.steps.length })}
                 data-testid="reveal-next"
               >
-                Reveal next event <span className="font-mono text-xs opacity-80">{nextTime}</span>
+                {c("Reveal next event")}{" "}
+                <span className="font-mono text-xs opacity-80">{nextTime}</span>
               </Button>
               <Button
                 variant="ghost"
@@ -478,11 +503,12 @@ export function StoryPlayer({ story }: { story: Story }) {
                 onClick={() => dispatch({ type: "reveal-all", total: story.steps.length })}
                 data-testid="reveal-all"
               >
-                <FastForward /> Show the rest of the timeline
+                <FastForward /> {c("Show the rest of the timeline")}
               </Button>
               <p className="text-xs text-muted-foreground">
-                Finish reading this step first: answer the question or make the decision, then
-                continue.
+                {c(
+                  "Finish reading this step first: answer the question or make the decision, then continue.",
+                )}
               </p>
             </div>
           ) : (
@@ -499,7 +525,7 @@ export function StoryPlayer({ story }: { story: Story }) {
                 onClick={() => dispatch({ type: "reset" })}
                 data-testid="reset-story"
               >
-                <RotateCcw /> Start this story again
+                <RotateCcw /> {c("Start this story again")}
               </Button>
             </div>
           ) : null}

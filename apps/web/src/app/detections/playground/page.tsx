@@ -4,8 +4,13 @@ import { PageHeader } from "@/components/page-header";
 import { Playground } from "@/components/playground/playground";
 import { apiGet, apiGetOrNull } from "@/lib/api";
 import { first, type SearchParams } from "@/lib/params";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
 
-export const metadata = { title: "Detection playground" };
+export async function generateMetadata() {
+  const c = createCopyTranslator(await getLocale());
+  return { title: c("Detection playground") };
+}
 
 const DEFAULT_RULE = "win-encoded-powershell-command";
 const DEFAULT_DATASET = "suspicious-powershell-simulation";
@@ -15,6 +20,7 @@ export default async function PlaygroundPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const c = createCopyTranslator(await getLocale());
   const sp = await searchParams;
   const [rules, datasets] = await Promise.all([
     apiGet<Page<RuleSummary>>("/detections", { page_size: 200, sort: "title" }),
@@ -27,7 +33,9 @@ export default async function PlaygroundPage({
   const format = initial?.format ?? "sigma";
   const wanted = format === "yara" ? "files" : "events";
   const requested = datasets.find((d) => d.slug === first(sp.dataset));
-  const suited = datasets.find((d) => initial && d.expected_rules.some((r) => r.slug === initial.slug));
+  const suited = datasets.find(
+    (d) => initial && d.expected_rules.some((r) => r.slug === initial.slug),
+  );
   const dataset =
     (requested?.kind === wanted ? requested : undefined) ??
     suited ??
@@ -38,9 +46,11 @@ export default async function PlaygroundPage({
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: "Detections", href: "/detections" }, { label: "Playground" }]}
-        title="Detection playground"
-        description="Pick a dataset, edit a rule, run it, and see exactly why each event matched: which selection, which field, which value, and how the condition resolved. Sigma, YARA and Suricata. Everything runs locally on synthetic data."
+        breadcrumbs={[{ label: c("Detections"), href: "/detections" }, { label: c("Playground") }]}
+        title={c("Detection playground")}
+        description={c(
+          "Pick a dataset, edit a rule, run it, and see exactly why each event matched: which selection, which field, which value, and how the condition resolved. Sigma, YARA and Suricata. Everything runs locally on synthetic data.",
+        )}
       />
       <Playground
         initialContent={initial?.content ?? ""}

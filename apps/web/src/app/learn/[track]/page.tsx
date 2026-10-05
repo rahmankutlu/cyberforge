@@ -8,6 +8,9 @@ import { DayCell, ModuleCheck, TrackProgress } from "@/components/learn/progress
 import { PageHeader } from "@/components/page-header";
 import { apiGet } from "@/lib/api";
 import { formatDuration } from "@/lib/format";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
+import { localizeContent } from "@/lib/i18n/content";
 
 type Props = { params: Promise<{ track: string }> };
 
@@ -20,10 +23,15 @@ async function findTrack(slug: string): Promise<Track | null> {
 export async function generateMetadata({ params }: Props) {
   const { track } = await params;
   const found = await findTrack(track).catch(() => null);
-  return { title: found?.title ?? "Learn" };
+  const locale = await getLocale();
+  return {
+    title: found ? localizeContent(locale, found.title) : createCopyTranslator(locale)("Learn"),
+  };
 }
 
 export default async function TrackPage({ params }: Props) {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
   const { track: slug } = await params;
   const track = await findTrack(slug);
   if (!track) notFound();
@@ -33,13 +41,16 @@ export default async function TrackPage({ params }: Props) {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: "Learn", href: "/learn" }, { label: track.title }]}
-        title={track.title}
-        description={track.summary}
+        breadcrumbs={[
+          { label: c("Learn"), href: "/learn" },
+          { label: localizeContent(locale, track.title) },
+        ]}
+        title={localizeContent(locale, track.title)}
+        description={localizeContent(locale, track.summary)}
         meta={
           <Badge variant="outline">
-            {track.modules.length} {isPlan ? "days" : "modules"} ·{" "}
-            {formatDuration(track.total_minutes)}
+            {track.modules.length} {isPlan ? c("days") : c("modules")} ·{" "}
+            {formatDuration(track.total_minutes, locale)}
           </Badge>
         }
       />
@@ -81,12 +92,12 @@ export default async function TrackPage({ params }: Props) {
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Clock className="size-3" />
-                      {formatDuration(m.duration_minutes)}
+                      {formatDuration(m.duration_minutes, locale)}
                     </span>
                     {m.lab_slugs.length ? (
                       <span className="flex items-center gap-1">
                         <FlaskConical className="size-3" />
-                        {m.lab_slugs.length} lab{m.lab_slugs.length === 1 ? "" : "s"}
+                        {m.lab_slugs.length} {c("Lab")}
                       </span>
                     ) : null}
                   </div>

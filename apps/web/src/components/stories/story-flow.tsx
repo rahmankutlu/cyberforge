@@ -1,7 +1,11 @@
+"use client";
+
 import { cn } from "@cyberforge/ui";
 import { ChevronRight } from "lucide-react";
 
 import type { Pipeline } from "@/lib/story-state";
+import { localizeKnownCopy } from "@/lib/i18n/copy";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const STAGES: { key: keyof Pipeline; label: string; unit: [string, string] }[] = [
   { key: "telemetry", label: "Telemetry", unit: ["event", "events"] },
@@ -15,10 +19,11 @@ const STAGES: { key: keyof Pipeline; label: string; unit: [string, string] }[] =
 
 /** Telemetry → Detections → Alerts → MITRE → Decisions → Containment → Lessons, with live counts. */
 export function StoryFlow({ counts }: { counts: Pipeline }) {
+  const { locale, c } = useLocale();
   return (
     <ol
       className="flex flex-wrap items-stretch gap-y-2 rounded-lg border border-border bg-card p-1.5"
-      aria-label="Investigation pipeline"
+      aria-label={c("Investigation pipeline")}
       data-testid="story-flow"
     >
       {STAGES.map((stage, i) => {
@@ -33,12 +38,12 @@ export function StoryFlow({ counts }: { counts: Pipeline }) {
               )}
             >
               <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                {stage.label}
+                {localizeKnownCopy(locale, stage.label)}
               </p>
               <p className="text-[13px] font-semibold tabular-nums">
                 {n}{" "}
                 <span className="text-[11px] font-normal text-muted-foreground">
-                  {stage.unit[n === 1 ? 0 : 1]}
+                  {localizeKnownCopy(locale, stage.unit[n === 1 ? 0 : 1])}
                 </span>
               </p>
             </div>

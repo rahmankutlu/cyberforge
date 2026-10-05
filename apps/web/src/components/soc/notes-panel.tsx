@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { RelativeTime } from "@/components/relative-time";
 import { apiSend } from "@/lib/api";
 import { readStorage, writeStorage } from "@/lib/persistent-storage";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const ANALYST_KEY = "cyberforge:current-analyst";
 const noop = () => () => {};
@@ -43,6 +44,7 @@ export function NotesPanel({
   target: { kind: "alert" | "investigation"; id: number };
 }) {
   const router = useRouter();
+  const { c } = useLocale();
   const [body, setBody] = useState("");
   const analyst = useCurrentAnalyst(analysts);
   const path =
@@ -56,11 +58,11 @@ export function NotesPanel({
       }),
     onSuccess: () => {
       setBody("");
-      toast.success("Note added");
+      toast.success(c("Note added"));
       router.refresh();
     },
     onError: (error: Error) =>
-      toast.error("Could not add the note", { description: error.message }),
+      toast.error(c("Could not add the note"), { description: error.message }),
   });
 
   return (
@@ -68,8 +70,10 @@ export function NotesPanel({
       {notes.length === 0 ? (
         <EmptyState
           icon={<StickyNote />}
-          title="No analyst notes yet"
-          description="Record what you checked and why you made a decision. Notes make triage reviewable."
+          title={c("No analyst notes yet")}
+          description={c(
+            "Record what you checked and why you made a decision. Notes make triage reviewable.",
+          )}
         />
       ) : (
         <ol className="space-y-3" data-testid="notes-list">
@@ -77,7 +81,7 @@ export function NotesPanel({
             <li key={note.id} className="rounded-lg border border-border bg-card p-3">
               <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">
-                  {note.author?.name ?? "Unknown analyst"}
+                  {note.author?.name ?? c("Unknown analyst")}
                 </span>
                 <RelativeTime iso={note.created_at} />
               </div>
@@ -98,21 +102,21 @@ export function NotesPanel({
           htmlFor={`note-${target.kind}-${target.id}`}
           className="text-xs font-medium text-muted-foreground"
         >
-          Add an analyst note
+          {c("Add an analyst note")}
         </label>
         <Textarea
           id={`note-${target.kind}-${target.id}`}
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="What did you check? What did you conclude?"
+          placeholder={c("What did you check? What did you conclude?")}
           maxLength={8000}
           rows={3}
         />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>Acting as</span>
+            <span>{c("Acting as")}</span>
             <NativeSelect
-              aria-label="Acting analyst"
+              aria-label={c("Acting analyst")}
               value={analyst.value}
               onChange={(e) => analyst.set(e.target.value)}
               className="w-52"
@@ -126,7 +130,7 @@ export function NotesPanel({
           </div>
           <Button type="submit" disabled={!body.trim() || add.isPending}>
             <MessageSquarePlus />
-            {add.isPending ? "Adding…" : "Add note"}
+            {add.isPending ? c("Adding…") : c("Add note")}
           </Button>
         </div>
       </form>

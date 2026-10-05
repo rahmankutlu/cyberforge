@@ -1,10 +1,14 @@
+"use client";
+
 import type { Matrix, TechniqueCoverage } from "@cyberforge/types";
 import { cn } from "@cyberforge/ui";
 import Link from "next/link";
 
 import { heatBackground, heatLevel, metricValue, nestTechniques, type Metric } from "@/lib/mitre";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 function Cell({ t, metric, depth = 0 }: { t: TechniqueCoverage; metric: Metric; depth?: number }) {
+  const { c } = useLocale();
   const count = metricValue(t, metric);
   const level = heatLevel(count);
   return (
@@ -13,7 +17,7 @@ function Cell({ t, metric, depth = 0 }: { t: TechniqueCoverage; metric: Metric; 
       data-technique={t.id}
       data-level={level}
       style={{ background: heatBackground(count) }}
-      title={`${t.id} ${t.name}\nRules: ${t.rules} · Labs: ${t.labs} · Alerts: ${t.alerts} · Investigations: ${t.investigations}`}
+      title={`${t.id} ${t.name}\n${c("Rules")}: ${t.rules} · ${c("Labs")}: ${t.labs} · ${c("Alerts")}: ${t.alerts} · ${c("Investigations")}: ${t.investigations}`}
       className={cn(
         "group block rounded border px-1.5 py-1 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
         level === 0
@@ -41,6 +45,7 @@ export function MatrixView({
   metric: Metric;
   showSub: boolean;
 }) {
+  const { c } = useLocale();
   return (
     <div className="overflow-x-auto pb-2" data-testid="matrix">
       <div className="flex min-w-max gap-2">
@@ -52,7 +57,7 @@ export function MatrixView({
               <header className="mb-1.5 rounded-md border border-border bg-card px-2 py-1.5">
                 <h3 className="text-xs font-semibold">{tactic.name}</h3>
                 <p className="font-mono text-[10px] text-muted-foreground">
-                  {tactic.id} · {covered}/{nested.length} covered
+                  {tactic.id} · {covered}/{nested.length} {c("covered")}
                 </p>
               </header>
               <div className="space-y-1">
@@ -65,7 +70,9 @@ export function MatrixView({
                   </div>
                 ))}
                 {nested.length === 0 ? (
-                  <p className="px-1 text-[11px] text-muted-foreground">No curated techniques.</p>
+                  <p className="px-1 text-[11px] text-muted-foreground">
+                    {c("No curated techniques.")}
+                  </p>
                 ) : null}
               </div>
             </section>
@@ -77,10 +84,11 @@ export function MatrixView({
 }
 
 export function MatrixLegend({ metricLabel }: { metricLabel: string }) {
+  const { c } = useLocale();
   return (
     <div
       className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"
-      aria-label="Legend"
+      aria-label={c("Legend")}
     >
       <span>{metricLabel}:</span>
       {[0, 1, 2, 3, 5].map((n) => (
@@ -89,7 +97,7 @@ export function MatrixLegend({ metricLabel }: { metricLabel: string }) {
             className="inline-block size-3.5 rounded border border-border"
             style={{ background: heatBackground(n) }}
           />
-          {n === 0 ? "none" : n === 5 ? "5+" : n === 3 ? "3–4" : n}
+          {n === 0 ? c("none") : n === 5 ? "5+" : n === 3 ? "3–4" : n}
         </span>
       ))}
     </div>

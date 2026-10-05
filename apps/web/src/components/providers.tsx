@@ -8,8 +8,10 @@ import { Toaster } from "sonner";
 
 import { CommandPalette } from "@/components/shell/command-palette";
 import { KeyboardShortcuts } from "@/components/shell/keyboard-shortcuts";
+import { LocaleProvider } from "@/components/i18n/locale-provider";
+import type { Locale } from "@/lib/i18n";
 
-export function Providers({ children }: { children: ReactNode }) {
+export function Providers({ children, locale }: { children: ReactNode; locale: Locale }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -20,24 +22,26 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider delayDuration={200}>
-          {children}
-          <CommandPalette />
-          <KeyboardShortcuts />
-          <Toaster
-            position="bottom-right"
-            theme="system"
-            toastOptions={{
-              classNames: {
-                toast: "!bg-popover !text-popover-foreground !border-border !text-[13px]",
-                description: "!text-muted-foreground",
-              },
-            }}
-          />
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <LocaleProvider locale={locale}>
+      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider delayDuration={200}>
+            {children}
+            <CommandPalette />
+            <KeyboardShortcuts />
+            <Toaster
+              position="bottom-right"
+              theme="system"
+              toastOptions={{
+                classNames: {
+                  toast: "!bg-popover !text-popover-foreground !border-border !text-[13px]",
+                  description: "!text-muted-foreground",
+                },
+              }}
+            />
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </LocaleProvider>
   );
 }

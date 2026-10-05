@@ -4,10 +4,16 @@ import { SigmaWorkbench } from "@/components/detections/sigma-workbench";
 import { PageHeader } from "@/components/page-header";
 import { apiGet } from "@/lib/api";
 import { NEW_RULE_TEMPLATE } from "@/lib/sigma-template";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
 
-export const metadata = { title: "New detection rule" };
+export async function generateMetadata() {
+  const c = createCopyTranslator(await getLocale());
+  return { title: c("New detection rule") };
+}
 
 export default async function NewRulePage() {
+  const c = createCopyTranslator(await getLocale());
   const [rules, labs] = await Promise.all([
     apiGet<Page<RuleSummary>>("/detections", { page_size: 200, sort: "title", format: "sigma" }),
     apiGet<LabSummary[]>("/labs"),
@@ -15,9 +21,11 @@ export default async function NewRulePage() {
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: "Detections", href: "/detections" }, { label: "New rule" }]}
-        title="New Sigma rule"
-        description="Start from the template or load a built-in rule as a starting point. Rules you save run against every new event alongside the built-in library."
+        breadcrumbs={[{ label: c("Detections"), href: "/detections" }, { label: c("New rule") }]}
+        title={c("New Sigma rule")}
+        description={c(
+          "Start from the template or load a built-in rule as a starting point. Rules you save run against every new event alongside the built-in library.",
+        )}
       />
       <SigmaWorkbench
         mode="create"

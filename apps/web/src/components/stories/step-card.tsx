@@ -16,6 +16,8 @@ import { SeverityBadge, TechniqueChip } from "@/components/badges";
 import { CodeBlock } from "@/components/code-block";
 import { formatOffset } from "@/lib/playground";
 import { isCorrect, type StoryAction, type StoryProgress } from "@/lib/story-state";
+import { localizeKnownCopy } from "@/lib/i18n/copy";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const KIND_LABEL: Record<StoryEvidence["kind"], string> = {
   log: "Log",
@@ -36,6 +38,7 @@ function EvidenceItem({
   found: boolean;
   onToggle: () => void;
 }) {
+  const { locale, c } = useLocale();
   return (
     <li
       className={cn(
@@ -49,7 +52,7 @@ function EvidenceItem({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="flex items-center gap-2 text-[13px] font-medium">
           {evidence.title}
-          <Badge variant="outline">{KIND_LABEL[evidence.kind]}</Badge>
+          <Badge variant="outline">{localizeKnownCopy(locale, KIND_LABEL[evidence.kind])}</Badge>
         </p>
         <Button
           variant={found ? "default" : "outline"}
@@ -58,7 +61,7 @@ function EvidenceItem({
           aria-pressed={found}
           data-testid="mark-finding"
         >
-          <Flag /> {found ? "Marked as finding" : "Mark as finding"}
+          <Flag /> {found ? c("Marked as finding") : c("Mark as finding")}
         </Button>
       </div>
       <CodeBlock code={evidence.content} maxHeight="14rem" className="mt-2" wrap />
@@ -68,8 +71,8 @@ function EvidenceItem({
           <span>
             {evidence.finding ??
               (evidence.significance === "noise"
-                ? "Marked, but this one is background: it does not change the picture."
-                : "Marked. Keep it in mind as the picture develops.")}
+                ? c("Marked, but this one is background: it does not change the picture.")
+                : c("Marked. Keep it in mind as the picture develops."))}
           </span>
         </p>
       ) : null}
@@ -86,6 +89,7 @@ function Question({
   progress: StoryProgress;
   dispatch: (a: StoryAction) => void;
 }) {
+  const { c } = useLocale();
   const [hint, setHint] = useState(false);
   const chosen = progress.answers[question.id] ?? [];
   const checked = progress.checked.includes(question.id);
@@ -97,10 +101,10 @@ function Question({
       data-testid="question"
       data-question={question.id}
     >
-      <legend className="px-1 text-[13px] font-medium">Question</legend>
+      <legend className="px-1 text-[13px] font-medium">{c("Question")}</legend>
       <p className="text-[13px]">{question.prompt}</p>
       {multiple ? (
-        <p className="mt-0.5 text-[11px] text-muted-foreground">Select all that apply.</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">{c("Select all that apply.")}</p>
       ) : null}
       <ul className="mt-2 space-y-1.5">
         {question.options.map((o) => {
@@ -133,7 +137,7 @@ function Question({
                   {shown ? (
                     <span className="mt-1 block text-xs text-muted-foreground">
                       <span className="font-medium text-foreground/80">
-                        {o.correct ? "Correct. " : selected ? "Not quite. " : ""}
+                        {o.correct ? `${c("Correct.")} ` : selected ? `${c("Not quite.")} ` : ""}
                       </span>
                       {o.explanation}
                     </span>
@@ -153,7 +157,7 @@ function Question({
               disabled={chosen.length === 0}
               data-testid="check-answer"
             >
-              Check answer
+              {c("Check answer")}
             </Button>
             {question.hint ? (
               <Button
@@ -162,7 +166,7 @@ function Question({
                 onClick={() => setHint((h) => !h)}
                 aria-expanded={hint}
               >
-                <Lightbulb /> {hint ? "Hide hint" : "Hint"}
+                <Lightbulb /> {hint ? c("Hide hint") : c("Hint")}
               </Button>
             ) : null}
           </>
@@ -178,7 +182,7 @@ function Question({
             ) : (
               <MinusCircle className="size-4 text-sev-high" aria-hidden />
             )}
-            {right ? "Your answer matches." : "Your answer differs from the analysis above."}
+            {right ? c("Your answer matches.") : c("Your answer differs from the analysis above.")}
           </p>
         )}
       </div>
@@ -205,6 +209,7 @@ function Decision({
   progress: StoryProgress;
   dispatch: (a: StoryAction) => void;
 }) {
+  const { locale, c } = useLocale();
   const chosen = progress.decisions[decision.id];
   const picked = decision.options.find((o) => o.id === chosen);
   return (
@@ -213,7 +218,7 @@ function Decision({
       data-testid="decision"
       data-decision={decision.id}
     >
-      <legend className="px-1 text-[13px] font-semibold">Analyst decision</legend>
+      <legend className="px-1 text-[13px] font-semibold">{c("Analyst decision")}</legend>
       <p className="text-[13px]">{decision.prompt}</p>
       {decision.context ? (
         <p className="mt-1 text-xs text-muted-foreground">{decision.context}</p>
@@ -249,13 +254,15 @@ function Decision({
           data-quality={picked.quality}
         >
           <p className="mb-1 flex items-center gap-2 font-medium">
-            You chose:{" "}
-            <Badge variant={QUALITY_BADGE[picked.quality]}>{QUALITY_TEXT[picked.quality]}</Badge>
+            {c("You chose:")}{" "}
+            <Badge variant={QUALITY_BADGE[picked.quality]}>
+              {localizeKnownCopy(locale, QUALITY_TEXT[picked.quality])}
+            </Badge>
           </p>
           <p className="text-muted-foreground">{picked.feedback}</p>
           {picked.quality !== "best" ? (
             <p className="mt-1.5 text-muted-foreground">
-              <span className="font-medium text-foreground/80">Stronger option: </span>
+              <span className="font-medium text-foreground/80">{c("Stronger option:")} </span>
               {decision.options.find((o) => o.quality === "best")?.text}
             </p>
           ) : null}
@@ -280,6 +287,7 @@ function StepCardImpl({
   dispatch: (a: StoryAction) => void;
   latest: boolean;
 }) {
+  const { c } = useLocale();
   const first = step.events[0] ? new Date(step.events[0].timestamp).getTime() : 0;
   return (
     <Card
@@ -291,7 +299,7 @@ function StepCardImpl({
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="font-mono text-xs text-muted-foreground">
-            {step.time} · step {index + 1} of {total}
+            {step.time} · {c("step {{index}} of {{total}}", { index: index + 1, total })}
           </p>
           <h2 id={`step-${step.id}`} className="text-base font-semibold">
             {step.title}
@@ -299,16 +307,16 @@ function StepCardImpl({
         </div>
         {step.alert ? (
           <div className="flex items-center gap-2 text-xs" data-testid="step-alert">
-            <span className="text-muted-foreground">Alert</span>
+            <span className="text-muted-foreground">{c("Alert")}</span>
             <SeverityBadge severity={step.alert.severity as Severity} />
           </div>
         ) : null}
       </header>
       <p className="mt-2 text-[13px] text-foreground/90">{step.narrative}</p>
 
-      <section className="mt-4" aria-label="Evidence">
+      <section className="mt-4" aria-label={c("Evidence")}>
         <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Evidence
+          {c("Evidence")}
         </h3>
         <ul className="space-y-2">
           {step.evidence.map((e) => (
@@ -324,26 +332,26 @@ function StepCardImpl({
 
       <details className="mt-4 rounded-lg border border-border" data-testid="telemetry">
         <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground">
-          Telemetry ({step.events.length} event{step.events.length === 1 ? "" : "s"})
+          {c("Telemetry")} ({step.events.length} {c("event")})
         </summary>
         <div
           role="region"
-          aria-label="Telemetry events, scrollable"
+          aria-label={c("Telemetry events, scrollable")}
           tabIndex={0}
           className="max-h-72 overflow-auto border-t border-border outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <table className="w-full text-xs">
-            <caption className="sr-only">Telemetry events for this step</caption>
+            <caption className="sr-only">{c("Telemetry events for this step")}</caption>
             <thead className="sticky top-0 bg-card">
               <tr className="text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                 <th scope="col" className="px-2 py-1.5">
-                  +Time
+                  {c("+Time")}
                 </th>
                 <th scope="col" className="px-2 py-1.5">
-                  Host
+                  {c("Host")}
                 </th>
                 <th scope="col" className="px-2 py-1.5">
-                  Event
+                  {c("Event")}
                 </th>
               </tr>
             </thead>
@@ -369,9 +377,9 @@ function StepCardImpl({
         </div>
       </details>
 
-      <section className="mt-4" aria-label="Detections">
+      <section className="mt-4" aria-label={c("Detections")}>
         <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Detections
+          {c("Detections")}
         </h3>
         {step.detections.length ? (
           <ul className="space-y-1.5" data-testid="detections">
@@ -385,17 +393,17 @@ function StepCardImpl({
                   <p className="flex flex-wrap items-center gap-2 font-medium">
                     {d.title}
                     <SeverityBadge severity={d.level as Severity} />
-                    {d.is_correlation ? <Badge variant="accent">correlation</Badge> : null}
+                    {d.is_correlation ? <Badge variant="accent">{c("correlation")}</Badge> : null}
                   </p>
                   <span className="flex gap-3 text-xs">
                     <Link href={`/detections/${d.slug}`} className="text-primary hover:underline">
-                      Rule
+                      {c("Rule")}
                     </Link>
                     <Link
                       href={`/detections/playground?rule=${d.slug}`}
                       className="text-primary hover:underline"
                     >
-                      Playground
+                      {c("Playground")}
                     </Link>
                   </span>
                 </div>
@@ -406,7 +414,9 @@ function StepCardImpl({
                 ) : null}
                 {d.is_correlation ? (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Raised when {d.events.length} events in this step met the correlation condition.
+                    {c("Raised when {{count}} events in this step met the correlation condition.", {
+                      count: d.events.length,
+                    })}
                   </p>
                 ) : null}
               </li>
@@ -414,14 +424,15 @@ function StepCardImpl({
           </ul>
         ) : (
           <p className="text-xs text-muted-foreground">
-            No detection fired for this step. Read the telemetry yourself: absence of an alert is
-            not absence of activity.
+            {c(
+              "No detection fired for this step. Read the telemetry yourself: absence of an alert is not absence of activity.",
+            )}
           </p>
         )}
       </section>
 
       {step.techniques.length ? (
-        <section className="mt-4" aria-label="MITRE ATT&CK techniques">
+        <section className="mt-4" aria-label={c("MITRE ATT&CK techniques")}>
           <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             MITRE ATT&amp;CK
           </h3>
@@ -434,7 +445,7 @@ function StepCardImpl({
       ) : null}
 
       {step.questions.length || step.decision ? (
-        <section className="mt-4 space-y-3" aria-label="Investigation">
+        <section className="mt-4 space-y-3" aria-label={c("Investigation")}>
           {step.questions.map((q) => (
             <Question key={q.id} question={q} progress={progress} dispatch={dispatch} />
           ))}

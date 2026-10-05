@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 
 import { readStorage, writeStorage } from "@/lib/persistent-storage";
 import { hrefWith, toggleValue } from "@/lib/params";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 type Updates = Record<string, string | number | readonly string[] | null | undefined>;
 
@@ -114,7 +115,7 @@ export function UrlSelect({
   param,
   label,
   options,
-  allLabel = "All",
+  allLabel,
   className,
 }: {
   param: string;
@@ -123,6 +124,7 @@ export function UrlSelect({
   allLabel?: string;
   className?: string;
 }) {
+  const { c } = useLocale();
   const { params, set } = useUrlParams();
   return (
     <NativeSelect
@@ -131,7 +133,7 @@ export function UrlSelect({
       onChange={(e) => set({ [param]: e.target.value || null })}
       className={className}
     >
-      <option value="">{`${label}: ${allLabel}`}</option>
+      <option value="">{`${label}: ${allLabel ?? c("All")}`}</option>
       {options.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
@@ -186,10 +188,11 @@ export function UrlChips({
 }
 
 export function ClearFilters({ keys, storageKey }: { keys: string[]; storageKey?: string }) {
+  const { c } = useLocale();
   const { params, set, pending } = useUrlParams();
   const active = keys.some((k) => params.has(k));
   if (!active)
-    return pending ? <span className="text-xs text-muted-foreground">Updating…</span> : null;
+    return pending ? <span className="text-xs text-muted-foreground">{c("Updating…")}</span> : null;
   return (
     <Button
       variant="ghost"
@@ -199,7 +202,7 @@ export function ClearFilters({ keys, storageKey }: { keys: string[]; storageKey?
         set(Object.fromEntries(keys.map((k) => [k, null])));
       }}
     >
-      <X /> Clear filters
+      <X /> {c("Clear filters")}
     </Button>
   );
 }

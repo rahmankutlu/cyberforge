@@ -1,3 +1,5 @@
+"use client";
+
 import type { AlertSummary } from "@cyberforge/types";
 import { EmptyState, Table, TBody, TD, TH, THead, TR } from "@cyberforge/ui";
 import { ShieldCheck, UserRound } from "lucide-react";
@@ -12,6 +14,7 @@ import {
 import { SortTh } from "@/components/data/sort-th";
 import { RelativeTime } from "@/components/relative-time";
 import type { SearchParams } from "@/lib/params";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export interface AlertsSort {
   path: string;
@@ -25,8 +28,8 @@ export function AlertsTable({
   sorting,
   compact = false,
   showSynthetic = false,
-  emptyTitle = "No alerts match",
-  emptyDescription = "Try clearing filters, or run a lab to generate telemetry.",
+  emptyTitle,
+  emptyDescription,
 }: {
   alerts: AlertSummary[];
   sorting?: AlertsSort;
@@ -35,8 +38,17 @@ export function AlertsTable({
   emptyTitle?: string;
   emptyDescription?: string;
 }) {
+  const { t } = useLocale();
+  const resolvedEmptyTitle = emptyTitle ?? t("alerts.noMatch");
+  const resolvedEmptyDescription = emptyDescription ?? t("alerts.emptyDescription");
   if (alerts.length === 0) {
-    return <EmptyState icon={<ShieldCheck />} title={emptyTitle} description={emptyDescription} />;
+    return (
+      <EmptyState
+        icon={<ShieldCheck />}
+        title={resolvedEmptyTitle}
+        description={resolvedEmptyDescription}
+      />
+    );
   }
 
   const head = (
@@ -61,13 +73,13 @@ export function AlertsTable({
     <Table>
       <THead>
         <TR className="hover:bg-transparent">
-          {head("Severity", "severity", "w-28")}
-          {head("Alert", "title")}
-          {compact ? null : head("Host / user", "host")}
-          {compact ? null : head("Technique", "technique")}
-          {head("Status", "status", "w-32")}
-          {compact ? null : <TH className="w-36">Assignee</TH>}
-          {head("When", "timestamp", "w-28 text-right", "desc")}
+          {head(t("alerts.severity"), "severity", "w-28")}
+          {head(t("alerts.alert"), "title")}
+          {compact ? null : head(t("alerts.hostUser"), "host")}
+          {compact ? null : head(t("alerts.technique"), "technique")}
+          {head(t("alerts.status"), "status", "w-32")}
+          {compact ? null : <TH className="w-36">{t("alerts.assignee")}</TH>}
+          {head(t("alerts.when"), "timestamp", "w-28 text-right", "desc")}
         </TR>
       </THead>
       <TBody>
@@ -119,7 +131,7 @@ export function AlertsTable({
                     {alert.assignee.name}
                   </span>
                 ) : (
-                  <span className="text-xs text-muted-foreground">Unassigned</span>
+                  <span className="text-xs text-muted-foreground">{t("alerts.unassigned")}</span>
                 )}
               </TD>
             )}

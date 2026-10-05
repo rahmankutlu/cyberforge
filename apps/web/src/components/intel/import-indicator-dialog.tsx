@@ -21,10 +21,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { apiSend } from "@/lib/api";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const TYPES: IndicatorType[] = ["ip", "domain", "url", "sha256", "email", "cve", "asn"];
 
 export function ImportIndicatorDialog() {
+  const { c } = useLocale();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<IndicatorType>("ip");
@@ -47,7 +49,7 @@ export function ImportIndicatorDialog() {
         source: "manual import",
       }),
     onSuccess: (ind) => {
-      toast.success("Indicator imported", { description: `${ind.type}: ${ind.value}` });
+      toast.success(c("Indicator imported"), { description: `${ind.type}: ${ind.value}` });
       setOpen(false);
       setValue("");
       setTags("");
@@ -55,22 +57,23 @@ export function ImportIndicatorDialog() {
       router.refresh();
     },
     onError: (error: Error) =>
-      toast.error("Could not import the indicator", { description: error.message }),
+      toast.error(c("Could not import the indicator"), { description: error.message }),
   });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button data-testid="import-indicator">
-          <Upload /> Import indicator
+          <Upload /> {c("Import indicator")}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Import an indicator</DialogTitle>
+          <DialogTitle>{c("Import an indicator")}</DialogTitle>
           <DialogDescription>
-            Stored on this instance only. CyberForge never sends indicators, or your telemetry, to
-            any third-party service.
+            {c(
+              "Stored on this instance only. CyberForge never sends indicators, or your telemetry, to any third-party service.",
+            )}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -82,7 +85,7 @@ export function ImportIndicatorDialog() {
         >
           <div className="grid grid-cols-[8rem_1fr] gap-3">
             <div className="space-y-1">
-              <Label htmlFor="ind-type">Type</Label>
+              <Label htmlFor="ind-type">{c("Type")}</Label>
               <NativeSelect
                 id="ind-type"
                 value={type}
@@ -96,7 +99,7 @@ export function ImportIndicatorDialog() {
               </NativeSelect>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="ind-value">Value</Label>
+              <Label htmlFor="ind-value">{c("Value")}</Label>
               <Input
                 id="ind-value"
                 value={value}
@@ -110,7 +113,7 @@ export function ImportIndicatorDialog() {
           </div>
           <div className="grid grid-cols-[1fr_8rem] gap-3">
             <div className="space-y-1">
-              <Label htmlFor="ind-tags">Tags (comma separated)</Label>
+              <Label htmlFor="ind-tags">{c("Tags (comma separated)")}</Label>
               <Input
                 id="ind-tags"
                 value={tags}
@@ -119,7 +122,7 @@ export function ImportIndicatorDialog() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="ind-conf">Confidence</Label>
+              <Label htmlFor="ind-conf">{c("Confidence")}</Label>
               <Input
                 id="ind-conf"
                 type="number"
@@ -131,7 +134,7 @@ export function ImportIndicatorDialog() {
             </div>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="ind-notes">Notes</Label>
+            <Label htmlFor="ind-notes">{c("Notes")}</Label>
             <Textarea
               id="ind-notes"
               value={notes}
@@ -142,10 +145,10 @@ export function ImportIndicatorDialog() {
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setOpen(false)}>
-              Cancel
+              {c("Cancel")}
             </Button>
             <Button type="submit" disabled={!value.trim() || create.isPending}>
-              {create.isPending ? "Importing…" : "Import"}
+              {create.isPending ? c("Importing…") : c("Import")}
             </Button>
           </div>
         </form>

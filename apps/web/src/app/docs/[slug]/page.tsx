@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Markdown } from "@/components/markdown";
 import { PageHeader } from "@/components/page-header";
 import { apiGetOrNull } from "@/lib/api";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -14,13 +16,14 @@ export async function generateMetadata({ params }: Props) {
 }
 
 export default async function DocPageRoute({ params }: Props) {
+  const c = createCopyTranslator(await getLocale());
   const { slug } = await params;
   const doc = await apiGetOrNull<DocPage>(`/docs-pages/${slug}`);
   if (!doc) notFound();
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: "Documentation", href: "/docs" }, { label: doc.title }]}
+        breadcrumbs={[{ label: c("Documentation"), href: "/docs" }, { label: doc.title }]}
         title={doc.title}
         description={<span className="font-mono text-xs">{doc.path}</span>}
       />

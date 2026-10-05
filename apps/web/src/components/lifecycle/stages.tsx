@@ -13,6 +13,7 @@ import { CodeBlock } from "@/components/code-block";
 import { CreateInvestigationButton } from "@/components/soc/create-investigation-button";
 import { formatDateTimeFull } from "@/lib/format";
 import { highlightSegments, patternNeedles } from "@/lib/highlight";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -32,6 +33,7 @@ export function matchNeedles(data: Lifecycle): string[] {
 
 // 1 ─ simulation ─────────────────────────────────────────────────────────────────────────────
 export function SimulationStage({ data }: { data: Lifecycle }) {
+  const { c } = useLocale();
   const sim = data.simulation;
   return (
     <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
@@ -42,28 +44,33 @@ export function SimulationStage({ data }: { data: Lifecycle }) {
               href={`/labs/${sim.lab.slug}`}
               className="text-sm font-semibold hover:text-primary"
             >
-              Lab {String(sim.lab.number).padStart(2, "0")} · {sim.lab.title}
+              {c("Lab")} {String(sim.lab.number).padStart(2, "0")} · {sim.lab.title}
             </Link>
           ) : (
-            <span className="text-sm font-semibold">Background telemetry</span>
+            <span className="text-sm font-semibold">{c("Background telemetry")}</span>
           )}
-          {sim.synthetic ? <SyntheticBadge /> : <Badge variant="success">Live lab activity</Badge>}
+          {sim.synthetic ? (
+            <SyntheticBadge />
+          ) : (
+            <Badge variant="success">{c("Live lab activity")}</Badge>
+          )}
           {sim.run_id ? (
             <Badge variant="outline" className="font-mono">
-              run #{sim.run_id}
+              {c("run")} #{sim.run_id}
             </Badge>
           ) : null}
         </div>
         <p className="text-[13px] leading-relaxed text-muted-foreground">{sim.description}</p>
         <p className="mt-3 flex items-start gap-2 rounded-md border border-border bg-muted/40 p-2.5 text-xs text-muted-foreground">
           <FlaskConical className="mt-0.5 size-3.5 shrink-0" />
-          Simulations replay telemetry only. No packets are sent to any system, inside or outside
-          the lab.
+          {c(
+            "Simulations replay telemetry only. No packets are sent to any system, inside or outside the lab.",
+          )}
         </p>
       </div>
       {sim.narrative.length ? (
         <div>
-          <SectionTitle>What the simulation does</SectionTitle>
+          <SectionTitle>{c("What the simulation does")}</SectionTitle>
           <ol className="space-y-1.5">
             {sim.narrative.map((step, i) => (
               <li key={i} className="flex gap-2.5 text-[13px]">
@@ -82,10 +89,14 @@ export function SimulationStage({ data }: { data: Lifecycle }) {
 
 // 2 ─ raw event ──────────────────────────────────────────────────────────────────────────────
 export function RawStage({ data, index }: { data: Lifecycle; index: number }) {
+  const { locale, c } = useLocale();
   const event = data.raw_events[index];
   if (!event)
     return (
-      <EmptyState title="No raw events" description="This alert has no stored evidence events." />
+      <EmptyState
+        title={c("No raw events")}
+        description={c("This alert has no stored evidence events.")}
+      />
     );
   const segments = highlightSegments(event.raw, matchNeedles(data));
   return (
@@ -94,8 +105,11 @@ export function RawStage({ data, index }: { data: Lifecycle; index: number }) {
         <Badge variant="outline" className="font-mono">
           {event.source}
         </Badge>
-        <span>{formatDateTimeFull(event.timestamp)}</span>
-        <span>· event #{event.id}</span>
+        <span>{formatDateTimeFull(event.timestamp, locale)}</span>
+        <span>
+          · {c("event #")}
+          {event.id}
+        </span>
       </div>
       <pre
         className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-muted/40 p-3 font-mono text-xs leading-5"
@@ -112,13 +126,14 @@ export function RawStage({ data, index }: { data: Lifecycle; index: number }) {
         )}
       </pre>
       <p className="mt-2 text-xs text-muted-foreground">
-        Highlighted text is what the detection rule matched. Raw logs are unparsed: fields and
-        structure are recovered in the next stage.
+        {c(
+          "Highlighted text is what the detection rule matched. Raw logs are unparsed: fields and structure are recovered in the next stage.",
+        )}
       </p>
       {event.note ? (
         <p className="mt-3 rounded-md border border-border bg-muted/30 p-2.5 text-[13px]">
           <span className="mr-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Analyst note
+            {c("Analyst note")}
           </span>
           {event.note}
         </p>
@@ -129,6 +144,7 @@ export function RawStage({ data, index }: { data: Lifecycle; index: number }) {
 
 // 3 ─ parsed event ───────────────────────────────────────────────────────────────────────────
 function Row({ k, v, matched }: { k: string; v: React.ReactNode; matched?: boolean }) {
+  const { c } = useLocale();
   return (
     <tr className={cn("border-b border-border/60 last:border-0", matched && "bg-primary/8")}>
       <th
@@ -138,7 +154,7 @@ function Row({ k, v, matched }: { k: string; v: React.ReactNode; matched?: boole
         {k}
         {matched ? (
           <span className="ml-1.5 rounded bg-primary/20 px-1 text-[9px] font-medium uppercase tracking-wide text-primary">
-            matched
+            {c("matched")}
           </span>
         ) : null}
       </th>
@@ -153,8 +169,9 @@ function display(value: unknown): string {
 }
 
 export function ParsedStage({ data, index }: { data: Lifecycle; index: number }) {
+  const { c } = useLocale();
   const event: SecurityEvent | undefined = data.parsed_events[index];
-  if (!event) return <EmptyState title="No parsed events" />;
+  if (!event) return <EmptyState title={c("No parsed events")} />;
   const matchedFields = new Set(data.match.trace.map((t) => t.field));
   const normalized: [string, string | number | null][] = [
     ["timestamp", event.timestamp],
@@ -176,7 +193,7 @@ export function ParsedStage({ data, index }: { data: Lifecycle; index: number })
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div>
-        <SectionTitle>Normalised event</SectionTitle>
+        <SectionTitle>{c("Normalised event")}</SectionTitle>
         <div className="overflow-hidden rounded-lg border border-border">
           <table className="w-full">
             <tbody>
@@ -191,7 +208,7 @@ export function ParsedStage({ data, index }: { data: Lifecycle; index: number })
         <p className="mt-2 text-xs text-muted-foreground">{event.message}</p>
       </div>
       <div>
-        <SectionTitle>Sigma field map (what rules evaluate)</SectionTitle>
+        <SectionTitle>{c("Sigma field map (what rules evaluate)")}</SectionTitle>
         <div className="overflow-hidden rounded-lg border border-border" data-testid="field-map">
           <table className="w-full">
             <tbody>
@@ -202,13 +219,13 @@ export function ParsedStage({ data, index }: { data: Lifecycle; index: number })
           </table>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Logsource:{" "}
+          {c("Logsource")}:{" "}
           <span className="font-mono">
             {Object.entries(event.logsource)
               .map(([k, v]) => `${k}=${v}`)
               .join(", ")}
           </span>
-          . A rule only runs against events with a compatible logsource.
+          . {c("A rule only runs against events with a compatible logsource.")}
         </p>
       </div>
     </div>
@@ -229,13 +246,14 @@ function highlightedRuleLines(content: string, fields: string[]): Set<number> {
 }
 
 export function MatchStage({ data }: { data: Lifecycle }) {
+  const { c } = useLocale();
   const rule = data.rule;
   if (!rule)
     return (
       <EmptyState
         icon={<ShieldQuestion />}
-        title="No rule attached"
-        description="The rule that raised this alert was removed."
+        title={c("No rule attached")}
+        description={c("The rule that raised this alert was removed.")}
       />
     );
   const corr = data.match.correlation;
@@ -256,7 +274,7 @@ export function MatchStage({ data }: { data: Lifecycle }) {
           <Badge variant="outline" className="font-mono uppercase">
             {rule.format}
           </Badge>
-          {rule.is_correlation ? <Badge variant="accent">correlation</Badge> : null}
+          {rule.is_correlation ? <Badge variant="accent">{c("correlation")}</Badge> : null}
         </div>
         <p className="mb-3 text-[13px] leading-relaxed text-muted-foreground">{rule.description}</p>
         <CodeBlock
@@ -267,7 +285,7 @@ export function MatchStage({ data }: { data: Lifecycle }) {
         />
       </div>
       <div className="min-w-0">
-        <SectionTitle>Why it matched</SectionTitle>
+        <SectionTitle>{c("Why it matched")}</SectionTitle>
         <p className="mb-3 text-[13px]" data-testid="match-explanation">
           {data.match.explanation}
         </p>
@@ -288,7 +306,7 @@ export function MatchStage({ data }: { data: Lifecycle }) {
                     className="rounded-md border border-border bg-muted/30 px-2.5 py-1.5"
                   >
                     <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      group by {k}
+                      {c("group by")} {k}
                     </dt>
                     <dd className="font-mono">{String(v)}</dd>
                   </div>
@@ -301,9 +319,9 @@ export function MatchStage({ data }: { data: Lifecycle }) {
             <table className="w-full text-xs" data-testid="match-trace">
               <thead className="bg-muted/40 text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-1.5 font-medium">Field</th>
-                  <th className="px-3 py-1.5 font-medium">Event value</th>
-                  <th className="px-3 py-1.5 font-medium">Pattern</th>
+                  <th className="px-3 py-1.5 font-medium">{c("Field")}</th>
+                  <th className="px-3 py-1.5 font-medium">{c("Event value")}</th>
+                  <th className="px-3 py-1.5 font-medium">{c("Pattern")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -320,7 +338,7 @@ export function MatchStage({ data }: { data: Lifecycle }) {
         ) : null}
         {rule.false_positives.length ? (
           <div className="mt-4">
-            <SectionTitle>Potential false positives</SectionTitle>
+            <SectionTitle>{c("Potential false positives")}</SectionTitle>
             <ul className="list-disc space-y-1 pl-5 text-[13px] text-muted-foreground">
               {rule.false_positives.map((f) => (
                 <li key={f}>{f}</li>
@@ -335,6 +353,7 @@ export function MatchStage({ data }: { data: Lifecycle }) {
 
 // 5 ─ SOC alert ──────────────────────────────────────────────────────────────────────────────
 export function AlertStage({ data, currentAlertId }: { data: Lifecycle; currentAlertId?: number }) {
+  const { locale, c } = useLocale();
   const a = data.alert;
   return (
     <Card>
@@ -347,34 +366,35 @@ export function AlertStage({ data, currentAlertId }: { data: Lifecycle; currentA
           </div>
           <p className="text-base font-semibold">{a.title}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Alert #{a.id} · {formatDateTimeFull(a.timestamp)} · source {a.source}
+            {c("Alert #")}
+            {a.id} · {formatDateTimeFull(a.timestamp, locale)} · {c("source")} {a.source}
           </p>
           {currentAlertId === a.id ? null : (
             <Link
               href={`/soc/alerts/${a.id}`}
               className="mt-3 inline-flex items-center gap-1 text-xs text-primary hover:underline"
             >
-              Open alert <ExternalLink className="size-3" />
+              {c("Open alert")} <ExternalLink className="size-3" />
             </Link>
           )}
         </div>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
           <div>
-            <dt className="text-muted-foreground">Host</dt>
+            <dt className="text-muted-foreground">{c("Host")}</dt>
             <dd className="font-mono">{a.host ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">User</dt>
+            <dt className="text-muted-foreground">{c("User")}</dt>
             <dd className="font-mono">{a.user ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Assignee</dt>
-            <dd>{a.assignee?.name ?? "Unassigned"}</dd>
+            <dt className="text-muted-foreground">{c("Assignee")}</dt>
+            <dd>{a.assignee?.name ?? c("Unassigned")}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Confidence</dt>
+            <dt className="text-muted-foreground">{c("Confidence")}</dt>
             <dd className="mt-1">
-              <Progress value={a.confidence} label="Confidence" />
+              <Progress value={a.confidence} label={c("Confidence")} />
               <span className="tabular-nums">{a.confidence}%</span>
             </dd>
           </div>
@@ -386,9 +406,12 @@ export function AlertStage({ data, currentAlertId }: { data: Lifecycle; currentA
 
 // 6 ─ MITRE ──────────────────────────────────────────────────────────────────────────────────
 export function MitreStage({ data }: { data: Lifecycle }) {
+  const { c } = useLocale();
   const m = data.mitre;
   if (!m.technique)
-    return <EmptyState title="No technique mapped" description="This rule has no MITRE tag." />;
+    return (
+      <EmptyState title={c("No technique mapped")} description={c("This rule has no MITRE tag.")} />
+    );
   return (
     <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
       <div>
@@ -411,13 +434,15 @@ export function MitreStage({ data }: { data: Lifecycle }) {
             rel="noopener noreferrer"
             className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"
           >
-            View on {m.technique.framework === "atlas" ? "MITRE ATLAS" : "attack.mitre.org"}{" "}
+            {c("View on {{site}}", {
+              site: m.technique.framework === "atlas" ? "MITRE ATLAS" : "attack.mitre.org",
+            })}{" "}
             <ExternalLink className="size-3" />
           </a>
         ) : null}
         {m.other_techniques.length ? (
           <div className="mt-4">
-            <SectionTitle>Also mapped by this rule</SectionTitle>
+            <SectionTitle>{c("Also mapped by this rule")}</SectionTitle>
             <div className="flex flex-wrap gap-2">
               {m.other_techniques.map((t) => (
                 <TechniqueChip key={t.id} id={t.id} name={t.name} />
@@ -427,7 +452,7 @@ export function MitreStage({ data }: { data: Lifecycle }) {
         ) : null}
       </div>
       <div>
-        <SectionTitle>MITRE mitigations</SectionTitle>
+        <SectionTitle>{c("MITRE mitigations")}</SectionTitle>
         {m.mitigations.length ? (
           <ul className="space-y-2">
             {m.mitigations.map((x) => (
@@ -442,7 +467,7 @@ export function MitreStage({ data }: { data: Lifecycle }) {
           </ul>
         ) : (
           <p className="text-xs text-muted-foreground">
-            No catalogued mitigations for this technique.
+            {c("No catalogued mitigations for this technique.")}
           </p>
         )}
       </div>
@@ -452,13 +477,16 @@ export function MitreStage({ data }: { data: Lifecycle }) {
 
 // 7 ─ investigation ──────────────────────────────────────────────────────────────────────────
 export function InvestigationStage({ data }: { data: Lifecycle }) {
+  const { c } = useLocale();
   const inv = data.investigation;
   if (!inv) {
     return (
       <EmptyState
         icon={<ListChecks />}
-        title="Not yet investigated"
-        description="Group this alert into an investigation to track notes, a timeline and a report."
+        title={c("Not yet investigated")}
+        description={c(
+          "Group this alert into an investigation to track notes, a timeline and a report.",
+        )}
         action={
           <CreateInvestigationButton
             alertId={data.alert.id}
@@ -474,7 +502,10 @@ export function InvestigationStage({ data }: { data: Lifecycle }) {
       <CardContent className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold">{inv.title}</p>
-          <p className="mt-1 text-xs text-muted-foreground">Investigation #{inv.id}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {c("Investigation #")}
+            {inv.id}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <SeverityBadge severity={inv.severity} />
@@ -483,7 +514,7 @@ export function InvestigationStage({ data }: { data: Lifecycle }) {
             href={`/soc/investigations/${inv.id}`}
             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
           >
-            Open <ExternalLink className="size-3" />
+            {c("Open")} <ExternalLink className="size-3" />
           </Link>
         </div>
       </CardContent>
@@ -493,16 +524,19 @@ export function InvestigationStage({ data }: { data: Lifecycle }) {
 
 // 8 ─ mitigation ─────────────────────────────────────────────────────────────────────────────
 export function MitigationStage({ data }: { data: Lifecycle }) {
+  const { c } = useLocale();
   const m = data.mitigation;
   const sourceLabel = {
-    lab: "Lab guidance",
-    mitre: "MITRE ATT&CK mitigations",
-    none: "No catalogued mitigations",
+    lab: c("Lab guidance"),
+    mitre: c("MITRE ATT&CK mitigations"),
+    none: c("No catalogued mitigations"),
   }[m.source];
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div>
-        <SectionTitle>Mitigation · {sourceLabel}</SectionTitle>
+        <SectionTitle>
+          {c("Mitigation")} · {sourceLabel}
+        </SectionTitle>
         {m.actions.length ? (
           <ul className="space-y-2">
             {m.actions.map((action) => (
@@ -514,12 +548,12 @@ export function MitigationStage({ data }: { data: Lifecycle }) {
           </ul>
         ) : (
           <p className="text-xs text-muted-foreground">
-            No mitigation guidance is attached to this rule yet.
+            {c("No mitigation guidance is attached to this rule yet.")}
           </p>
         )}
       </div>
       <div>
-        <SectionTitle>Analyst recommendations</SectionTitle>
+        <SectionTitle>{c("Analyst recommendations")}</SectionTitle>
         <ol className="space-y-2">
           {m.analyst_steps.map((step, i) => (
             <li key={i} className="flex gap-2.5 text-[13px]">

@@ -29,6 +29,9 @@ import {
   tacticHeat,
   type PipelineStage,
 } from "@/lib/demo-engine";
+import { localizeKnownCopy } from "@/lib/i18n/copy";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { renderRich } from "@/lib/i18n/rich";
 
 const SPEEDS = [1, 2, 4] as const;
 type Speed = (typeof SPEEDS)[number];
@@ -102,6 +105,7 @@ export function DemoPlayer({
   autoplay?: boolean;
   initialSpeed?: Speed;
 }) {
+  const { locale, c } = useLocale();
   const clock = useDemoClock(script.duration_seconds, initialTime, autoplay, initialSpeed);
   const state = useMemo(() => stateAt(script, clock.elapsed), [script, clock.elapsed]);
   const heat = useMemo(() => tacticHeat(script, state.techniques), [script, state.techniques]);
@@ -131,11 +135,11 @@ export function DemoPlayer({
           <div className="flex items-center gap-2">
             {clock.playing ? (
               <Button onClick={clock.pause} data-testid="demo-pause">
-                <Pause /> Pause
+                <Pause /> {c("Pause")}
               </Button>
             ) : (
               <Button onClick={clock.start} data-testid="demo-start">
-                <Play /> {state.finished ? "Replay" : started ? "Resume" : "Start demo"}
+                <Play /> {state.finished ? c("Replay") : started ? c("Resume") : c("Start demo")}
               </Button>
             )}
             <Button
@@ -144,12 +148,12 @@ export function DemoPlayer({
               data-testid="demo-reset"
               disabled={!started}
             >
-              <RotateCcw /> Reset
+              <RotateCcw /> {c("Reset")}
             </Button>
           </div>
           <div
             role="group"
-            aria-label="Playback speed"
+            aria-label={c("Playback speed")}
             className="inline-flex rounded-md border border-border p-0.5"
           >
             {SPEEDS.map((s) => (
@@ -171,7 +175,7 @@ export function DemoPlayer({
             ))}
           </div>
           <div className="ml-auto flex items-baseline gap-4 font-mono text-sm tabular-nums">
-            <span data-testid="demo-clock" title="Scenario clock">
+            <span data-testid="demo-clock" title={c("Scenario clock")}>
               {clockAt(script, clock.elapsed)}
             </span>
             <span className="text-muted-foreground" data-testid="demo-elapsed">
@@ -182,7 +186,7 @@ export function DemoPlayer({
         <div
           className="relative mt-3 h-1.5 rounded-full bg-muted"
           role="progressbar"
-          aria-label="Demo progress"
+          aria-label={c("Demo progress")}
           aria-valuemin={0}
           aria-valuemax={script.duration_seconds}
           aria-valuenow={Math.floor(clock.elapsed)}
@@ -208,7 +212,7 @@ export function DemoPlayer({
       {/* Pipeline */}
       <ol
         className="flex flex-wrap items-stretch gap-y-2 rounded-lg border border-border bg-card p-1.5"
-        aria-label="Detection pipeline"
+        aria-label={c("Detection pipeline")}
         data-testid="demo-pipeline"
         data-stage={state.stage}
       >
@@ -224,7 +228,7 @@ export function DemoPlayer({
                 )}
               >
                 <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  <Icon className="size-3" aria-hidden /> {stage.label}
+                  <Icon className="size-3" aria-hidden /> {localizeKnownCopy(locale, stage.label)}
                 </p>
                 <p className="truncate text-[13px] font-semibold tabular-nums">
                   {counts[stage.key] || "-"}
@@ -243,8 +247,11 @@ export function DemoPlayer({
 
       <p className="sr-only" role="status" aria-live="polite" data-testid="demo-announce">
         {latestAlert
-          ? `Latest alert: ${latestAlert.title}, ${latestAlert.severity} severity.`
-          : "No alerts yet."}
+          ? c("Latest alert: {{title}}, {{severity}} severity.", {
+              title: latestAlert.title,
+              severity: localizeKnownCopy(locale, latestAlert.severity),
+            })
+          : c("No alerts yet")}
       </p>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,4fr)_minmax(0,3.4fr)]">
@@ -253,32 +260,37 @@ export function DemoPlayer({
           <Card className="p-4" aria-labelledby="ingest-h">
             <div className="mb-2 flex items-center justify-between">
               <h2 id="ingest-h" className="text-sm font-semibold">
-                Event ingestion
+                {c("Event ingestion")}
               </h2>
               <span
                 className="text-xs tabular-nums text-muted-foreground"
                 data-testid="events-count"
               >
-                {state.events.length} of {script.events.length} events · {state.matchedEvents}{" "}
-                matched
+                {c("{{shown}} of {{total}} events · {{matched}} matched", {
+                  shown: state.events.length,
+                  total: script.events.length,
+                  matched: state.matchedEvents,
+                })}
               </span>
             </div>
             <div className="overflow-hidden rounded-lg border border-border">
               <table className="w-full table-fixed text-xs" data-testid="demo-events">
-                <caption className="sr-only">Telemetry as it is ingested, newest first</caption>
+                <caption className="sr-only">
+                  {c("Telemetry as it is ingested, newest first")}
+                </caption>
                 <thead>
                   <tr className="border-b border-border text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                     <th scope="col" className="w-[4.5rem] px-2 py-1.5">
-                      Time
+                      {c("Time")}
                     </th>
                     <th scope="col" className="w-[5.5rem] px-2 py-1.5">
-                      Host
+                      {c("Host")}
                     </th>
                     <th scope="col" className="px-2 py-1.5">
-                      Event
+                      {c("Event")}
                     </th>
                     <th scope="col" className="w-[4.5rem] px-2 py-1.5">
-                      Result
+                      {c("Result")}
                     </th>
                   </tr>
                 </thead>
@@ -286,7 +298,7 @@ export function DemoPlayer({
                   {shownEvents.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-2 py-8 text-center text-muted-foreground">
-                        Press Start demo. Synthetic telemetry begins to arrive.
+                        {c("Press Start demo. Synthetic telemetry begins to arrive.")}
                       </td>
                     </tr>
                   ) : null}
@@ -317,7 +329,7 @@ export function DemoPlayer({
                         {e.detections.length ? (
                           <SeverityBadge severity={e.severity as Severity} />
                         ) : (
-                          <span className="text-muted-foreground">normal</span>
+                          <span className="text-muted-foreground">{c("normal")}</span>
                         )}
                       </td>
                     </tr>
@@ -329,7 +341,7 @@ export function DemoPlayer({
 
           <Card className="p-4" aria-labelledby="chain-h">
             <h2 id="chain-h" className="mb-2 text-sm font-semibold">
-              Process chain
+              {c("Process chain")}
             </h2>
             {lines.length ? (
               <ul className="space-y-1 font-mono text-xs" data-testid="process-chain">
@@ -350,14 +362,14 @@ export function DemoPlayer({
                     >
                       {node.label}
                     </span>
-                    {accessed ? <Badge variant="outline">memory read</Badge> : null}
-                    {node.flagged ? <Badge variant="high">flagged</Badge> : null}
+                    {accessed ? <Badge variant="outline">{c("memory read")}</Badge> : null}
+                    {node.flagged ? <Badge variant="high">{c("flagged")}</Badge> : null}
                   </li>
                 ))}
               </ul>
             ) : (
               <p className="text-xs text-muted-foreground">
-                The chain appears when a detection flags a process.
+                {c("The chain appears when a detection flags a process.")}
               </p>
             )}
           </Card>
@@ -367,7 +379,7 @@ export function DemoPlayer({
         <div className="min-w-0 space-y-4">
           <Card className="p-4" aria-labelledby="sev-h">
             <h2 id="sev-h" className="text-sm font-semibold">
-              Incident severity
+              {c("Incident severity")}
             </h2>
             <p className="mt-2 flex items-baseline gap-2">
               <span
@@ -378,7 +390,7 @@ export function DemoPlayer({
                 data-testid="severity-current"
                 data-severity={state.severity}
               >
-                {state.severity === "informational" ? "Quiet" : state.severity}
+                {state.severity === "informational" ? c("Quiet") : state.severity}
               </span>
               {state.severityHistory.length > 1 ? (
                 <span className="text-xs text-muted-foreground" data-testid="severity-history">
@@ -408,17 +420,17 @@ export function DemoPlayer({
           <Card className="p-4" aria-labelledby="alerts-h">
             <div className="mb-2 flex items-center justify-between">
               <h2 id="alerts-h" className="text-sm font-semibold">
-                SOC alerts
+                {c("SOC alerts")}
               </h2>
               <span
                 className="text-xs tabular-nums text-muted-foreground"
                 data-testid="alerts-count"
               >
-                {state.alerts.length} raised
+                {state.alerts.length} {c("raised")}
               </span>
             </div>
             {state.alerts.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">No alerts yet.</p>
+              <p className="py-6 text-center text-xs text-muted-foreground">{c("No alerts yet")}</p>
             ) : (
               <ul className="space-y-2" data-testid="demo-alerts">
                 {[...state.alerts].reverse().map((a) => (
@@ -439,7 +451,7 @@ export function DemoPlayer({
                       <span className="font-mono">{a.host}</span>
                       {a.technique ? <span className="font-mono">{a.technique}</span> : null}
                       <Link href={`/detections/${a.rule}`} className="text-primary hover:underline">
-                        Rule
+                        {c("Rule")}
                       </Link>
                     </p>
                   </li>
@@ -458,7 +470,7 @@ export function DemoPlayer({
             <ul
               className="grid grid-cols-3 gap-1.5"
               data-testid="mitre-heatmap"
-              aria-label="Tactics with observed techniques"
+              aria-label={c("Tactics with observed techniques")}
             >
               {heat.map((h) => (
                 <li
@@ -472,7 +484,7 @@ export function DemoPlayer({
                     h.count === 1 && "border-primary/30 bg-primary/15 text-foreground",
                     h.count >= 2 && "border-primary/50 bg-primary/30 text-foreground",
                   )}
-                  title={h.techniques.join(", ") || "No technique observed"}
+                  title={h.techniques.join(", ") || c("No technique observed")}
                 >
                   <span className="block truncate">{h.name}</span>
                   <span className="font-mono tabular-nums">{h.count || "·"}</span>
@@ -499,7 +511,7 @@ export function DemoPlayer({
                 ))}
               {state.techniques.length === 0 ? (
                 <li className="text-xs text-muted-foreground">
-                  Techniques appear as alerts map to ATT&amp;CK.
+                  {c("Techniques appear as alerts map to ATT&CK.")}
                 </li>
               ) : null}
             </ul>
@@ -508,7 +520,7 @@ export function DemoPlayer({
           <Card className="p-4" aria-labelledby="inv-h">
             <div className="mb-2 flex items-center justify-between gap-2">
               <h2 id="inv-h" className="text-sm font-semibold">
-                Investigation
+                {c("Investigation")}
               </h2>
               <Badge
                 variant={CONTAINMENT_VARIANT[state.containment.state]}
@@ -521,7 +533,7 @@ export function DemoPlayer({
             <p className="mb-3 text-[11px] text-muted-foreground">{state.containment.detail}</p>
             {state.notes.length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                Analyst notes appear as the investigation proceeds.
+                {c("Analyst notes appear as the investigation proceeds.")}
               </p>
             ) : (
               <ol className="space-y-2" data-testid="demo-notes">
@@ -553,7 +565,7 @@ export function DemoPlayer({
         data-ready={state.summaryVisible}
       >
         <h2 id="summary-h" className="text-sm font-semibold">
-          Incident summary
+          {c("Incident summary")}
         </h2>
         {state.summaryVisible ? (
           <div className="mt-2 space-y-3 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500">
@@ -582,33 +594,43 @@ export function DemoPlayer({
                 ],
               ].map(([label, value]) => (
                 <div key={label as string} className="rounded-md bg-muted/50 p-2">
-                  <dt className="text-[11px] text-muted-foreground">{label}</dt>
+                  <dt className="text-[11px] text-muted-foreground">
+                    {localizeKnownCopy(locale, label as string)}
+                  </dt>
                   <dd className="text-base font-semibold tabular-nums">{value}</dd>
                 </div>
               ))}
             </dl>
             <p className="text-[11px] text-muted-foreground">
-              Generated from the telemetry above by templates: no AI and no external service.
-              Explore the same events in the{" "}
-              <Link
-                href="/detections/playground"
-                className="text-primary underline underline-offset-2 hover:no-underline"
-              >
-                playground
-              </Link>{" "}
-              or follow a longer case in{" "}
-              <Link
-                href="/stories"
-                className="text-primary underline underline-offset-2 hover:no-underline"
-              >
-                Stories
-              </Link>
-              .
+              {c("Generated from the telemetry above by templates: no AI and no external service.")}{" "}
+              {renderRich(
+                c(
+                  "Explore the same events in the <playground>playground</playground> or follow a longer case in <stories>Stories</stories>.",
+                ),
+                {
+                  playground: (text) => (
+                    <Link
+                      href="/detections/playground"
+                      className="text-primary underline underline-offset-2 hover:no-underline"
+                    >
+                      {text}
+                    </Link>
+                  ),
+                  stories: (text) => (
+                    <Link
+                      href="/stories"
+                      className="text-primary underline underline-offset-2 hover:no-underline"
+                    >
+                      {text}
+                    </Link>
+                  ),
+                },
+              )}
             </p>
           </div>
         ) : (
           <p className="mt-1 text-xs text-muted-foreground">
-            The summary is written when the incident has been contained.
+            {c("The summary is written when the incident has been contained.")}
           </p>
         )}
       </Card>

@@ -8,14 +8,22 @@ import { LifecycleFlow } from "@/components/lifecycle/lifecycle-flow";
 import { PageHeader } from "@/components/page-header";
 import { apiGet } from "@/lib/api";
 import { first, type SearchParams } from "@/lib/params";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
+import { localizeContent, localizeContentTree } from "@/lib/i18n/content";
 
-export const metadata = { title: "Attack → Log → Detection" };
+export async function generateMetadata() {
+  const c = createCopyTranslator(await getLocale());
+  return { title: c("Attack → Log → Detection") };
+}
 
 export default async function LifecyclePage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
   const sp = await searchParams;
   const list = await apiGet<Page<AlertSummary>>("/alerts", {
     page_size: 14,
@@ -31,13 +39,13 @@ export default async function LifecyclePage({
     return (
       <>
         <PageHeader
-          title="Attack → Log → Detection"
-          description="Run a lab to generate an alert, then trace it here."
+          title={c("Attack → Log → Detection")}
+          description={c("Run a lab to generate an alert, then trace it here.")}
         />
         <EmptyState
           icon={<Workflow />}
-          title="No alerts yet"
-          description="Start any lab simulation and its alerts will appear here."
+          title={c("No alerts yet")}
+          description={c("Start any lab simulation and its alerts will appear here.")}
         />
       </>
     );
@@ -51,13 +59,15 @@ export default async function LifecyclePage({
   return (
     <>
       <PageHeader
-        title="Attack → Log → Detection"
-        description="One alert, traced from the simulated attack through the raw log, parsed fields, rule match, MITRE technique and investigation, to mitigation. Every stage is real data from this instance."
+        title={c("Attack → Log → Detection")}
+        description={c(
+          "One alert, traced from the simulated attack through the raw log, parsed fields, rule match, MITRE technique and investigation, to mitigation. Every stage is real data from this instance.",
+        )}
       />
       <div className="grid gap-5 lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <nav aria-label="Choose an alert" className="lg:sticky lg:top-20 lg:h-fit">
+        <nav aria-label={c("Choose an alert")} className="lg:sticky lg:top-20 lg:h-fit">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Trace an alert
+            {c("Trace an alert")}
           </p>
           <Card className="max-h-[70vh] overflow-y-auto p-1">
             <ul>
@@ -75,7 +85,9 @@ export default async function LifecyclePage({
                       <SeverityBadge severity={a.severity} />
                       <span className="font-mono text-[10px] text-muted-foreground">#{a.id}</span>
                     </span>
-                    <span className="mt-1 line-clamp-2 block text-xs">{a.title}</span>
+                    <span className="mt-1 line-clamp-2 block text-xs">
+                      {localizeContent(locale, a.title)}
+                    </span>
                   </Link>
                 </li>
               ))}
@@ -86,15 +98,19 @@ export default async function LifecyclePage({
         <div className="min-w-0">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <SeverityBadge severity={data.alert.severity} />
-            <h2 className="text-base font-semibold">{data.alert.title}</h2>
+            <h2 className="text-base font-semibold">{localizeContent(locale, data.alert.title)}</h2>
             <Link
               href={`/soc/alerts/${data.alert.id}`}
               className="text-xs text-primary hover:underline"
             >
-              Open alert #{data.alert.id}
+              {c("Open alert")} #{data.alert.id}
             </Link>
           </div>
-          <LifecycleFlow key={data.alert.id} data={data} initialStage="raw" />
+          <LifecycleFlow
+            key={data.alert.id}
+            data={localizeContentTree(locale, data)}
+            initialStage="raw"
+          />
         </div>
       </div>
     </>
