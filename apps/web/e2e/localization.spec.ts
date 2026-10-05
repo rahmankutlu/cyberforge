@@ -67,7 +67,7 @@ test.describe("Turkish interface", () => {
     await page.goto("/lifecycle");
     const tabs = page.getByRole("tab");
     await expect(tabs.first()).toBeVisible();
-    await expect(page.getByTestId("lifecycle")).not.toContainText(/\d+ events?\b/);
+    await expect(main(page).getByTestId("lifecycle")).not.toContainText(/\d+ events?\b/);
   });
 
   for (const path of ["/", "/mitre", "/stories"]) {
