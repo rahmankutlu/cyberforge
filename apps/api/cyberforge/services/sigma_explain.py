@@ -155,7 +155,7 @@ def _operator(names: list[str]) -> str:
 
 
 def _plain(value: Any, names: list[str]) -> str:
-    """A value as a person reads it: `*\powershell.exe` under `endswith` is `\powershell.exe`."""
+    r"""A value as a person reads it: `*\powershell.exe` under `endswith` is `\powershell.exe`."""
     text = _describe(value)
     if isinstance(value, SigmaString):
         if "contains" in names or "startswith" in names:

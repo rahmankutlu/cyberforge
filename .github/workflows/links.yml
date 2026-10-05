@@ -14,6 +14,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+      # atlas.mitre.org is a single-page app: a crawler gets 404 for every technique page that
+      # opens in a browser, so those links are excluded instead of failing the check each week.
       - uses: lycheeverse/lychee-action@v2
         with:
           args: >-
@@ -21,5 +23,6 @@ jobs:
             --exclude '^https?://(localhost|127\.0\.0\.1)'
             --exclude 'cyberforge\.example'
             --exclude 'github\.com/cyberforge/cyberforge'
+            --exclude '^https://atlas\.mitre\.org/techniques/'
             './**/*.md'
           fail: true

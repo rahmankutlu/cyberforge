@@ -87,7 +87,7 @@ The JWT rule alerts whenever a request presents alg=none. A correct verifier wou
 
 ## References
 
-- [OWASP JSON Web Token Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)
+- [OWASP JSON Web Token Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html)
 - [MITRE ATT&CK T1550.001 Application Access Token](https://attack.mitre.org/techniques/T1550/001/)
 
 ## Safety
