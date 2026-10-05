@@ -215,7 +215,7 @@ level: high
 tags: [attack.t1110.001]
 ```
 
-Translations to Elastic (Lucene), Splunk SPL, Microsoft Sentinel KQL, OpenSearch and a generic SQL-like form come from [pySigma](https://github.com/SigmaHQ/pySigma). Every shipped rule documents its false positives.
+Translations to Elastic (Lucene), Splunk SPL, Microsoft Sentinel KQL, OpenSearch and a generic SQL-like form come from [pySigma](https://github.com/SigmaHQ/pySigma). Processing pipelines map the fields to ECS, Splunk or ASIM names ([details](docs/detections.md#translation-pipelines)). Every shipped rule documents its false positives.
 
 ## AI security
 

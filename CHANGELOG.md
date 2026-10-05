@@ -4,6 +4,10 @@ All notable changes to CyberForge are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Added
+
+- **Sigma processing pipelines:** translations map a rule's fields to each SIEM's schema: ECS for Elastic and OpenSearch, the Windows add-on and CIM data models for Splunk, and ASIM, Azure Monitor and Defender XDR for Sentinel. The playground and the rule workbench get a picker per target (default `auto`) and a table of what each field became, what the pipeline added and what it dropped. A rule a pipeline cannot map falls back to the unmapped query and says why. `POST /api/v1/detections/translate` accepts `pipelines` (default `none`, so existing clients are unchanged) and `GET /api/v1/detections/translate/pipelines` lists the choices. See [Detections](docs/detections.md#translation-pipelines).
+
 ## [1.0.0] - 2026-10-05
 
 The first stable release. It includes everything developed for the planned 0.2 line and adds Turkish language support. Every v0.1 lab, rule and dataset keeps working unchanged.

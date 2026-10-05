@@ -18,7 +18,7 @@ Shipped: the 0.1 and 0.2 work above as the first stable release, plus Turkish la
 
 ## v1.1 priorities
 
-- **Sigma pipelines:** per-target field mapping (ECS, Splunk CIM, Sentinel ASIM) so translated queries are field-correct, and a playground tab that shows the mapped query.
+- ~~**Sigma pipelines**~~ — shipped: per-target field mapping (ECS, Splunk, Sentinel ASIM) with a mapping table in the playground. See [Detections](docs/detections.md#translation-pipelines).
 - **Tests for YARA and Suricata rules:** a small file-based format (samples that must and must not match) and a CI gate, like Sigma has.
 - **More stories and datasets:** DNS tunnelling, phishing triage, Kubernetes audit, AWS CloudTrail key abuse. Contributions welcome.
 - **Story authoring in the UI:** a preview and validation view so writing a story does not need a terminal.
