@@ -52,6 +52,8 @@
     "openapi": "node scripts/py.mjs scripts/export_openapi.py",
     "content:mitre": "node scripts/py.mjs scripts/build_mitre_data.py",
     "content:labs": "node scripts/py.mjs scripts/generate_lab_readmes.py",
+    "i18n:check": "node scripts/py.mjs scripts/i18n_catalog.py check",
+    "i18n:sync": "node scripts/py.mjs scripts/i18n_catalog.py sync",
     "screenshots": "node scripts/screenshots.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml,css}\" --log-level warn",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md,yml,yaml,css}\" --log-level warn"

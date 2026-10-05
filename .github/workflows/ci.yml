@@ -59,6 +59,8 @@ jobs:
       # The README counts and the JSON Schemas are generated from the repository.
       - run: pnpm content:readme:check
       - run: pnpm schemas:check
+      # Every authored English string needs a reviewed Turkish translation that keeps code intact.
+      - run: pnpm i18n:check
 
   detections:
     name: Detection tests
