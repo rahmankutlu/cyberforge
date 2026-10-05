@@ -35,6 +35,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest>=8.3",
+  "pytest-cov>=6",
+  "pip-audit>=2.9",
   "python-multipart>=0.0.20",  # only used to exercise the lab app in tests
   "ruff>=0.8",
   "mypy>=1.13",
@@ -54,6 +56,18 @@ include = ["cyberforge*"]
 testpaths = ["tests"]
 addopts = "-ra"
 filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["cyberforge"]
+branch = true
+omit = ["cyberforge/migrations/*"]
+
+[tool.coverage.report]
+# Measured at 91% when this gate was added. The floor only moves up; raise it with the coverage.
+fail_under = 88
+skip_covered = true
+show_missing = true
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError", "@overload"]
 
 [tool.ruff]
 line-length = 100
