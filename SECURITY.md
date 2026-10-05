@@ -4,11 +4,12 @@ CyberForge is a local cybersecurity lab. It ships an _intentionally_ vulnerable 
 
 ## Supported Versions
 
-| Version         | Supported |
-| --------------- | --------- |
-| 0.1.x (current) | Yes       |
+| Version       | Supported |
+| ------------- | --------- |
+| 1.x (current) | Yes       |
+| 0.1.x         | No        |
 
-Security fixes are released as patch versions of the latest minor release.
+Security fixes are released as patch versions of the latest 1.x release. What 1.x keeps stable is described in [docs/versioning.md](docs/versioning.md).
 
 ## Reporting a Vulnerability
 
@@ -30,7 +31,7 @@ In scope:
 Out of scope:
 
 - The deliberate flaws in the practice application (`labs/web/vulnerable-app`): SQL injection, XSS, IDOR, `alg: none` JWTs, an exposed `.env` and so on are the exercise. A way to use them to leave the container _is_ in scope.
-- The absence of authentication in v0.1. CyberForge is a single-user local tool and must not be exposed to untrusted networks. See [docs/security-model.md](docs/security-model.md).
+- The absence of authentication in 1.x. CyberForge is a single-user local tool and must not be exposed to untrusted networks. See [docs/security-model.md](docs/security-model.md).
 - Findings that need an already-compromised host or Docker daemon.
 - Denial of service against a local instance by a local user.
 - Vulnerabilities in third-party dependencies with no demonstrated impact on CyberForge; report those upstream.

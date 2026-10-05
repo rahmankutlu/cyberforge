@@ -51,6 +51,8 @@ pnpm typecheck:api  # mypy
 pnpm test:api       # pytest
 ```
 
+The REST API is a public contract ([versioning](docs/versioning.md)): after changing a route or schema run `pnpm openapi:write` and commit `docs/api/openapi.json`; CI fails when it is stale, and removals or type changes need a major version.
+
 A schema change needs an Alembic migration in `apps/api/cyberforge/migrations/versions`; the tests check that migrations produce every model table. Use SQLAlchemy Core/ORM constructs rather than raw SQL, `yaml.safe_load` for YAML, and type hints on public functions.
 
 ## Tests
