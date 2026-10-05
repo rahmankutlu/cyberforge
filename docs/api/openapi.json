@@ -2220,6 +2220,34 @@
         }
       }
     },
+    "/api/v1/detections/translate/pipelines": {
+      "get": {
+        "tags": [
+          "detections"
+        ],
+        "summary": "Processing pipelines available per translation target",
+        "operationId": "translation_pipelines_api_v1_detections_translate_pipelines_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "items": {
+                      "$ref": "#/components/schemas/PipelineOut"
+                    },
+                    "type": "array"
+                  },
+                  "type": "object",
+                  "title": "Response Translation Pipelines Api V1 Detections Translate Pipelines Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/detections/translate": {
       "post": {
         "tags": [
@@ -5449,6 +5477,32 @@
         ],
         "title": "ExplainRequest"
       },
+      "FieldChangeOut": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "targets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Targets"
+          },
+          "changed": {
+            "type": "boolean",
+            "title": "Changed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "targets",
+          "changed"
+        ],
+        "title": "FieldChangeOut"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -7697,6 +7751,35 @@
         ],
         "title": "Page[RuleSummary]"
       },
+      "PipelineOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "auto": {
+            "type": "boolean",
+            "title": "Auto",
+            "description": "Tried when a client asks for `auto`"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "description",
+          "auto"
+        ],
+        "title": "PipelineOut"
+      },
       "ProgressOut": {
         "properties": {
           "profile_id": {
@@ -9515,6 +9598,30 @@
               }
             ],
             "title": "Targets"
+          },
+          "pipelines": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "elastic",
+                    "splunk",
+                    "sentinel",
+                    "opensearch",
+                    "sql"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipelines",
+            "description": "Processing pipeline per target: `none` (the default, field names unchanged), `auto` (the first pipeline that fits the rule) or an id from `GET /detections/translate/pipelines`."
           }
         },
         "type": "object",
@@ -9581,6 +9688,65 @@
             },
             "type": "array",
             "title": "Notes"
+          },
+          "pipeline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline",
+            "description": "Id of the pipeline that mapped the fields"
+          },
+          "pipeline_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Label"
+          },
+          "field_changes": {
+            "items": {
+              "$ref": "#/components/schemas/FieldChangeOut"
+            },
+            "type": "array",
+            "title": "Field Changes",
+            "description": "How each field in the rule was mapped"
+          },
+          "added_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Added Fields",
+            "description": "Fields the pipeline added, such as a channel filter"
+          },
+          "dropped_fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Dropped Fields",
+            "description": "Rule fields the pipeline removed or could not pair"
+          },
+          "pipeline_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Error",
+            "description": "Why a requested pipeline could not be used; the query is then unmapped"
           }
         },
         "type": "object",

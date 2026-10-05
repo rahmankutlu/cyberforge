@@ -19,7 +19,9 @@ from cyberforge.models import Alert, DetectionRule, Lab, MitreTechnique, lab_rul
 from cyberforge.schemas.common import Page, paginate
 from cyberforge.schemas.detections import (
     CoverageOut,
+    FieldChangeOut,
     MitreLookup,
+    PipelineOut,
     QualityCheckOut,
     QualityResponse,
     RuleCreate,
@@ -43,6 +45,7 @@ from cyberforge.services import (
     detection_engine,
     rule_quality,
     rule_tests,
+    sigma_pipelines,
     sigma_service,
     simulation,
     telemetry,
@@ -353,6 +356,26 @@ def validate_rule(body: ValidateRequest, session: SessionDep) -> ValidateRespons
     return do_validate(session, body.content, body.format)
 
 
+@router.get(
+    "/detections/translate/pipelines",
+    response_model=dict[str, list[PipelineOut]],
+    summary="Processing pipelines available per translation target",
+)
+def translation_pipelines() -> dict[str, list[PipelineOut]]:
+    return {
+        target: [
+            PipelineOut(
+                id=spec.id,
+                label=spec.label,
+                description=spec.description,
+                auto=spec.id in sigma_pipelines.AUTO_ORDER.get(target, ()),
+            )
+            for spec in sigma_pipelines.pipelines_for(target)
+        ]
+        for target in sigma_pipelines.REGISTRY
+    }
+
+
 @router.post(
     "/detections/translate", response_model=TranslateResponse, summary="Translate a Sigma rule"
 )
@@ -362,7 +385,9 @@ def translate_rule(body: TranslateRequest, session: SessionDep) -> TranslateResp
         return TranslateResponse(validation=validation, translations=[])
     try:
         translations = sigma_service.translate(
-            body.content, list(body.targets) if body.targets else None
+            body.content,
+            list(body.targets) if body.targets else None,
+            {str(t): sel for t, sel in body.pipelines.items()} if body.pipelines else None,
         )
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
@@ -376,6 +401,15 @@ def translate_rule(body: TranslateRequest, session: SessionDep) -> TranslateResp
                 queries=t.queries,
                 error=t.error,
                 notes=t.notes,
+                pipeline=t.pipeline,
+                pipeline_label=t.pipeline_label,
+                field_changes=[
+                    FieldChangeOut(source=c.source, targets=list(c.targets), changed=c.changed)
+                    for c in t.field_changes
+                ],
+                added_fields=t.added_fields,
+                dropped_fields=t.dropped_fields,
+                pipeline_error=t.pipeline_error,
             )
             for t in translations
         ],

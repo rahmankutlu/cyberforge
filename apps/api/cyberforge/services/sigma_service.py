@@ -42,6 +42,8 @@ from sigma.types import (
 )
 from sigma.validation import SigmaValidator
 
+from cyberforge.services import sigma_pipelines
+
 log = logging.getLogger(__name__)
 
 MAX_RULE_BYTES = 64 * 1024
@@ -84,6 +86,14 @@ class Translation:
     queries: list[str] = field(default_factory=list)
     error: str | None = None
     notes: list[str] = field(default_factory=list)
+    # Set when a processing pipeline mapped the rule's fields to the target's schema.
+    pipeline: str | None = None
+    pipeline_label: str | None = None
+    field_changes: list[sigma_pipelines.FieldChange] = field(default_factory=list)
+    added_fields: list[str] = field(default_factory=list)
+    dropped_fields: list[str] = field(default_factory=list)
+    # Why a requested pipeline could not be used (the query is then shown unmapped).
+    pipeline_error: str | None = None
 
 
 def technique_from_tag(tag: str) -> str | None:
@@ -229,8 +239,16 @@ def validate(text: str, known_techniques: set[str] | None = None) -> ValidationR
 # --- translation --------------------------------------------------------------------------
 
 PIPELINE_NOTE = (
-    "Field names are passed through unchanged. Apply your platform's pySigma processing "
-    "pipeline (ECS, CIM, ASIM, ...) before running this against production data."
+    "Field names are passed through unchanged. Choose a processing pipeline (ECS, Splunk, "
+    "ASIM, ...) to map them to your platform's schema before running this against production data."
+)
+MAPPED_NOTE = (
+    "Field names follow the {label} schema. Check them against your own data source before "
+    "running this in production."
+)
+NO_PIPELINE_NOTE = (
+    "No {label} pipeline changes this rule's fields ({logsource}), so field names are passed "
+    "through unchanged."
 )
 
 
@@ -246,13 +264,100 @@ def _pysigma_targets() -> dict[str, tuple[str, str, Any]]:
 TARGET_IDS = ["elastic", "splunk", "sentinel", "opensearch", "sql"]
 
 
-def translate(text: str, targets: list[str] | None = None) -> list[Translation]:
+def _convert(
+    backend_cls: Any, text: str, spec: sigma_pipelines.PipelineSpec | None
+) -> tuple[list[str], sigma_pipelines.MappingReport | None]:
+    """Translate ``text`` once. A fresh collection per call: pipelines rewrite rules in place."""
+    collection = SigmaCollection.from_yaml(text)
+    if spec is None:
+        return [str(q) for q in backend_cls().convert(collection)], None
+    tracker = sigma_pipelines.FieldTracker(collection)
+    backend = backend_cls(processing_pipeline=spec.factory())
+    queries = [str(q) for q in backend.convert(collection)]
+    return queries, tracker.report()
+
+
+def _short(reason: str, limit: int = 240) -> str:
+    """First line of a pipeline error. pySigma appends the full list of valid fields."""
+    line = reason.strip().splitlines()[0] if reason.strip() else reason
+    return line if len(line) <= limit else line[: limit - 1] + "…"
+
+
+def _describe_logsource(text: str) -> str:
+    try:
+        rules = [r for r in SigmaCollection.from_yaml(text).rules if isinstance(r, SigmaRule)]
+    except Exception:  # validation reports malformed rules; this is only a note
+        return "unknown log source"
+    sources = {
+        "/".join(v for v in (r.logsource.product, r.logsource.category, r.logsource.service) if v)
+        or "any log source"
+        for r in rules
+    }
+    return ", ".join(sorted(sources))
+
+
+def _translate_with_pipelines(
+    text: str, target: str, selection: str, out: Translation, backend_cls: Any
+) -> None:
+    """Fill ``out`` using the requested pipelines, falling back to the unmapped query."""
+    candidates = sigma_pipelines.resolve(target, selection)
+    first_failure: tuple[str, str] | None = None
+    unmapped: list[str] | None = None
+
+    def _unmapped() -> list[str]:
+        nonlocal unmapped
+        if unmapped is None:
+            unmapped = _convert(backend_cls, text, None)[0]
+        return unmapped
+
+    ineffective: sigma_pipelines.PipelineSpec | None = None
+    for spec in candidates:
+        try:
+            queries, report = _convert(backend_cls, text, spec)
+        except Exception as exc:
+            if first_failure is None:
+                first_failure = (spec.label, _short(f"{type(exc).__name__}: {exc}"))
+            continue
+        # A pipeline can also change the query without renaming a field (Azure Monitor picks the
+        # SecurityEvent table), so compare against the unmapped query too.
+        if report is None or not (report.effective or queries != _unmapped()):
+            ineffective = ineffective or spec
+            continue
+        out.queries = queries
+        out.pipeline, out.pipeline_label = spec.id, spec.label
+        out.field_changes = report.changes
+        out.added_fields, out.dropped_fields = report.added, report.dropped
+        out.notes = [MAPPED_NOTE.format(label=spec.label)]
+        return
+
+    # No pipeline produced a mapped query: show the unmapped one, and say why.
+    out.queries = _unmapped()
+    out.notes = [PIPELINE_NOTE]
+    if first_failure:
+        label, reason = first_failure
+        out.pipeline_error = f"{label}: {reason}"
+    elif ineffective and candidates:
+        out.notes = [
+            NO_PIPELINE_NOTE.format(label=ineffective.label, logsource=_describe_logsource(text))
+        ]
+
+
+def translate(
+    text: str, targets: list[str] | None = None, pipelines: dict[str, str] | None = None
+) -> list[Translation]:
+    """Translate a rule to each target. ``pipelines`` maps a target to ``none`` (the default),
+    ``auto`` or a pipeline id from :mod:`sigma_pipelines`."""
     if len(text.encode("utf-8")) > MAX_RULE_BYTES:
         raise ValueError(f"Rule exceeds {MAX_RULE_BYTES // 1024} KiB limit")
     wanted = targets or TARGET_IDS
     unknown = [t for t in wanted if t not in TARGET_IDS]
     if unknown:
         raise ValueError(f"Unknown translation target(s): {', '.join(unknown)}")
+    selections = pipelines or {}
+    for target, selection in selections.items():
+        if target not in TARGET_IDS:
+            raise ValueError(f"Unknown translation target '{target}' in pipelines")
+        sigma_pipelines.resolve(target, selection)  # validates the selection before any work
     collection = SigmaCollection.from_yaml(text)
     results: list[Translation] = []
     registry = _pysigma_targets()
@@ -263,8 +368,11 @@ def translate(text: str, targets: list[str] | None = None) -> list[Translation]:
         label, language, backend_cls = registry[target]
         out = Translation(target, label, language, notes=[PIPELINE_NOTE])
         try:
-            out.queries = [str(q) for q in backend_cls().convert(collection)]
+            _translate_with_pipelines(
+                text, target, selections.get(target, sigma_pipelines.NONE), out, backend_cls
+            )
         except Exception as exc:
+            out.queries = []
             out.error = f"{type(exc).__name__}: {exc}"
         results.append(out)
     return results
