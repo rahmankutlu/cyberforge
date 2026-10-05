@@ -59,7 +59,8 @@ A schema change needs an Alembic migration in `apps/api/cyberforge/migrations/ve
 | ---------- | ---------------------- | -------------------------------------------------------------- |
 | Pytest     | `pnpm test:api`        | content integrity, Sigma engine, guardrails, HTTP API          |
 | Detections | `pnpm test:detections` | every Sigma rule's positive and negative tests                 |
-| Vitest     | `pnpm test:web`        | UI logic and components                                        |
+| Vitest     | `pnpm test:web`        | UI logic and components, translation parity and terminology    |
+| i18n       | `pnpm i18n:check`      | every English content string has a valid Turkish translation   |
 | Playwright | `pnpm test:e2e`        | critical user flows against a fresh API and a production build |
 
 Behaviour changes need tests; a bug fix needs a test that fails without the fix. Run `pnpm test:e2e` when you touch a user-facing flow (set `PW_CHANNEL=msedge` or `chrome` to reuse an installed browser instead of downloading one).
@@ -71,6 +72,15 @@ pnpm validate:content
 ```
 
 This checks lab and rule schemas, Sigma syntax, MITRE identifiers, that every lab's scenario triggers exactly the rules it declares, and that links resolve. Run it whenever you touch `labs/`, `detections/`, `datasets/`, `mitre/`, `examples/`, `packages/security-content/` or `docs/`.
+
+## Translations
+
+The interface and all authored content are available in English and Turkish; read [Localization](docs/localization.md) first.
+
+- Write whole sentences with placeholders, never sentences assembled from fragments.
+- After changing English text in `labs/`, `stories/`, `detections/`, `examples/` or `packages/security-content/`, run `pnpm i18n:sync`, translate the new empty entries by hand and run `pnpm i18n:check`. CI fails on missing, stale or damaged translations.
+- Use the terms in `apps/web/src/lib/i18n/glossary.tr.json`; `pnpm test:web` fails on the known wrong ones.
+- Do not machine-translate: it produced wrong security terminology in the first version of the Turkish catalogue.
 
 ## Adding a lab
 
@@ -95,7 +105,7 @@ Techniques come from `mitre/curated.yaml`. Add an ID there and run `pnpm content
 - Do one thing and explain why in the description; link the issue.
 - Include tests and update documentation and `.env.example` when behaviour or configuration changes.
 - Keep dependencies minimal; prefer the standard library or an already-used package.
-- Before pushing, run `pnpm lint`, `pnpm typecheck`, `pnpm typecheck:api`, `pnpm test` and `pnpm validate:content`, plus `pnpm format` for Prettier (`ruff format` for Python). CI runs the same checks.
+- Before pushing, run `pnpm lint`, `pnpm typecheck`, `pnpm typecheck:api`, `pnpm test`, `pnpm validate:content` and `pnpm i18n:check`, plus `pnpm format` for Prettier (`ruff format` for Python). CI runs the same checks.
 - Use short, imperative commit subjects (`Add encoded-PowerShell filter for SCCM`). PRs are squash-merged.
 
 A maintainer reviews for safety, correctness, teaching quality and maintainability, in that order.

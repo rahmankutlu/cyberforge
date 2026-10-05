@@ -236,6 +236,10 @@ flowchart TB
 
 Content (labs, rules and their tests, datasets, stories, demos, MITRE data, learning tracks) lives in the repository as validated files. Labs, rules and MITRE data are synced into PostgreSQL on start-up; stories, demos and playground datasets are served straight from the files. The API replays scenario telemetry, runs the Sigma engine and creates aggregated alerts; the web app renders everything with Server Components and URL-driven filters. Read [Architecture](docs/architecture.md) for the full picture.
 
+## Languages
+
+The interface and all authored content (labs, stories, learning tracks, detections, the AI security model) are available in **English** and **Turkish**. Switch in the top bar or in Settings; first-time visitors get their browser's language. Turkish content is human-reviewed against a terminology glossary and checked in CI, never machine-translated at build time. See [Localization](docs/localization.md).
+
 ## Safety boundaries
 
 CyberForge is built for **local labs, owned environments and education**. It contains no exploitation of real systems, credential theft, persistence, malware, evasion tooling or internet-scale scanning, and it is deliberately hard to point at anything else:
@@ -286,13 +290,14 @@ pnpm test:detections     # every Sigma rule's positive and negative tests
 pnpm test:e2e            # Playwright (builds the web app, starts a fresh API)
 pnpm lint && pnpm typecheck && pnpm typecheck:api
 pnpm validate:content    # labs, stories, datasets, MITRE IDs, scenarios, links
+pnpm i18n:check          # every English content string has a reviewed Turkish translation
 pnpm create:lab web my-lab      # scaffold a lab that already validates
 pnpm screenshots         # regenerate the README visuals (see docs/demo-assets.md)
 ```
 
 The `cyberforge` command line (`python -m cyberforge --help`) covers `detections test`, `detections quality`, `content stats`, `story validate`, `lab create`, `lab validate` and `validate`.
 
-CI runs lint, type checks, Pytest, Vitest, the detection tests, Playwright, content validation, PostgreSQL migrations, a Docker smoke test, CodeQL and dependency review; see [CONTRIBUTING.md](CONTRIBUTING.md).
+CI runs lint, type checks, Pytest, Vitest, the detection tests, Playwright, content and translation validation, PostgreSQL migrations, a Docker smoke test, CodeQL and dependency review; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Roadmap
 

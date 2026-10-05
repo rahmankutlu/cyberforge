@@ -23,11 +23,19 @@ The release theme is _understanding and trusting detections_: see why a rule mat
 - **Contributor experience:** guides for creating a lab and a detection and for testing detections; a contributor backlog; issue templates for good first issues, Sigma rules, datasets, labs, stories and documentation; `examples/custom-detection` and `examples/custom-lab`.
 - **Visuals:** `pnpm screenshots` regenerates the README screenshots and a demo GIF from a seeded instance ([Demo assets](docs/demo-assets.md)); README counts are generated from the repository and checked in CI.
 
+- **Turkish language support:** the whole interface and all authored content (labs, stories, learning tracks, detections, the AI security model, threat intelligence, example incidents) are available in Turkish, chosen with the language switcher or the browser's `Accept-Language` and stored in a cookie. Dates, numbers and `<html lang>` follow the locale. The 2,239-entry content catalogue is human-reviewed against a terminology glossary.
+- **Translation tooling and guardrails:** `pnpm i18n:check` (CI) lists missing, stale and damaged translations and rejects any that alter code, links, addresses, ATT&CK ids or placeholders; `pnpm i18n:sync` adds empty entries; Vitest enforces key parity, placeholder and tag parity, and the Turkish glossary; Playwright covers the switcher, translated pages and axe checks in Turkish. See [Localization](docs/localization.md).
+
 ### Changed
 
 - The README leads with the attack-to-investigation flow, a demo, and generated counts.
 - `/detections/playground` is now the three-pane tool above; the older validate, translate and test flows live on in its tabs. `/detections/new` is unchanged.
 - The API's security headers keep an endpoint's own `Cache-Control` for event streams so proxies do not buffer them.
+
+### Fixed
+
+- Lifecycle stage summaries, lab-run toasts, correlation-hit counts and the SOC overview's empty state were English-only; they are now localized.
+- Sentences assembled from fragments (links, counts, "N of M" phrases) are whole translatable messages, so Turkish word order and suffixes are correct.
 
 ### Security
 

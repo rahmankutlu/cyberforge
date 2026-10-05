@@ -1,0 +1,38 @@
+name: Translation
+description: A wrong, unclear or missing translation
+labels: [documentation, i18n]
+body:
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language
+      options: [Turkish]
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Where you saw it
+      description: The page or URL, and the lab, story or rule if it is content.
+      placeholder: /labs/broken-authentication, "Objectives" tab
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current text
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested text
+      description: Why it is better, and the Turkish term you would use if a security term is involved.
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to fix this myself (see docs/localization.md)

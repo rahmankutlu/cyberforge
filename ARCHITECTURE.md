@@ -26,15 +26,16 @@ Attack simulation → Telemetry → Detection → SOC alert → MITRE mapping �
 
 ## Layers
 
-| Layer                    | Path                           | Responsibility                                                                                                        |
-| ------------------------ | ------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| Content schemas & loader | `apps/api/cyberforge/content`  | Validate repository files, cross-check references.                                                                    |
-| Services                 | `apps/api/cyberforge/services` | Telemetry, Sigma engine/service, detection, simulation, seeding, lifecycle, coverage, dashboard, reports, guardrails. |
-| API                      | `apps/api/cyberforge/api/v1`   | Thin, typed routers.                                                                                                  |
-| Persistence              | `models`, `migrations`         | SQLAlchemy 2 models, Alembic migrations.                                                                              |
-| AI                       | `apps/api/cyberforge/ai`       | Provider abstraction and the defensive analyst prompt. Optional.                                                      |
-| Web                      | `apps/web/src`                 | App Router pages, components, small client hooks.                                                                     |
-| Design system            | `packages/ui`                  | Primitives and tokens.                                                                                                |
+| Layer                    | Path                           | Responsibility                                                                                                                            |
+| ------------------------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Content schemas & loader | `apps/api/cyberforge/content`  | Validate repository files, cross-check references.                                                                                        |
+| Services                 | `apps/api/cyberforge/services` | Telemetry, Sigma engine/service, detection, simulation, seeding, lifecycle, coverage, dashboard, reports, guardrails.                     |
+| API                      | `apps/api/cyberforge/api/v1`   | Thin, typed routers.                                                                                                                      |
+| Persistence              | `models`, `migrations`         | SQLAlchemy 2 models, Alembic migrations.                                                                                                  |
+| AI                       | `apps/api/cyberforge/ai`       | Provider abstraction and the defensive analyst prompt. Optional.                                                                          |
+| Web                      | `apps/web/src`                 | App Router pages, components, small client hooks.                                                                                         |
+| Design system            | `packages/ui`                  | Primitives and tokens.                                                                                                                    |
+| Localization             | `apps/web/src/lib/i18n`        | English and Turkish: typed messages, sentence-keyed copy, a reviewed content catalogue; see [docs/localization.md](docs/localization.md). |
 
 ## Security posture in one paragraph
 

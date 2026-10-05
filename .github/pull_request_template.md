@@ -17,6 +17,7 @@
 - [ ] `pnpm lint`, `pnpm typecheck`, `pnpm typecheck:api` pass
 - [ ] `pnpm test` passes (added tests for new behaviour)
 - [ ] `pnpm validate:content` passes (if content or docs changed)
+- [ ] `pnpm i18n:check` passes, with new Turkish text translated by hand (if English content or UI text changed)
 - [ ] `pnpm test:detections` passes (if a rule or its tests changed): each rule has a positive and a negative test
 - [ ] `pnpm test:e2e` passes (if a user-facing flow changed)
 - [ ] Docs, `.env.example` and CHANGELOG updated where relevant
