@@ -15,7 +15,10 @@ FROM python:3.12-slim AS runtime
 LABEL org.opencontainers.image.title="CyberForge API" \
       org.opencontainers.image.description="CyberForge API: telemetry, detections, MITRE mapping and the mini SOC" \
       org.opencontainers.image.source="https://github.com/rahmankutlu/cyberforge" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.authors="Abdurrahman Kutlu <info@rahmankutlu.com>" \
+      org.opencontainers.image.vendor="Abdurrahman Kutlu" \
+      org.opencontainers.image.url="https://rahmankutlu.com"
 # Non-root, no login shell, no home directory.
 RUN useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin cyberforge
 COPY --from=builder /opt/venv /opt/venv

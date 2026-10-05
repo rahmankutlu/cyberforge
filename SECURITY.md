@@ -17,6 +17,8 @@ Please do not open a public issue for a security problem.
 
 Report it privately with GitHub's **Private Vulnerability Reporting**: go to the repository's **Security** tab and choose **Report a vulnerability** ([direct link](https://github.com/rahmankutlu/cyberforge/security/advisories/new)).
 
+If you cannot use GitHub, email [info@rahmankutlu.com](mailto:info@rahmankutlu.com) with the subject `CyberForge security`. Please do not include exploit details in public channels, and do not email proof-of-concept code to anyone else.
+
 Helpful details: what you found, the impact, steps to reproduce, the affected version or commit, and a suggested fix if you have one. This is a volunteer-maintained project, so responses are best-effort, but every report is read. Reporters are credited in the advisory unless they prefer otherwise.
 
 ## Security Scope

@@ -2,7 +2,12 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CyberForge API",
-    "description": "\n**CyberForge** is The Open Cybersecurity Lab: a cyber range, mini SOC, detection engineering,\nMITRE ATT&CK mapping and AI security in one local-first platform.\n\n* All telemetry is **synthetic** or comes from isolated local lab containers.\n* Simulations replay telemetry only; nothing is ever sent to external systems.\n* AI analysis is **optional** and advisory.\n\nSource: https://github.com/rahmankutlu/cyberforge\n",
+    "description": "\n**CyberForge** is The Open Cybersecurity Lab: a cyber range, mini SOC, detection engineering,\nMITRE ATT&CK mapping and AI security in one local-first platform.\n\n* All telemetry is **synthetic** or comes from isolated local lab containers.\n* Simulations replay telemetry only; nothing is ever sent to external systems.\n* AI analysis is **optional** and advisory.\n\nSource: https://github.com/rahmankutlu/cyberforge\n\nCreated and maintained by Abdurrahman Kutlu (https://rahmankutlu.com).\n",
+    "contact": {
+      "name": "Abdurrahman Kutlu",
+      "url": "https://rahmankutlu.com/",
+      "email": "info@rahmankutlu.com"
+    },
     "license": {
       "name": "MIT",
       "url": "https://opensource.org/license/mit"

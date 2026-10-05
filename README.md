@@ -8,6 +8,8 @@
 
 Simulate attacks. Understand telemetry. Write detections. Investigate incidents.
 
+<sub>Created and maintained by <a href="https://rahmankutlu.com">Abdurrahman Kutlu</a> · <a href="mailto:info@rahmankutlu.com">info@rahmankutlu.com</a></sub>
+
 [![CI](https://github.com/rahmankutlu/cyberforge/actions/workflows/ci.yml/badge.svg)](https://github.com/rahmankutlu/cyberforge/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/rahmankutlu/cyberforge/actions/workflows/codeql.yml/badge.svg)](https://github.com/rahmankutlu/cyberforge/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/github/license/rahmankutlu/cyberforge)](LICENSE)
@@ -306,6 +308,10 @@ See [ROADMAP.md](ROADMAP.md) for what is next, and the [contributor backlog](doc
 ## Contributing
 
 Labs, rules, datasets, stories, translations and fixes are very welcome, and adding content is designed to be easy. Add a detection in [two small files](docs/creating-a-detection.md), or a lab with `pnpm create:lab`; CI tells you what is wrong. Start with [CONTRIBUTING.md](CONTRIBUTING.md), pick something from the [contributor backlog](docs/contributor-backlog.md), and please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Author
+
+CyberForge is created and maintained by **Abdurrahman Kutlu**: [rahmankutlu.com](https://rahmankutlu.com) · [info@rahmankutlu.com](mailto:info@rahmankutlu.com) · [@rahmankutlu](https://github.com/rahmankutlu). For help, see [SUPPORT.md](SUPPORT.md); to cite it in teaching or research, use the **Cite this repository** button (`CITATION.cff`).
 
 ## License
 

@@ -38,7 +38,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if args.write:
         CONTRACT.parent.mkdir(parents=True, exist_ok=True)
-        CONTRACT.write_text(document, encoding="utf-8")
+        with CONTRACT.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(document)
         print(f"Wrote {CONTRACT.relative_to(CONTRACT.parents[2])}")
         return 0
     if args.check:

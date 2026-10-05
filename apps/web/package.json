@@ -1,6 +1,11 @@
 {
   "name": "@cyberforge/web",
   "version": "1.0.0",
+  "author": {
+    "name": "Abdurrahman Kutlu",
+    "email": "info@rahmankutlu.com",
+    "url": "https://rahmankutlu.com"
+  },
   "private": true,
   "type": "module",
   "description": "CyberForge web app: cyber range, mini SOC, detection workbench and MITRE explorer.",

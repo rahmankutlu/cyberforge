@@ -9,7 +9,8 @@ description = "CyberForge API — telemetry, detections, MITRE mapping and the m
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-authors = [{ name = "Abdurrahman Kutlu" }]
+authors = [{ name = "Abdurrahman Kutlu", email = "info@rahmankutlu.com" }]
+maintainers = [{ name = "Abdurrahman Kutlu", email = "info@rahmankutlu.com" }]
 keywords = ["cybersecurity", "soc", "sigma", "mitre-attack", "detection-engineering"]
 dependencies = [
   "fastapi>=0.121,<1",
@@ -46,6 +47,8 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/rahmankutlu/cyberforge"
+Author = "https://rahmankutlu.com"
+Documentation = "https://github.com/rahmankutlu/cyberforge/tree/main/docs"
 Repository = "https://github.com/rahmankutlu/cyberforge"
 Issues = "https://github.com/rahmankutlu/cyberforge/issues"
 

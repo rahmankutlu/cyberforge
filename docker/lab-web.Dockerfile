@@ -6,7 +6,10 @@ FROM python:3.12-slim
 LABEL org.opencontainers.image.title="CyberForge Lab: Acme Portal" \
       org.opencontainers.image.description="Intentionally vulnerable training application. Never expose it." \
       org.opencontainers.image.source="https://github.com/rahmankutlu/cyberforge" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.authors="Abdurrahman Kutlu <info@rahmankutlu.com>" \
+      org.opencontainers.image.vendor="Abdurrahman Kutlu" \
+      org.opencontainers.image.url="https://rahmankutlu.com"
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 RUN useradd --system --uid 10002 --no-create-home --shell /usr/sbin/nologin labapp
 WORKDIR /app

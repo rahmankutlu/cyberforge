@@ -1,4 +1,10 @@
-# Third-party notices
+# Notices
+
+## CyberForge
+
+Copyright (c) 2026 Abdurrahman Kutlu ([rahmankutlu.com](https://rahmankutlu.com), [info@rahmankutlu.com](mailto:info@rahmankutlu.com)). Contributors keep the copyright in their contributions and license them under the same terms (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+
+## Third-party notices
 
 CyberForge is released under the [MIT License](LICENSE). It builds on the work of others, and some content carries its own terms.
 
