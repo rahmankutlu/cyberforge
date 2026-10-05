@@ -10,6 +10,7 @@ import { apiGet } from "@/lib/api";
 import { formatNumber, titleCase } from "@/lib/format";
 import { createTranslator } from "@/lib/i18n";
 import { getLocale } from "@/lib/i18n/server";
+import { PROJECT } from "@/lib/project";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = createTranslator(await getLocale());
@@ -22,6 +23,19 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="text-right text-[13px]">{children}</dd>
     </div>
+  );
+}
+
+function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target={href.startsWith("mailto:") ? undefined : "_blank"}
+      rel="noopener noreferrer"
+      className="text-primary underline underline-offset-2 hover:no-underline"
+    >
+      {children}
+    </a>
   );
 }
 
@@ -145,6 +159,28 @@ export default async function SettingsPage() {
           </Card>
         </div>
       </div>
+
+      <Card className="mt-4" data-testid="about-card">
+        <CardHeader>
+          <CardTitle>{t("settings.aboutTitle")}</CardTitle>
+          <CardDescription>{t("settings.aboutDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <dl>
+            <Row label={t("settings.author")}>{PROJECT.author}</Row>
+            <Row label={t("settings.website")}>
+              <ExternalLink href={PROJECT.website}>{PROJECT.websiteLabel}</ExternalLink>
+            </Row>
+            <Row label={t("settings.contact")}>
+              <ExternalLink href={`mailto:${PROJECT.email}`}>{PROJECT.email}</ExternalLink>
+            </Row>
+            <Row label={t("settings.sourceCode")}>
+              <ExternalLink href={PROJECT.repository}>{PROJECT.repositoryLabel}</ExternalLink>
+            </Row>
+            <Row label={t("settings.license")}>{PROJECT.license}</Row>
+          </dl>
+        </CardContent>
+      </Card>
     </>
   );
 }

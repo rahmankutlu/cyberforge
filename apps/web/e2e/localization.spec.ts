@@ -92,6 +92,34 @@ test.describe("Turkish interface", () => {
   }
 });
 
+test.describe("project information", () => {
+  for (const [language, title, label] of [
+    ["en", "About CyberForge", "Author"],
+    ["tr", "CyberForge hakkında", "Yazar"],
+  ] as const) {
+    test(`Settings credits the author and how to reach them (${language})`, async ({
+      page,
+      context,
+      baseURL,
+    }) => {
+      await context.addCookies([
+        { name: LOCALE_COOKIE, value: language, url: baseURL ?? "http://localhost" },
+      ]);
+      await page.goto("/settings");
+      const about = page.getByTestId("about-card");
+      await expect(about.getByText(title)).toBeVisible();
+      await expect(about.getByText(label, { exact: true })).toBeVisible();
+      await expect(about.getByText("Abdurrahman Kutlu")).toBeVisible();
+      await expect(
+        about.getByRole("link", { name: "rahmankutlu.com", exact: true }),
+      ).toHaveAttribute("href", "https://rahmankutlu.com");
+      await expect(
+        about.getByRole("link", { name: "info@rahmankutlu.com", exact: true }),
+      ).toHaveAttribute("href", "mailto:info@rahmankutlu.com");
+    });
+  }
+});
+
 test.describe("bundle size", () => {
   // The catalogue holds hundreds of KB of authored text. Server Components translate content and pass
   // it down, so none of it may reach the browser; a client import of lib/i18n/content brings it back.

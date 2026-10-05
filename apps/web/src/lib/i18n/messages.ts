@@ -218,6 +218,14 @@ export const enMessages = {
   "settings.resetDemo": "Reset demo data",
   "settings.demoReset": "Demo data reset",
   "settings.resetFailed": "Reset failed",
+  "settings.aboutTitle": "About CyberForge",
+  "settings.aboutDescription":
+    "An open-source, local-first cybersecurity lab, released under the MIT License.",
+  "settings.author": "Author",
+  "settings.website": "Website",
+  "settings.contact": "Contact",
+  "settings.sourceCode": "Source code",
+  "settings.license": "License",
 } as const;
 
 export type MessageKey = keyof typeof enMessages;
@@ -444,4 +452,12 @@ export const trMessages = {
   "settings.resetDemo": "Demo verilerini sıfırla",
   "settings.demoReset": "Demo verileri sıfırlandı",
   "settings.resetFailed": "Sıfırlama başarısız",
+  "settings.aboutTitle": "CyberForge hakkında",
+  "settings.aboutDescription":
+    "MIT Lisansı ile yayımlanan, açık kaynaklı ve yerel öncelikli bir siber güvenlik laboratuvarı.",
+  "settings.author": "Yazar",
+  "settings.website": "Web sitesi",
+  "settings.contact": "İletişim",
+  "settings.sourceCode": "Kaynak kod",
+  "settings.license": "Lisans",
 } satisfies Record<MessageKey, string>;
