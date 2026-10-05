@@ -7,23 +7,31 @@ from datetime import UTC, datetime
 from typing import Annotated, Any, Literal
 
 import plyara
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
-from cyberforge.api.deps import PageDep, SessionDep, escape_like
-from cyberforge.content.loader import _SURICATA, _suricata_options
+from cyberforge.api.deps import BundleDep, PageDep, SessionDep, detection_health, escape_like
+from cyberforge.content.loader import _SURICATA, ContentBundle, _suricata_options
 from cyberforge.content.schemas import ScenarioEvent
 from cyberforge.db import utcnow
 from cyberforge.models import Alert, DetectionRule, Lab, MitreTechnique, lab_rules
 from cyberforge.schemas.common import Page, paginate
 from cyberforge.schemas.detections import (
+    CoverageOut,
+    FieldChangeOut,
     MitreLookup,
+    PipelineOut,
+    QualityCheckOut,
+    QualityResponse,
     RuleCreate,
     RuleDetail,
     RuleMeta,
     RulePatch,
+    RuleQualityOut,
     RuleSummary,
+    RuleTestCaseOut,
+    RuleTestsOut,
     TestMatch,
     TestRequest,
     TestResponse,
@@ -33,7 +41,15 @@ from cyberforge.schemas.detections import (
     ValidateRequest,
     ValidateResponse,
 )
-from cyberforge.services import detection_engine, sigma_service, simulation, telemetry
+from cyberforge.services import (
+    detection_engine,
+    rule_quality,
+    rule_tests,
+    sigma_pipelines,
+    sigma_service,
+    simulation,
+    telemetry,
+)
 from cyberforge.services.sigma_engine import EvalEvent, SigmaEngine, SigmaEngineError, compile_rule
 
 router = APIRouter(tags=["detections"])
@@ -129,6 +145,86 @@ def list_detections(
         .all()
     )
     return paginate(_summaries(session, list(rows)), total, paging.page, paging.page_size)
+
+
+_health = detection_health
+
+
+def _quality_row(
+    q: rule_quality.RuleQuality, bundle: ContentBundle, summary: rule_tests.RunSummary
+) -> RuleQualityOut:
+    rule = bundle.rule(q.slug)
+    report = summary.report_for(q.slug)
+    return RuleQualityOut(
+        slug=q.slug,
+        title=q.title,
+        level=rule.level if rule else "medium",
+        technique_ids=rule.technique_ids if rule else [],
+        passed=q.passed,
+        total=q.total,
+        checks=[QualityCheckOut(**c.__dict__) for c in q.checks],
+        positive_tests=report.positives if report else 0,
+        negative_tests=report.negatives if report else 0,
+        failing_tests=len(report.failures) if report else 0,
+    )
+
+
+@router.get(
+    "/detections/quality",
+    response_model=QualityResponse,
+    summary="Detection test coverage and per-rule quality checks",
+)
+def detection_quality(request: Request, bundle: BundleDep) -> QualityResponse:
+    summary, quality = _health(request, bundle)
+    rows = [_quality_row(q, bundle, summary) for q in quality]
+    return QualityResponse(
+        coverage=CoverageOut(
+            rules=summary.rule_count,
+            tested=summary.tested_rules,
+            percent=summary.coverage_percent,
+            tests=summary.test_count,
+            failing=summary.failure_count + summary.error_count,
+        ),
+        checks_passed=sum(q.passed for q in quality),
+        checks_total=sum(q.total for q in quality),
+        rules=rows,
+    )
+
+
+@router.get(
+    "/detections/{slug}/tests",
+    response_model=RuleTestsOut,
+    summary="The tests that ship with a Sigma rule, and their latest results",
+)
+def get_rule_tests(slug: str, request: Request, bundle: BundleDep) -> RuleTestsOut:
+    rule = bundle.rule(slug)
+    if rule is None:
+        raise HTTPException(404, "Rule not found")
+    summary, quality = _health(request, bundle)
+    report = summary.report_for(slug)
+    q = next((x for x in quality if x.slug == slug), None)
+    source = None
+    if rule.tests_path:
+        source = (bundle.root / rule.tests_path).read_text(encoding="utf-8")
+    return RuleTestsOut(
+        slug=slug,
+        tests_path=rule.tests_path,
+        source=source,
+        errors=report.errors if report else [],
+        cases=[
+            RuleTestCaseOut(
+                name=c.name,
+                expected=c.expected,
+                passed=c.passed,
+                message=c.message,
+                matched_events=c.matched_events,
+                hits=c.hits,
+                definition=c.definition,
+            )
+            for c in (report.cases if report else [])
+        ],
+        quality=_quality_row(q, bundle, summary) if q else None,
+    )
 
 
 @router.get("/detections/{slug}", response_model=RuleDetail, summary="Get a detection rule")
@@ -260,6 +356,26 @@ def validate_rule(body: ValidateRequest, session: SessionDep) -> ValidateRespons
     return do_validate(session, body.content, body.format)
 
 
+@router.get(
+    "/detections/translate/pipelines",
+    response_model=dict[str, list[PipelineOut]],
+    summary="Processing pipelines available per translation target",
+)
+def translation_pipelines() -> dict[str, list[PipelineOut]]:
+    return {
+        target: [
+            PipelineOut(
+                id=spec.id,
+                label=spec.label,
+                description=spec.description,
+                auto=spec.id in sigma_pipelines.AUTO_ORDER.get(target, ()),
+            )
+            for spec in sigma_pipelines.pipelines_for(target)
+        ]
+        for target in sigma_pipelines.REGISTRY
+    }
+
+
 @router.post(
     "/detections/translate", response_model=TranslateResponse, summary="Translate a Sigma rule"
 )
@@ -269,7 +385,9 @@ def translate_rule(body: TranslateRequest, session: SessionDep) -> TranslateResp
         return TranslateResponse(validation=validation, translations=[])
     try:
         translations = sigma_service.translate(
-            body.content, list(body.targets) if body.targets else None
+            body.content,
+            list(body.targets) if body.targets else None,
+            {str(t): sel for t, sel in body.pipelines.items()} if body.pipelines else None,
         )
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
@@ -283,6 +401,15 @@ def translate_rule(body: TranslateRequest, session: SessionDep) -> TranslateResp
                 queries=t.queries,
                 error=t.error,
                 notes=t.notes,
+                pipeline=t.pipeline,
+                pipeline_label=t.pipeline_label,
+                field_changes=[
+                    FieldChangeOut(source=c.source, targets=list(c.targets), changed=c.changed)
+                    for c in t.field_changes
+                ],
+                added_fields=t.added_fields,
+                dropped_fields=t.dropped_fields,
+                pipeline_error=t.pipeline_error,
             )
             for t in translations
         ],

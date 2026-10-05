@@ -28,6 +28,7 @@ EXPENSIVE_PREFIXES = (
     "/api/v1/detections/validate",
     "/api/v1/detections/translate",
     "/api/v1/detections/test",
+    "/api/v1/playground/run",
     "/api/v1/ai/analyze-alert",
     "/api/v1/lab-runs",
     "/api/v1/demo",
@@ -155,7 +156,8 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         headers["Cross-Origin-Resource-Policy"] = "same-site"
         headers["Content-Security-Policy"] = DOCS_CSP if path.startswith(DOCS_PATHS) else API_CSP
-        if path.startswith("/api/"):
+        # Server-Sent Events set their own `no-cache, no-transform` so proxies do not buffer them.
+        if path.startswith("/api/") and not headers.get("content-type", "").startswith("text/event-stream"):
             headers["Cache-Control"] = "no-store"
         if self.settings.env == "production":
             headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"

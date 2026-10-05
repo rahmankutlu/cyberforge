@@ -4,17 +4,20 @@ CyberForge is a local cybersecurity lab. It ships an _intentionally_ vulnerable 
 
 ## Supported Versions
 
-| Version         | Supported |
-| --------------- | --------- |
-| 0.1.x (current) | Yes       |
+| Version       | Supported |
+| ------------- | --------- |
+| 1.x (current) | Yes       |
+| 0.1.x         | No        |
 
-Security fixes are released as patch versions of the latest minor release.
+Security fixes are released as patch versions of the latest 1.x release. What 1.x keeps stable is described in [docs/versioning.md](docs/versioning.md).
 
 ## Reporting a Vulnerability
 
 Please do not open a public issue for a security problem.
 
 Report it privately with GitHub's **Private Vulnerability Reporting**: go to the repository's **Security** tab and choose **Report a vulnerability** ([direct link](https://github.com/rahmankutlu/cyberforge/security/advisories/new)).
+
+If you cannot use GitHub, email [info@rahmankutlu.com](mailto:info@rahmankutlu.com) with the subject `CyberForge security`. Please do not include exploit details in public channels, and do not email proof-of-concept code to anyone else.
 
 Helpful details: what you found, the impact, steps to reproduce, the affected version or commit, and a suggested fix if you have one. This is a volunteer-maintained project, so responses are best-effort, but every report is read. Reporters are credited in the advisory unless they prefer otherwise.
 
@@ -30,7 +33,7 @@ In scope:
 Out of scope:
 
 - The deliberate flaws in the practice application (`labs/web/vulnerable-app`): SQL injection, XSS, IDOR, `alg: none` JWTs, an exposed `.env` and so on are the exercise. A way to use them to leave the container _is_ in scope.
-- The absence of authentication in v0.1. CyberForge is a single-user local tool and must not be exposed to untrusted networks. See [docs/security-model.md](docs/security-model.md).
+- The absence of authentication in 1.x. CyberForge is a single-user local tool and must not be exposed to untrusted networks. See [docs/security-model.md](docs/security-model.md).
 - Findings that need an already-compromised host or Docker daemon.
 - Denial of service against a local instance by a local user.
 - Vulnerabilities in third-party dependencies with no demonstrated impact on CyberForge; report those upstream.

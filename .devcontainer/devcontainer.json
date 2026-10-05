@@ -1,0 +1,29 @@
+{
+  "name": "CyberForge",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "postCreateCommand": "corepack enable && pnpm install --frozen-lockfile && python -m venv apps/api/.venv && apps/api/.venv/bin/pip install -e 'apps/api[dev]' && pnpm --filter @cyberforge/web exec playwright install --with-deps chromium",
+  "forwardPorts": [3000, 8000],
+  "portsAttributes": {
+    "3000": { "label": "Web", "onAutoForward": "openBrowser" },
+    "8000": { "label": "API" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "bradlc.vscode-tailwindcss"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/apps/api/.venv/bin/python",
+        "editor.formatOnSave": true
+      }
+    }
+  }
+}

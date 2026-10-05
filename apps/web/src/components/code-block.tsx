@@ -4,35 +4,38 @@ import { Button, cn } from "@cyberforge/ui";
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export function CopyButton({
   text,
   className,
-  label = "Copy",
+  label,
 }: {
   text: string;
   className?: string;
   label?: string;
 }) {
+  const { c } = useLocale();
+  const resolvedLabel = label ?? c("Copy");
   const [copied, setCopied] = useState(false);
   return (
     <Button
       variant="ghost"
       size="sm"
       className={className}
-      aria-label={`${label} to clipboard`}
+      aria-label={c("{{label}} to clipboard", { label: resolvedLabel })}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);
           setCopied(true);
           window.setTimeout(() => setCopied(false), 1500);
         } catch {
-          toast.error("Could not copy to the clipboard");
+          toast.error(c("Could not copy to the clipboard"));
         }
       }}
     >
       {copied ? <Check /> : <Copy />}
-      {copied ? "Copied" : label}
+      {copied ? c("Copied") : resolvedLabel}
     </Button>
   );
 }
@@ -84,7 +87,7 @@ export function CodeBlock({
             >
               <span
                 aria-hidden
-                className="mr-3 inline-block w-6 select-none text-right text-muted-foreground/50"
+                className="mr-3 inline-block w-6 select-none text-right text-muted-foreground"
               >
                 {i + 1}
               </span>

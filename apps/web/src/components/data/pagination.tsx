@@ -1,9 +1,12 @@
+"use client";
+
 import { Button, cn } from "@cyberforge/ui";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 import { formatNumber } from "@/lib/format";
 import { hrefWith, type SearchParams } from "@/lib/params";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export function pageWindow(page: number, pages: number, span = 2): (number | "gap")[] {
   const out: (number | "gap")[] = [];
@@ -35,19 +38,25 @@ export function Pagination({
   params: SearchParams;
   noun?: string;
 }) {
+  const { c, locale } = useLocale();
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
   const href = (p: number) => hrefWith(path, params, { page: p === 1 ? null : p });
 
   return (
     <nav
-      aria-label="Pagination"
+      aria-label={c("Pagination")}
       className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"
     >
       <p>
         {total === 0
-          ? `No ${noun}`
-          : `${formatNumber(from)}–${formatNumber(to)} of ${formatNumber(total)} ${noun}`}
+          ? c("No {{noun}}", { noun })
+          : c("{{from}}–{{to}} of {{total}} {{noun}}", {
+              from: formatNumber(from, locale),
+              to: formatNumber(to, locale),
+              total: formatNumber(total, locale),
+              noun,
+            })}
       </p>
       {pages > 1 ? (
         <div className="flex items-center gap-1">
@@ -61,7 +70,7 @@ export function Pagination({
             <Link
               href={href(Math.max(1, page - 1))}
               scroll={false}
-              aria-label="Previous page"
+              aria-label={c("Previous page")}
               tabIndex={page <= 1 ? -1 : undefined}
             >
               <ChevronLeft />
@@ -84,7 +93,7 @@ export function Pagination({
                   href={href(p)}
                   scroll={false}
                   aria-current={p === page ? "page" : undefined}
-                  aria-label={`Page ${p}`}
+                  aria-label={c("Page {{page}}", { page: p })}
                 >
                   {p}
                 </Link>
@@ -101,7 +110,7 @@ export function Pagination({
             <Link
               href={href(Math.min(pages, page + 1))}
               scroll={false}
-              aria-label="Next page"
+              aria-label={c("Next page")}
               tabIndex={page >= pages ? -1 : undefined}
             >
               <ChevronRight />

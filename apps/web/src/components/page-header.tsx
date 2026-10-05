@@ -1,6 +1,10 @@
+"use client";
+
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { localizeKnownCopy } from "@/lib/i18n/copy";
 
 export interface Crumb {
   label: string;
@@ -8,8 +12,9 @@ export interface Crumb {
 }
 
 export function Breadcrumbs({ items }: { items: Crumb[] }) {
+  const { locale, c } = useLocale();
   return (
-    <nav aria-label="Breadcrumb" className="mb-2">
+    <nav aria-label={c("Breadcrumb")} className="mb-2">
       <ol className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
         {items.map((item, i) => {
           const last = i === items.length - 1;
@@ -20,14 +25,14 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
                   href={item.href}
                   className="rounded-sm transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {item.label}
+                  {localizeKnownCopy(locale, item.label)}
                 </Link>
               ) : (
                 <span
                   aria-current={last ? "page" : undefined}
                   className={last ? "text-foreground/80" : undefined}
                 >
-                  {item.label}
+                  {localizeKnownCopy(locale, item.label)}
                 </span>
               )}
               {last ? null : <ChevronRight className="size-3 opacity-60" aria-hidden />}
@@ -52,14 +57,20 @@ export function PageHeader({
   actions?: ReactNode;
   meta?: ReactNode;
 }) {
+  const { locale } = useLocale();
+  const localizedTitle = typeof title === "string" ? localizeKnownCopy(locale, title) : title;
+  const localizedDescription =
+    typeof description === "string" ? localizeKnownCopy(locale, description) : description;
   return (
     <header className="mb-6">
       {breadcrumbs?.length ? <Breadcrumbs items={breadcrumbs} /> : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-          {description ? (
-            <p className="mt-1 max-w-3xl text-[13px] text-muted-foreground">{description}</p>
+          <h1 className="text-xl font-semibold tracking-tight">{localizedTitle}</h1>
+          {localizedDescription ? (
+            <p className="mt-1 max-w-3xl text-[13px] text-muted-foreground">
+              {localizedDescription}
+            </p>
           ) : null}
           {meta ? <div className="mt-2 flex flex-wrap items-center gap-2">{meta}</div> : null}
         </div>

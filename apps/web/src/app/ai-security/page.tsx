@@ -6,14 +6,24 @@ import Link from "next/link";
 import { TrustBoundaryChain } from "@/components/ai-security/trust-boundary-chain";
 import { PageHeader } from "@/components/page-header";
 import { apiGet } from "@/lib/api";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { localizeContentTree } from "@/lib/i18n/content";
+import { getLocale } from "@/lib/i18n/server";
 
-export const metadata = { title: "AI security" };
+export async function generateMetadata() {
+  const c = createCopyTranslator(await getLocale());
+  return { title: c("AI security") };
+}
 
 export default async function AiSecurityPage() {
-  const [overview, findings] = await Promise.all([
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
+  const [sourceOverview, sourceFindings] = await Promise.all([
     apiGet<AISecurityOverview>("/ai-security/overview"),
     apiGet<AIFinding[]>("/ai-security/findings"),
   ]);
+  const overview = localizeContentTree(locale, sourceOverview);
+  const findings = localizeContentTree(locale, sourceFindings);
   const byBoundary: Record<string, number> = {};
   for (const f of findings)
     if (f.boundary_id) byBoundary[f.boundary_id] = (byBoundary[f.boundary_id] ?? 0) + 1;
@@ -21,43 +31,47 @@ export default async function AiSecurityPage() {
   return (
     <>
       <PageHeader
-        title="AI security"
-        description="LLM applications and agents have a different attack surface: the model cannot separate instructions from data. Learn where trust boundaries fail, using synthetic agents and sandboxed tools only."
+        title={c("AI security")}
+        description={c(
+          "LLM applications and agents have a different attack surface: the model cannot separate instructions from data. Learn where trust boundaries fail, using synthetic agents and sandboxed tools only.",
+        )}
         actions={
           <>
             <Button asChild variant="outline">
-              <Link href="/ai-security/labs">AI labs</Link>
+              <Link href="/ai-security/labs">{c("AI labs")}</Link>
             </Button>
             <Button asChild>
               <Link href="/ai-security/findings">
-                Findings ({findings.length}) <ArrowRight />
+                {c("Findings ({{count}})", { count: findings.length })} <ArrowRight />
               </Link>
             </Button>
           </>
         }
         meta={
           <Badge variant="outline" className="gap-1">
-            <ShieldCheck className="size-3" /> No external AI services are ever attacked: the model
-            is a local, deterministic stand-in
+            <ShieldCheck className="size-3" />{" "}
+            {c(
+              "No external AI services are ever attacked: the model is a local, deterministic stand-in",
+            )}
           </Badge>
         }
       />
 
       <section aria-labelledby="chain-title" className="mb-8">
         <h2 id="chain-title" className="mb-1 text-sm font-semibold">
-          Where the trust boundaries fail
+          {c("Where the trust boundaries fail")}
         </h2>
         <p className="mb-4 max-w-3xl text-xs text-muted-foreground">
-          User → LLM → Agent → Tool → Sensitive resource. Each arrow is a boundary: select one to
-          see how it breaks and which control belongs there. Numbers show findings from the AI lab
-          telemetry.
+          {c(
+            "User → LLM → Agent → Tool → Sensitive resource. Each arrow is a boundary: select one to see how it breaks and which control belongs there. Numbers show findings from the AI lab telemetry.",
+          )}
         </p>
         <TrustBoundaryChain overview={overview} findingsByBoundary={byBoundary} />
       </section>
 
       <section aria-labelledby="topics-title">
         <h2 id="topics-title" className="mb-3 text-sm font-semibold">
-          Topics
+          {c("Topics")}
         </h2>
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {overview.topics.map((topic) => (

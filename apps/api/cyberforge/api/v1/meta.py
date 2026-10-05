@@ -6,7 +6,7 @@ import random
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 
 from cyberforge import __version__
 from cyberforge.ai.providers import provider_status
@@ -33,6 +33,7 @@ from cyberforge.schemas.misc import (
     SearchResponse,
 )
 from cyberforge.services import dashboard as dashboard_service
+from cyberforge.services import search as search_service
 from cyberforge.services import seed
 from cyberforge.services.labs import run_lab
 
@@ -61,13 +62,23 @@ def search(
     needle = q.strip().lower()
     like = f"%{escape_like(needle)}%"
     hits: list[SearchHit] = []
+    # What the query *means*: a technique id or tactic name finds everything mapped to it.
+    meaning = search_service.search_content(bundle, needle)
 
     def contains(col):
         return func.lower(col).like(like, escape="\\")
 
     for lab in session.scalars(
         select(Lab)
-        .where(or_(contains(Lab.title), contains(Lab.summary), contains(Lab.category)))
+        .where(
+            or_(
+                contains(Lab.title),
+                contains(Lab.summary),
+                contains(Lab.category),
+                contains(Lab.domain),
+                Lab.slug.in_(meaning.lab_slugs),
+            )
+        )
         .order_by(Lab.number)
         .limit(PER_KIND)
     ):
@@ -81,6 +92,10 @@ def search(
                 badge=lab.difficulty,
             )
         )
+    hits.extend(
+        SearchHit(kind="story", id=h.id, title=h.title, subtitle=h.subtitle, href=h.href, badge=h.badge)
+        for h in meaning.stories[:PER_KIND]
+    )
     for rule in session.scalars(
         select(DetectionRule)
         .where(
@@ -88,6 +103,9 @@ def search(
                 contains(DetectionRule.title),
                 contains(DetectionRule.slug),
                 contains(DetectionRule.description),
+                contains(cast(DetectionRule.logsource, String)),
+                DetectionRule.slug.in_(meaning.rule_slugs),
+                DetectionRule.format.in_(meaning.formats),
             )
         )
         .order_by(DetectionRule.title)
@@ -103,9 +121,19 @@ def search(
                 badge=rule.format,
             )
         )
+    hits.extend(
+        SearchHit(kind="dataset", id=h.id, title=h.title, subtitle=h.subtitle, href=h.href, badge=h.badge)
+        for h in meaning.datasets[:PER_KIND]
+    )
     for tech in session.scalars(
         select(MitreTechnique)
-        .where(or_(contains(MitreTechnique.id), contains(MitreTechnique.name)))
+        .where(
+            or_(
+                contains(MitreTechnique.id),
+                contains(MitreTechnique.name),
+                MitreTechnique.id.in_(meaning.technique_ids),
+            )
+        )
         .order_by(MitreTechnique.id)
         .limit(PER_KIND)
     ):

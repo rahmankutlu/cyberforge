@@ -1,0 +1,436 @@
+"""The `cyberforge` command line: content tooling for contributors and CI.
+
+    python -m cyberforge detections test          run every rule's tests
+    python -m cyberforge detections quality       per-rule quality checks
+    python -m cyberforge content stats            counts generated from the repository
+    python -m cyberforge lab create web my-lab    scaffold a lab and validate it
+    python -m cyberforge story validate           check attack stories
+    python -m cyberforge validate                 schemas, MITRE ids, scenarios, rule tests
+
+It is deliberately small: it reads files, evaluates rules with the same engine as the SOC, and
+prints results. It never touches the network and never executes rule or lab content.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from collections.abc import Sequence
+from pathlib import Path
+
+from cyberforge import __version__
+
+
+def find_root(explicit: str | None = None) -> Path:
+    """Repository root: --root, $CYBERFORGE_CONTENT_DIR, the working directory, then the package."""
+    candidates = [explicit, os.environ.get("CYBERFORGE_CONTENT_DIR"), str(Path.cwd())]
+    candidates.append(str(Path(__file__).resolve()))
+    for raw in candidates:
+        if not raw:
+            continue
+        start = Path(raw).resolve()
+        for parent in [start, *start.parents]:
+            if (parent / "detections").is_dir() and (parent / "labs").is_dir():
+                return parent
+    raise SystemExit("error: could not find the CyberForge repository root; use --root")
+
+
+class Style:
+    """ANSI colour only when writing to a terminal (and NO_COLOR is unset)."""
+
+    def __init__(self) -> None:
+        self.on = sys.stdout.isatty() and "NO_COLOR" not in os.environ
+
+    def _wrap(self, code: str, text: str) -> str:
+        return f"\033[{code}m{text}\033[0m" if self.on else text
+
+    def ok(self, text: str) -> str:
+        return self._wrap("32", text)
+
+    def bad(self, text: str) -> str:
+        return self._wrap("31", text)
+
+    def dim(self, text: str) -> str:
+        return self._wrap("2", text)
+
+    def bold(self, text: str) -> str:
+        return self._wrap("1", text)
+
+
+def _plural(n: int, word: str) -> str:
+    return f"{n} {word}{'' if n == 1 else 's'}"
+
+
+# --- detections test ---------------------------------------------------------------------------
+
+
+def cmd_detections_test(args: argparse.Namespace) -> int:
+    from cyberforge.content.loader import load_bundle
+    from cyberforge.services import rule_tests
+
+    root = find_root(args.root)
+    bundle = load_bundle(root)
+    summary = rule_tests.run_all(bundle, args.rule or None)
+    style = Style()
+    github = os.environ.get("GITHUB_ACTIONS") == "true"
+
+    # Rule files that do not load (bad YAML, bad MITRE id, ...) fail the gate as well.
+    sigma_errors = [
+        i
+        for i in bundle.errors
+        if i.path.startswith("detections/sigma/") and (not args.rule or any(r in i.path for r in args.rule))
+    ]
+    require_failures = [
+        r for r in summary.reports if args.require_tests and not r.is_tested and not r.errors
+    ]
+
+    if args.json:
+        print(json.dumps(_summary_json(summary, sigma_errors, require_failures), indent=2))
+    else:
+        for report in summary.reports:
+            if report.tests_path is None:
+                marker = style.bad("✗") if args.require_tests else style.dim("○")
+                print(f"{marker} {report.slug} {style.dim('(no tests)')}")
+                continue
+            print(f"{style.ok('✓') if report.passed else style.bad('✗')} {report.slug}")
+            for err in report.errors:
+                print(f"  {style.bad('✗')} {report.tests_path}: {err}")
+            for case in report.cases:
+                print(f"  {style.ok('✓') if case.passed else style.bad('✗')} {case.name}")
+                if not case.passed:
+                    print(f"      {case.message}")
+            if args.require_tests and not report.is_tested and not report.errors:
+                print(f"  {style.bad('✗')} needs at least one positive and one negative test")
+        for orphan in summary.orphans:
+            print(f"{style.bad('✗')} {orphan}: tests file has no matching rule")
+        for issue in sigma_errors:
+            print(f"{style.bad('✗')} {issue.path}: {issue.message}")
+        print()
+        print(f"{_plural(summary.rule_count, 'rule')}")
+        print(f"{_plural(summary.test_count, 'test')}")
+        failures = summary.failure_count + summary.error_count + len(sigma_errors)
+        print(f"{_plural(failures + len(require_failures), 'failure')}")
+        print(
+            f"Detection test coverage: {summary.tested_rules}/{summary.rule_count} rules "
+            f"({summary.coverage_percent}%)"
+        )
+
+    if github:
+        _github_annotations(summary, sigma_errors, require_failures)
+    if args.summary_file or os.environ.get("GITHUB_STEP_SUMMARY"):
+        target = args.summary_file or os.environ["GITHUB_STEP_SUMMARY"]
+        with open(target, "a", encoding="utf-8") as handle:
+            handle.write(_markdown_summary(summary, sigma_errors, require_failures))
+
+    ok = summary.ok and not sigma_errors and not require_failures
+    return 0 if ok else 1
+
+
+def _summary_json(summary, sigma_errors, require_failures) -> dict:
+    return {
+        "rules": summary.rule_count,
+        "tests": summary.test_count,
+        "failures": summary.failure_count + summary.error_count + len(sigma_errors),
+        "missing_tests": [r.slug for r in require_failures],
+        "tested_rules": summary.tested_rules,
+        "coverage_percent": summary.coverage_percent,
+        "results": [
+            {
+                "rule": r.slug,
+                "path": r.rule_path,
+                "tests_path": r.tests_path,
+                "errors": r.errors,
+                "cases": [
+                    {"name": c.name, "expected": c.expected, "passed": c.passed, "message": c.message}
+                    for c in r.cases
+                ],
+            }
+            for r in summary.reports
+        ],
+    }
+
+
+def _github_annotations(summary, sigma_errors, require_failures) -> None:
+    for report in summary.reports:
+        target = report.tests_path or report.rule_path
+        for err in report.errors:
+            print(f"::error file={target}::{err}")
+        for case in report.failures:
+            print(f"::error file={target},title={report.slug}::{case.name}: {case.message}")
+    for report in require_failures:
+        print(f"::error file={report.rule_path}::{report.slug} needs a positive and a negative test")
+    for issue in sigma_errors:
+        print(f"::error file={issue.path}::{issue.message}")
+    for orphan in summary.orphans:
+        print(f"::error file={orphan}::tests file has no matching rule")
+
+
+def _markdown_summary(summary, sigma_errors, require_failures) -> str:
+    failed = summary.failure_count + summary.error_count + len(sigma_errors) + len(require_failures)
+    lines = [
+        "## Detection tests",
+        "",
+        f"**{'✅ Passed' if not failed else '❌ ' + _plural(failed, 'failure')}**: "
+        f"{_plural(summary.rule_count, 'rule')}, {_plural(summary.test_count, 'test')}.",
+        "",
+        "| Detection test coverage | |",
+        "| --- | --- |",
+        f"| Sigma rules | {summary.rule_count} |",
+        f"| Tested (≥1 positive and ≥1 negative case) | {summary.tested_rules} |",
+        f"| Coverage | **{summary.coverage_percent}%** |",
+        "",
+    ]
+    problems = [r for r in summary.reports if not r.passed]
+    if problems or sigma_errors or require_failures or summary.orphans:
+        lines += ["### Problems", ""]
+        for report in problems:
+            for err in report.errors:
+                lines.append(f"- `{report.slug}`: {err}")
+            for case in report.failures:
+                lines.append(f"- `{report.slug}` / {case.name}: {case.message}")
+        lines += [f"- `{r.slug}`: needs a positive and a negative test" for r in require_failures]
+        lines += [f"- `{i.path}`: {i.message}" for i in sigma_errors]
+        lines += [f"- `{o}`: tests file has no matching rule" for o in summary.orphans]
+        lines.append("")
+    return "\n".join(lines) + "\n"
+
+
+# --- detections quality ------------------------------------------------------------------------
+
+
+def cmd_detections_quality(args: argparse.Namespace) -> int:
+    from cyberforge.content.loader import load_bundle
+    from cyberforge.services import rule_quality, rule_tests
+
+    bundle = load_bundle(find_root(args.root))
+    summary = rule_tests.run_all(bundle)
+    results = rule_quality.evaluate_all(bundle, summary)
+    style = Style()
+    if args.json:
+        print(
+            json.dumps(
+                [
+                    {
+                        "rule": q.slug,
+                        "passed": q.passed,
+                        "total": q.total,
+                        "checks": {c.id: c.passed for c in q.checks},
+                    }
+                    for q in results
+                ],
+                indent=2,
+            )
+        )
+        return 0
+    for q in sorted(results, key=lambda r: (r.passed, r.slug)):
+        failed = [c.label for c in q.checks if not c.passed]
+        line = f"{q.passed}/{q.total}  {q.slug}"
+        print(line if not failed else f"{line}  {style.dim('missing: ' + ', '.join(failed))}")
+    total = sum(q.passed for q in results)
+    possible = sum(q.total for q in results)
+    print(f"\n{total}/{possible} checks passed across {_plural(len(results), 'rule')}")
+    return 0
+
+
+# --- content stats -----------------------------------------------------------------------------
+
+
+def cmd_content_stats(args: argparse.Namespace) -> int:
+    from cyberforge.content import stats
+
+    root = find_root(args.root)
+    if args.write_readme or args.check_readme:
+        try:
+            current = stats.update_readme(root, check=args.check_readme)
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        if args.check_readme and not current:
+            print("README.md counts are out of date. Run: pnpm content:readme", file=sys.stderr)
+            return 1
+        print("README.md counts are up to date." if args.check_readme else "README.md counts updated.")
+        return 0
+    data = stats.collect(root)
+    if args.json:
+        print(json.dumps(data, indent=2))
+    elif args.markdown:
+        print(stats.as_markdown(data))
+    else:
+        for label, value in stats.as_rows(data):
+            print(f"{value:>5}  {label}")
+    return 0
+
+
+# --- validate ----------------------------------------------------------------------------------
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    from cyberforge.content import checks
+    from cyberforge.content.loader import ContentIssue, load_bundle
+    from cyberforge.services import rule_tests
+
+    root = find_root(args.root)
+    bundle = load_bundle(root)
+    issues: list[ContentIssue] = list(bundle.issues)
+    checks.check_scenarios(bundle, issues)
+    issues += checks.check_datasets(bundle)
+    issues += checks.check_stories(bundle)
+    summary = rule_tests.run_all(bundle)
+    for report in summary.reports:
+        issues += [ContentIssue(report.tests_path or report.rule_path, e) for e in report.errors]
+        issues += [
+            ContentIssue(report.tests_path or report.rule_path, f"{c.name}: {c.message}")
+            for c in report.failures
+        ]
+    issues += [ContentIssue(o, "tests file has no matching rule") for o in summary.orphans]
+    errors = [i for i in issues if i.level == "error"]
+    warnings = [i for i in issues if i.level == "warning"]
+    for issue in [*warnings, *errors]:
+        print(issue)
+    print(
+        f"\n{len(bundle.labs)} labs, {len(bundle.rules)} rules, {summary.test_count} rule tests, "
+        f"{len(errors)} error(s), {len(warnings)} warning(s)"
+    )
+    return 1 if errors else 0
+
+
+# --- story -------------------------------------------------------------------------------------
+
+
+def cmd_story_validate(args: argparse.Namespace) -> int:
+    from cyberforge.content import checks
+    from cyberforge.content.loader import load_bundle
+
+    bundle = load_bundle(find_root(args.root))
+    issues = [i for i in bundle.issues if i.path.startswith("stories/")]
+    issues += checks.check_stories(bundle)
+    issues += checks.check_demos(bundle)
+    issues += checks.check_todo_markers(bundle)
+    errors = [i for i in issues if i.level == "error"]
+    for issue in issues:
+        print(issue)
+    for story in bundle.stories:
+        print(f"{Style().ok('✓') if not any(story.slug in i.path for i in errors) else Style().bad('✗')} {story.slug}"
+              f" ({len(story.steps)} steps, {len(story.detection_slugs())} detections)")
+    print(f"{len(bundle.stories)} {'story' if len(bundle.stories) == 1 else 'stories'} checked, {_plural(len(errors), 'error')}")
+    return 1 if errors else 0
+
+
+# --- lab ---------------------------------------------------------------------------------------
+
+
+def cmd_lab_create(args: argparse.Namespace) -> int:
+    from cyberforge.content import scaffold
+
+    root = find_root(args.root)
+    try:
+        result = scaffold.create_lab(
+            root, args.domain, args.slug, title=args.title, difficulty=args.difficulty, with_compose=args.compose
+        )
+    except scaffold.ScaffoldError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    style = Style()
+    print(f"Created {result.directory.relative_to(root).as_posix()}/")
+    for path in result.files:
+        print(f"  {path.relative_to(result.directory).as_posix()}")
+    print()
+    if result.issues:
+        print(style.bad("The scaffold has problems (this is a bug in the SDK, please report it):"))
+        for issue in result.issues:
+            print(f"  {issue}")
+        return 1
+    print(f"{style.ok('✓')} The scaffold validates: schema, README, scenario, example rule and its tests.")
+    print(f"  {_plural(result.placeholders, 'placeholder')} marked {scaffold.MARKER} to replace. Next:")
+    rel = result.directory.relative_to(root).as_posix()
+    print(f"    1. edit {rel}/lab.yaml and telemetry/scenario.jsonl")
+    print(f"    2. replace the example rule in {rel}/detections/ and its tests")
+    print(f"    3. python -m cyberforge lab validate {args.slug}      (fails while placeholders remain)")
+    print("    4. pnpm content:labs && pnpm validate:content")
+    return 0
+
+
+def cmd_lab_validate(args: argparse.Namespace) -> int:
+    from cyberforge.content import scaffold
+
+    issues = scaffold.validate_lab(find_root(args.root), args.slug)
+    for issue in issues:
+        print(issue)
+    errors = [i for i in issues if i.level == "error"]
+    print(f"lab {args.slug}: {_plural(len(errors), 'error')}")
+    return 1 if errors else 0
+
+
+# --- parser ------------------------------------------------------------------------------------
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="cyberforge", description=__doc__.splitlines()[0])
+    parser.add_argument("--version", action="version", version=f"cyberforge {__version__}")
+    parser.add_argument("--root", help="repository root (default: auto-detected)")
+    sub = parser.add_subparsers(dest="group", required=True)
+
+    detections = sub.add_parser("detections", help="detection rule tooling").add_subparsers(
+        dest="command", required=True
+    )
+    test = detections.add_parser("test", help="run the tests that live next to each rule")
+    test.add_argument("--rule", action="append", help="only this rule slug (repeatable)")
+    test.add_argument("--json", action="store_true", help="machine-readable output")
+    test.add_argument("--summary-file", help="append a Markdown summary here")
+    test.add_argument(
+        "--require-tests",
+        action="store_true",
+        help="fail when a Sigma rule has no positive and negative test",
+    )
+    test.set_defaults(func=cmd_detections_test)
+    quality = detections.add_parser("quality", help="deterministic quality checks per rule")
+    quality.add_argument("--json", action="store_true")
+    quality.set_defaults(func=cmd_detections_quality)
+
+    content = sub.add_parser("content", help="repository content").add_subparsers(
+        dest="command", required=True
+    )
+    stats = content.add_parser("stats", help="counts generated from the repository")
+    stats.add_argument("--json", action="store_true")
+    stats.add_argument("--markdown", action="store_true")
+    stats.add_argument("--write-readme", action="store_true", help="rewrite the counts block in README.md")
+    stats.add_argument("--check-readme", action="store_true", help="fail if the README counts are stale")
+    stats.set_defaults(func=cmd_content_stats)
+
+    story = sub.add_parser("story", help="attack story tooling").add_subparsers(
+        dest="command", required=True
+    )
+    story_validate = story.add_parser("validate", help="validate every story in stories/")
+    story_validate.set_defaults(func=cmd_story_validate)
+
+    lab = sub.add_parser("lab", help="lab tooling").add_subparsers(dest="command", required=True)
+    create = lab.add_parser("create", help="scaffold a new lab and validate it")
+    create.add_argument("domain", help="web, api, linux, windows-sim, network, cloud or ai-security")
+    create.add_argument("slug", help="kebab-case lab id, e.g. broken-authentication")
+    create.add_argument("--title", help="display title (default: derived from the id)")
+    create.add_argument("--difficulty", default="beginner", choices=["beginner", "intermediate", "advanced"])
+    create.add_argument("--compose", action="store_true", help="also write an isolated docker-compose.yml")
+    create.set_defaults(func=cmd_lab_create)
+    lab_validate = lab.add_parser("validate", help="validate one lab")
+    lab_validate.add_argument("slug")
+    lab_validate.set_defaults(func=cmd_lab_validate)
+
+    validate = sub.add_parser("validate", help="validate all content and run rule tests")
+    validate.set_defaults(func=cmd_validate)
+
+    return parser
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure:
+            reconfigure(encoding="utf-8", errors="replace")
+    args = build_parser().parse_args(argv)
+    return int(args.func(args))
+
+
+if __name__ == "__main__":
+    sys.exit(main())

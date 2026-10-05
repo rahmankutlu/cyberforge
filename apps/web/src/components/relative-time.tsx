@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import { formatDateTime, formatDateTimeFull, formatRelative } from "@/lib/format";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const noop = () => () => {};
 
@@ -11,6 +12,7 @@ const noop = () => () => {};
  * browser. The full timestamp is always available in the tooltip.
  */
 export function RelativeTime({ iso, className }: { iso: string; className?: string }) {
+  const { locale } = useLocale();
   const mounted = useSyncExternalStore(
     noop,
     () => true,
@@ -19,11 +21,11 @@ export function RelativeTime({ iso, className }: { iso: string; className?: stri
   return (
     <time
       dateTime={iso}
-      title={formatDateTimeFull(iso)}
+      title={formatDateTimeFull(iso, locale)}
       className={className}
       suppressHydrationWarning
     >
-      {mounted ? formatRelative(iso) : formatDateTime(iso)}
+      {mounted ? formatRelative(iso, undefined, locale) : formatDateTime(iso, locale)}
     </time>
   );
 }

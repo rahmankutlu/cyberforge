@@ -2,6 +2,8 @@
 
 import type { TimelinePoint } from "@cyberforge/types";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { localizeKnownCopy } from "@/lib/i18n/copy";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const SERIES = [
   { key: "critical", label: "Critical", color: "var(--sev-critical)" },
@@ -26,6 +28,7 @@ interface TooltipProps {
 }
 
 function ChartTooltip({ active, payload }: TooltipProps) {
+  const { locale, c } = useLocale();
   if (!active || !payload?.length) return null;
   const point = payload[0]!.payload;
   return (
@@ -35,24 +38,26 @@ function ChartTooltip({ active, payload }: TooltipProps) {
         <p key={s.key} className="flex items-center justify-between gap-6 text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <span className="size-2 rounded-sm" style={{ background: s.color }} />
-            {s.label}
+            {localizeKnownCopy(locale, s.label)}
           </span>
           <span className="tabular-nums text-foreground">{point[s.key]}</span>
         </p>
       ))}
       <p className="mt-1 border-t border-border pt-1 text-muted-foreground">
-        Events processed: <span className="tabular-nums text-foreground">{point.events}</span>
+        {c("Events processed:")}{" "}
+        <span className="tabular-nums text-foreground">{point.events}</span>
       </p>
     </div>
   );
 }
 
 export default function TimelineChart({ data }: { data: TimelinePoint[] }) {
+  const { c } = useLocale();
   return (
     <div
       className="h-56 w-full"
       role="img"
-      aria-label="Alerts over the last seven days, stacked by severity"
+      aria-label={c("Alerts over the last seven days, stacked by severity")}
     >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart

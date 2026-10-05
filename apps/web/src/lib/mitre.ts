@@ -1,10 +1,12 @@
 import type { TechniqueCoverage } from "@cyberforge/types";
 
-export type Metric = "rules" | "labs" | "alerts" | "investigations";
+export type Metric = "rules" | "tested_rules" | "labs" | "stories" | "alerts" | "investigations";
 
 export const METRICS: { value: Metric; label: string; hint: string }[] = [
   { value: "rules", label: "Detection rules", hint: "Enabled rules mapped to the technique" },
+  { value: "tested_rules", label: "Tested rules", hint: "Rules with positive and negative tests" },
   { value: "labs", label: "Labs", hint: "Labs that teach the technique" },
+  { value: "stories", label: "Stories", hint: "Attack stories that teach the technique" },
   { value: "alerts", label: "Alerts", hint: "Alerts raised on this instance" },
   {
     value: "investigations",
@@ -26,7 +28,7 @@ export function heatLevel(count: number): 0 | 1 | 2 | 3 | 4 {
   return 4;
 }
 
-const ALPHA = { 0: 0, 1: 14, 2: 28, 3: 46, 4: 68 } as const;
+const ALPHA = { 0: 0, 1: 14, 2: 26, 3: 38, 4: 50 } as const;
 
 export function heatBackground(count: number): string | undefined {
   const level = heatLevel(count);
@@ -56,5 +58,23 @@ export function coverageSummary(techniques: TechniqueCoverage[]) {
     covered: covered.length,
     pct: top.length ? Math.round((covered.length / top.length) * 100) : 0,
     gaps: top.filter((t) => t.rules === 0),
+  };
+}
+
+export const DOMAINS = ["Windows", "Linux", "Network", "Web", "Cloud", "AI Security"] as const;
+export type Domain = (typeof DOMAINS)[number];
+
+export const isDomain = (value: string | undefined): value is Domain =>
+  DOMAINS.some((d) => d === value);
+
+/** What covers each technique: the four questions the content-coverage view answers. */
+export function contentCoverage(techniques: TechniqueCoverage[]) {
+  const top = techniques.filter((t) => !t.is_subtechnique);
+  return {
+    total: top.length,
+    labs: top.filter((t) => t.labs > 0),
+    detections: top.filter((t) => t.rules > 0),
+    stories: top.filter((t) => t.stories > 0),
+    lackingTests: top.filter((t) => t.lacking_tests),
   };
 }

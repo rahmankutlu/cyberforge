@@ -1,8 +1,11 @@
 import { Skeleton } from "@cyberforge/ui";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
 
-export default function Loading() {
+export default async function Loading() {
+  const c = createCopyTranslator(await getLocale());
   return (
-    <div role="status" aria-live="polite" aria-label="Loading">
+    <div role="status" aria-live="polite" aria-label={c("Loading")}>
       <Skeleton className="mb-2 h-3 w-24" />
       <Skeleton className="h-6 w-64" />
       <Skeleton className="mb-6 mt-2 h-4 w-96 max-w-full" />
@@ -12,7 +15,7 @@ export default function Loading() {
         ))}
       </div>
       <Skeleton className="mt-4 h-72 w-full" />
-      <span className="sr-only">Loading…</span>
+      <span className="sr-only">{c("Loading…")}</span>
     </div>
   );
 }

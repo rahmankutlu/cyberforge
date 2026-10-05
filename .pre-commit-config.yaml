@@ -36,3 +36,9 @@ repos:
         language: system
         pass_filenames: false
         files: ^(labs|detections|datasets|mitre|examples|docs|packages/security-content)/
+      - id: i18n-catalogue
+        name: Check Turkish content translations
+        entry: node scripts/py.mjs scripts/i18n_catalog.py check
+        language: system
+        pass_filenames: false
+        files: ^(labs|stories|detections|examples|packages/security-content|apps/web/src/lib/i18n)/

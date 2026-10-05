@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: If you use CyberForge in teaching or research, please cite it as below.
+type: software
+title: "CyberForge: The Open Cybersecurity Lab"
+abstract: >-
+  An open-source, local-first cybersecurity lab for blue teams, SOC analysts and detection
+  engineers: a cyber range, a mini SOC, detection engineering with Sigma, YARA and Suricata,
+  MITRE ATT&CK mapping and AI security, all on synthetic data.
+authors:
+  - family-names: Kutlu
+    given-names: Abdurrahman
+    email: info@rahmankutlu.com
+    website: "https://rahmankutlu.com"
+repository-code: "https://github.com/rahmankutlu/cyberforge"
+url: "https://github.com/rahmankutlu/cyberforge"
+license: MIT
+version: 1.1.0
+date-released: "2026-10-05"
+keywords:
+  - cybersecurity
+  - detection engineering
+  - sigma
+  - mitre att&ck
+  - soc
+  - education

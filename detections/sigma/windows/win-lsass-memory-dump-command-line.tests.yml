@@ -1,0 +1,24 @@
+tests:
+  - name: detects comsvcs MiniDump
+    event:
+      Image: 'C:\Windows\System32\rundll32.exe'
+      CommandLine: 'rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump 612 C:\Temp\out.dmp full'
+    expected: true
+
+  - name: detects procdump targeting lsass
+    event:
+      Image: 'C:\Tools\procdump64.exe'
+      CommandLine: 'procdump64.exe -ma lsass.exe C:\Temp\l.dmp'
+    expected: true
+
+  - name: ignores procdump of another process
+    event:
+      Image: 'C:\Tools\procdump64.exe'
+      CommandLine: 'procdump64.exe -ma notepad.exe C:\Temp\n.dmp'
+    expected: false
+
+  - name: ignores rundll32 loading an unrelated dll
+    event:
+      Image: 'C:\Windows\System32\rundll32.exe'
+      CommandLine: 'rundll32.exe shell32.dll,Control_RunDLL desk.cpl'
+    expected: false

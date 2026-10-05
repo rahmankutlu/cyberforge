@@ -29,7 +29,10 @@ FROM node:22-alpine AS runtime
 LABEL org.opencontainers.image.title="CyberForge Web" \
       org.opencontainers.image.description="CyberForge web app: cyber range, mini SOC and detection workbench" \
       org.opencontainers.image.source="https://github.com/rahmankutlu/cyberforge" \
-      org.opencontainers.image.licenses="MIT"
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.authors="Abdurrahman Kutlu <info@rahmankutlu.com>" \
+      org.opencontainers.image.vendor="Abdurrahman Kutlu" \
+      org.opencontainers.image.url="https://rahmankutlu.com"
 RUN addgroup -S -g 10001 app && adduser -S -u 10001 -G app -H -s /sbin/nologin app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

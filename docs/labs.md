@@ -95,7 +95,7 @@ Use documentation ranges only: `192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/2
 - rejected: public addresses (including documentation ranges), URLs, ports, credentials, paths, whitespace and anything else;
 - names are **never resolved**, so there is no DNS rebinding.
 
-Labs also declare `safety` in `lab.yaml`. There is no mode in v0.1 that sends traffic anywhere: the target field exists so a future live mode inherits the same checks.
+Labs also declare `safety` in `lab.yaml`. There is no mode in 1.x that sends traffic anywhere: the target field exists so a future live mode inherits the same checks.
 
 ## Live mode with Acme Portal
 

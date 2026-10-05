@@ -1,0 +1,85 @@
+slug: linux-auth-logs
+name: Linux auth logs
+description: >
+  auth.log lines from a bastion host: routine key-based logins and cron sessions, then an
+  SSH brute-force burst from one address that ends in a successful password login, a new local
+  user and a root shell through sudo. Read the sequence as a story, then see which rules
+  notice each step.
+source_type: Linux syslog auth.log (sshd, sudo, useradd)
+difficulty: beginner
+mitre: [T1110.001, T1078, T1136.001, T1548.003]
+expected_rules:
+  - linux-ssh-brute-force-burst
+  - linux-ssh-login-after-failed-burst
+  - linux-new-local-user-created
+  - linux-sudo-spawns-root-shell
+try_this:
+  - The "login after failed burst" rule is ordered. What happens if you reverse the two selections' events?
+  - Find the sudo event that is not flagged and explain why it is fine.
+  - Add a rule for the first successful login from a source that has never logged in before.
+events:
+  # Routine activity
+  - t: 0
+    repeat: 30
+    every: 300
+    category: linux_auth
+    host: bastion-01
+    fields:
+      Program: sshd
+      SrcIP: '10.20.5.{i+20}'
+      Message: 'Accepted publickey for deploy from 10.20.5.{i+20} port 5{i}222 ssh2'
+  - t: 60
+    repeat: 20
+    every: 450
+    category: linux_auth
+    host: bastion-01
+    fields:
+      Program: CRON
+      Message: 'pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)'
+  - t: 200
+    repeat: 6
+    every: 1200
+    category: linux_auth
+    host: bastion-01
+    fields:
+      Program: sudo
+      Message: 'deploy : TTY=pts/0 ; PWD=/srv/app ; USER=root ; COMMAND=/usr/bin/systemctl restart app'
+    note: A single privileged command. The rule looks for a root shell, not sudo itself.
+
+  # Brute force from a public address
+  - t: 3000
+    repeat: 24
+    every: 4
+    category: linux_auth
+    host: bastion-01
+    fields:
+      Program: sshd
+      SrcIP: 203.0.113.50
+      Message: 'Failed password for root from 203.0.113.50 port {i+40000} ssh2'
+    note: Twenty-four failures in about a minute and a half.
+
+  # ...and then a success from the same address
+  - t: 3110
+    category: linux_auth
+    host: bastion-01
+    fields:
+      Program: sshd
+      SrcIP: 203.0.113.50
+      Message: 'Accepted password for backup from 203.0.113.50 port 40031 ssh2'
+    note: A weak password on a service account. The same source that just failed a couple dozen times.
+
+  # Persistence and privilege escalation
+  - t: 3150
+    category: linux_auth
+    host: bastion-01
+    fields:
+      Program: useradd
+      Message: 'new user: name=sysupdate, UID=1002, GID=1002, home=/home/sysupdate, shell=/bin/bash'
+    note: A new local account with a plausible-looking name.
+  - t: 3170
+    category: linux_auth
+    host: bastion-01
+    fields:
+      Program: sudo
+      Message: 'backup : TTY=pts/1 ; PWD=/home/backup ; USER=root ; COMMAND=/bin/bash'
+    note: A root shell through sudo.

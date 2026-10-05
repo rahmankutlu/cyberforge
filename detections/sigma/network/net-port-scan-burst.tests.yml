@@ -1,0 +1,29 @@
+tests:
+  - name: detects fifteen distinct denied ports from one source in a minute
+    events:
+      - repeat: 15
+        every: 1
+        fields: {src_ip: 198.51.100.77, dst_ip: 10.20.0.10, dst_port: "{i+1000}", action: deny}
+    expected: true
+    hits: 1
+
+  - name: ignores fifteen denials that all hit the same port
+    events:
+      - repeat: 15
+        every: 1
+        fields: {src_ip: 198.51.100.77, dst_ip: 10.20.0.10, dst_port: 22, action: deny}
+    expected: false
+
+  - name: ignores fourteen distinct ports
+    events:
+      - repeat: 14
+        every: 1
+        fields: {src_ip: 198.51.100.77, dst_ip: 10.20.0.10, dst_port: "{i+1000}", action: deny}
+    expected: false
+
+  - name: ignores allowed connections to many ports
+    events:
+      - repeat: 20
+        every: 1
+        fields: {src_ip: 10.20.0.30, dst_ip: 10.20.0.10, dst_port: "{i+1000}", action: allow}
+    expected: false

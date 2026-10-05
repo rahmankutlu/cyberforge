@@ -1,0 +1,6 @@
+# What this lab's scenario must, and must not, trigger.
+min_events: 5
+must_fire:
+  - sudoers-edit-via-sudo
+must_not_fire:
+  - linux-sudo-spawns-root-shell

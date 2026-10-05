@@ -28,6 +28,10 @@ import {
   SimulationStage,
 } from "@/components/lifecycle/stages";
 import { SEVERITY_LABEL } from "@/lib/format";
+import type { Locale } from "@/lib/i18n";
+import { countLabel, localizeKnownCopy, type CopyTranslate } from "@/lib/i18n/copy";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { renderRich } from "@/lib/i18n/rich";
 
 export const STAGES = [
   { key: "simulation", label: "Simulation", icon: FlaskConical },
@@ -42,30 +46,32 @@ export const STAGES = [
 
 export type StageKey = (typeof STAGES)[number]["key"];
 
-function summary(key: StageKey, data: Lifecycle): string {
+function summary(key: StageKey, data: Lifecycle, c: CopyTranslate, locale: Locale): string {
   switch (key) {
     case "simulation":
       return data.simulation.lab
-        ? `Lab ${String(data.simulation.lab.number).padStart(2, "0")}`
+        ? c("Lab {{number}}", { number: String(data.simulation.lab.number).padStart(2, "0") })
         : data.simulation.run_id
-          ? "Run"
-          : "Dataset";
+          ? c("Run")
+          : c("Dataset");
     case "raw":
-      return `${data.raw_events.length} event${data.raw_events.length === 1 ? "" : "s"}`;
+      return countLabel(c, data.raw_events.length, "{{count}} event", "{{count}} events");
     case "parsed":
-      return `${Object.keys(data.parsed_events[0]?.fields ?? {}).length} fields`;
+      return c("{{count}} fields", {
+        count: Object.keys(data.parsed_events[0]?.fields ?? {}).length,
+      });
     case "match":
       return data.match.correlation
-        ? "Correlation"
-        : `${data.match.trace.length} match${data.match.trace.length === 1 ? "" : "es"}`;
+        ? c("Correlation")
+        : countLabel(c, data.match.trace.length, "{{count}} match", "{{count}} matches");
     case "alert":
-      return SEVERITY_LABEL[data.alert.severity];
+      return localizeKnownCopy(locale, SEVERITY_LABEL[data.alert.severity]);
     case "mitre":
-      return data.mitre.technique?.id ?? "None";
+      return data.mitre.technique?.id ?? c("None");
     case "investigation":
-      return data.investigation ? `#${data.investigation.id}` : "None yet";
+      return data.investigation ? `#${data.investigation.id}` : c("None yet");
     case "mitigation":
-      return `${data.mitigation.actions.length} actions`;
+      return c("{{count}} actions", { count: data.mitigation.actions.length });
   }
 }
 
@@ -82,6 +88,7 @@ export function LifecycleFlow({
   initialStage?: StageKey;
   currentAlertId?: number;
 }) {
+  const { locale, c } = useLocale();
   const [active, setActive] = useState<StageKey>(initialStage);
   const [eventIndex, setEventIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -121,12 +128,14 @@ export function LifecycleFlow({
   const showEventPicker = (active === "raw" || active === "parsed") && data.raw_events.length > 1;
 
   return (
-    <section aria-label="Attack to detection lifecycle" data-testid="lifecycle">
+    <section aria-label={c("Attack to detection lifecycle")} data-testid="lifecycle">
       <div className="mb-3 flex items-center justify-between gap-2">
         <p className="text-xs text-muted-foreground">
-          Click a stage, or use{" "}
-          <kbd className="rounded border border-border px-1 font-mono text-[10px]">←</kbd>{" "}
-          <kbd className="rounded border border-border px-1 font-mono text-[10px]">→</kbd>.
+          {renderRich(c("Click a stage, or use <kbd>←</kbd> <kbd>→</kbd>."), {
+            kbd: (key) => (
+              <kbd className="rounded border border-border px-1 font-mono text-[10px]">{key}</kbd>
+            ),
+          })}
         </p>
         <Button
           variant="outline"
@@ -136,14 +145,14 @@ export function LifecycleFlow({
           }
         >
           {playing ? <Pause /> : <Play />}
-          {playing ? "Pause" : "Play"}
+          {playing ? c("Pause") : c("Play")}
         </Button>
       </div>
 
       <div className="overflow-x-auto pb-2">
         <div
           role="tablist"
-          aria-label="Lifecycle stages"
+          aria-label={c("Lifecycle stages")}
           onKeyDown={onKeyDown}
           className="flex min-w-[760px] items-stretch"
         >
@@ -189,10 +198,10 @@ export function LifecycleFlow({
                       on ? "text-foreground" : "text-foreground/80",
                     )}
                   >
-                    {stage.label}
+                    {localizeKnownCopy(locale, stage.label)}
                   </span>
                   <span className="max-w-full truncate text-[10px] leading-none text-muted-foreground">
-                    {summary(stage.key, data)}
+                    {summary(stage.key, data, c, locale)}
                   </span>
                 </button>
                 {i < STAGES.length - 1 ? (
@@ -217,7 +226,7 @@ export function LifecycleFlow({
       >
         {showEventPicker ? (
           <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="text-muted-foreground">Evidence event</span>
+            <span className="text-muted-foreground">{c("Evidence event")}</span>
             {data.raw_events.slice(0, 12).map((e, i) => (
               <button
                 key={e.id}
@@ -235,7 +244,9 @@ export function LifecycleFlow({
               </button>
             ))}
             {data.raw_events.length > 12 ? (
-              <span className="text-muted-foreground">of {data.raw_events.length}</span>
+              <span className="text-muted-foreground">
+                {c("of")} {data.raw_events.length}
+              </span>
             ) : null}
           </div>
         ) : null}

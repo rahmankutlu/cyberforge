@@ -1,0 +1,28 @@
+tests:
+  - name: detects IIS starting cmd.exe
+    event:
+      ParentImage: 'C:\Windows\System32\inetsrv\w3wp.exe'
+      Image: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'cmd.exe /c whoami'
+    expected: true
+
+  - name: detects the web server starting net.exe
+    event:
+      ParentImage: 'C:\Windows\System32\inetsrv\w3wp.exe'
+      Image: 'C:\Windows\System32\net.exe'
+      CommandLine: 'net user'
+    expected: true
+
+  - name: ignores IIS starting its own worker helper
+    event:
+      ParentImage: 'C:\Windows\System32\inetsrv\w3wp.exe'
+      Image: 'C:\Windows\System32\inetsrv\appcmd.exe'
+      CommandLine: 'appcmd.exe list sites'
+    expected: false
+
+  - name: ignores Explorer starting cmd.exe
+    event:
+      ParentImage: 'C:\Windows\explorer.exe'
+      Image: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'cmd.exe'
+    expected: false

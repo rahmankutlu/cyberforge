@@ -31,6 +31,8 @@ MITRE ATT&CK mapping and AI security in one local-first platform.
 * AI analysis is **optional** and advisory.
 
 Source: https://github.com/rahmankutlu/cyberforge
+
+Created and maintained by Abdurrahman Kutlu (https://rahmankutlu.com).
 """
 
 TAGS = [
@@ -87,6 +89,7 @@ def create_app() -> FastAPI:
         openapi_tags=TAGS,
         lifespan=lifespan,
         license_info={"name": "MIT", "url": "https://opensource.org/license/mit"},
+        contact={"name": "Abdurrahman Kutlu", "url": "https://rahmankutlu.com", "email": "info@rahmankutlu.com"},
     )
 
     app.add_middleware(SecurityMiddleware, settings=settings)

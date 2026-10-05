@@ -1,0 +1,28 @@
+tests:
+  - name: detects an agent reading a dotenv file
+    event:
+      event_type: tool_call
+      tool_name: read_file
+      tool_args: '{"path": "/srv/app/.env"}'
+    expected: true
+
+  - name: detects an agent reading an SSH private key
+    event:
+      event_type: tool_call
+      tool_name: file_read
+      tool_args: '{"path": "/home/svc/.ssh/id_rsa"}'
+    expected: true
+
+  - name: ignores an agent reading an ordinary document
+    event:
+      event_type: tool_call
+      tool_name: read_file
+      tool_args: '{"path": "/srv/app/docs/handbook.md"}'
+    expected: false
+
+  - name: ignores a sensitive path passed to a tool that does not read files
+    event:
+      event_type: tool_call
+      tool_name: web_search
+      tool_args: '{"query": "how to protect .env files"}'
+    expected: false

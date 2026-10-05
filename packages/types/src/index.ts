@@ -415,6 +415,12 @@ export interface ValidateResponse {
 
 export type TranslateTarget = "elastic" | "splunk" | "sentinel" | "opensearch" | "sql";
 
+export interface FieldChange {
+  source: string;
+  targets: string[];
+  changed: boolean;
+}
+
 export interface Translation {
   target: TranslateTarget;
   label: string;
@@ -422,7 +428,25 @@ export interface Translation {
   queries: string[];
   error: string | null;
   notes: string[];
+  /** The processing pipeline that mapped the rule's fields, if one did. */
+  pipeline: string | null;
+  pipeline_label: string | null;
+  field_changes: FieldChange[];
+  added_fields: string[];
+  dropped_fields: string[];
+  /** Why a requested pipeline could not be used; the query is then unmapped. */
+  pipeline_error: string | null;
 }
+
+export interface TranslationPipeline {
+  id: string;
+  label: string;
+  description: string;
+  /** Tried when a client asks for `auto`. */
+  auto: boolean;
+}
+
+export type TranslationPipelines = Record<string, TranslationPipeline[]>;
 
 export interface TranslateResponse {
   validation: ValidateResponse;
@@ -454,6 +478,13 @@ export interface TechniqueCoverage {
   rules: number;
   alerts: number;
   investigations: number;
+  /** Attack stories that teach the technique. */
+  stories: number;
+  /** Mapped Sigma rules that have positive and negative tests. */
+  tested_rules: number;
+  /** Something covers the technique (a lab, rule or story) but no tested rule does. */
+  lacking_tests: boolean;
+  domains: ("Windows" | "Linux" | "Network" | "Web" | "Cloud" | "AI Security")[];
 }
 
 export interface TechniqueDetail extends TechniqueCoverage {
@@ -473,7 +504,15 @@ export interface Matrix {
   version: string;
   notice: string;
   columns: { tactic: Tactic; techniques: TechniqueCoverage[] }[];
-  totals: { techniques: number; covered: number; with_labs: number; with_alerts: number };
+  totals: {
+    techniques: number;
+    covered: number;
+    with_labs: number;
+    with_alerts: number;
+    with_stories: number;
+    with_tested_rules: number;
+    lacking_tests: number;
+  };
 }
 
 // ── threat intel ───────────────────────────────────────────────────────────────────────────
@@ -646,7 +685,8 @@ export interface AIFinding {
 
 // ── search / docs / settings ───────────────────────────────────────────────────────────────
 export interface SearchHit {
-  kind: "lab" | "rule" | "technique" | "alert" | "doc" | "learning" | "indicator";
+  kind:
+    "lab" | "story" | "rule" | "dataset" | "technique" | "alert" | "doc" | "learning" | "indicator";
   id: string;
   title: string;
   subtitle: string | null;
@@ -672,4 +712,493 @@ export interface RuntimeSettings {
   content: { mitre: Record<string, string>; labs: number; rules: number; docs: number };
   counts: Record<string, number>;
   lab_network: Record<string, string>;
+}
+
+// ── v0.2: detection tests, quality and the playground ────────────────────────────────────────
+export interface QualityCheck {
+  id: string;
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface RuleQuality {
+  slug: string;
+  title: string;
+  level: string;
+  technique_ids: string[];
+  passed: number;
+  total: number;
+  checks: QualityCheck[];
+  positive_tests: number;
+  negative_tests: number;
+  failing_tests: number;
+}
+
+export interface DetectionCoverage {
+  rules: number;
+  tested: number;
+  percent: number;
+  tests: number;
+  failing: number;
+}
+
+export interface QualityResponse {
+  coverage: DetectionCoverage;
+  checks_passed: number;
+  checks_total: number;
+  rules: RuleQuality[];
+}
+
+export interface RuleTestCaseResult {
+  name: string;
+  expected: boolean;
+  passed: boolean;
+  message: string;
+  matched_events: number[];
+  hits: number;
+  definition: Record<string, unknown>;
+}
+
+export interface RuleTests {
+  slug: string;
+  tests_path: string | null;
+  source: string | null;
+  errors: string[];
+  cases: RuleTestCaseResult[];
+  quality: RuleQuality | null;
+}
+
+export interface PlaygroundDataset {
+  slug: string;
+  name: string;
+  description: string;
+  source_type: string;
+  kind: "events" | "files";
+  difficulty: string;
+  item_count: number;
+  mitre: { id: string; name: string | null }[];
+  expected_rules: { slug: string; title: string; format: RuleFormat }[];
+  try_this: string[];
+}
+
+export interface PlaygroundItem {
+  index: number;
+  kind: "event" | "file";
+  title: string;
+  offset_seconds: number;
+  timestamp: string | null;
+  category: string | null;
+  source: string | null;
+  host: string | null;
+  user: string | null;
+  raw: string;
+  fields: Record<string, unknown>;
+  note: string | null;
+  size: number | null;
+}
+
+export interface PlaygroundDatasetDetail extends PlaygroundDataset {
+  items: PlaygroundItem[];
+}
+
+export type Verdict = "matched" | "no_match" | "not_applicable";
+
+export interface PlaygroundRule {
+  title: string;
+  level: string;
+  status: string | null;
+  description: string;
+  logsource: Record<string, string>;
+  techniques: string[];
+  falsepositives: string[];
+  references: string[];
+  is_correlation: boolean;
+  fields: string[];
+}
+
+export interface CorrelationSummary {
+  type: string;
+  timespan_seconds: number;
+  group_by: string[];
+  base_rules: { rule: string; title: string; matching_events: number[] }[];
+  hits: {
+    event_indexes: number[];
+    group: Record<string, unknown> | null;
+    details: Record<string, unknown>;
+    first: string;
+    last: string;
+  }[];
+}
+
+export interface PlaygroundRun {
+  format: RuleFormat;
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  item_count: number;
+  matched_count: number;
+  meta?: PlaygroundRule;
+  mitre?: { id: string; name: string | null; known: boolean }[];
+  results: { index: number; verdict: Verdict; matched_fields: string[] }[];
+  correlation: CorrelationSummary | null;
+}
+
+export interface TraceValue {
+  pattern: string;
+  text: string;
+  matched: boolean;
+}
+
+export interface TraceItem {
+  kind: "item";
+  field: string | null;
+  modifiers: string[];
+  operator: string;
+  linking: "and" | "or";
+  matched: boolean;
+  actual: unknown;
+  values: TraceValue[];
+}
+
+export interface TraceSelection {
+  kind: "selection" | "group";
+  name: string;
+  matched: boolean;
+  linking: "and" | "or";
+  children: (TraceItem | TraceSelection)[];
+}
+
+export interface TraceCondition {
+  op: "and" | "or" | "not" | "selection" | "any_of" | "all_of";
+  label: string;
+  matched: boolean;
+  children: TraceCondition[];
+}
+
+export interface SigmaExplanation {
+  matched: boolean;
+  outcome: "matched" | "not_matched" | "logsource_mismatch";
+  summary: string;
+  logsource: {
+    rule: Record<string, string>;
+    event: Record<string, string>;
+    compatible: boolean;
+  };
+  selections: TraceSelection[];
+  condition: TraceCondition | null;
+  condition_text: string;
+  hints: string[];
+}
+
+export interface YaraExplanation {
+  rule: string;
+  matched: boolean;
+  condition_text: string;
+  filesize: number;
+  unsupported: string | null;
+  strings: {
+    name: string;
+    kind: "text" | "regex";
+    pattern: string;
+    modifiers: string[];
+    count: number;
+    offsets: number[];
+    excerpt: string | null;
+    matched: boolean;
+  }[];
+  terms: { label: string; matched: boolean; detail: string }[];
+}
+
+export interface SuricataExplanation {
+  action: string;
+  protocol: string;
+  source: string;
+  direction: string;
+  destination: string;
+  msg: string;
+  sid: string;
+  classtype: string | null;
+  metadata: string | null;
+  options: { name: string; value: string }[];
+  checks: {
+    label: string;
+    buffer: string;
+    kind: "content" | "pcre";
+    pattern: string;
+    modifiers: string[];
+    matched: boolean;
+    actual: string | null;
+  }[];
+  not_evaluated: string[];
+  matched: boolean | null;
+  summary: string;
+}
+
+export interface PlaygroundExplain {
+  format: RuleFormat;
+  kind: "event" | "file" | "correlation";
+  item: PlaygroundItem;
+  matched: boolean;
+  explanation?: SigmaExplanation | YaraExplanation | SuricataExplanation;
+  correlation?: CorrelationSummary;
+  member_of?: number[];
+  bases?: (SigmaExplanation & { rule: string })[];
+}
+
+// ── v0.2: attack stories ─────────────────────────────────────────────────────────────────────
+export type StoryDomain = "endpoint" | "identity" | "web" | "network" | "cloud" | "ai-security";
+
+export interface StorySummary {
+  slug: string;
+  title: string;
+  summary: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  duration_minutes: number;
+  domain: StoryDomain;
+  order: number;
+  tags: string[];
+  step_count: number;
+  event_count: number;
+  techniques: string[];
+  detection_count: number;
+  start: string;
+  end: string;
+}
+
+export interface StoryEvidence {
+  id: string;
+  title: string;
+  kind: "log" | "process-tree" | "network" | "email" | "ticket" | "note" | "alert";
+  content: string;
+  significance: "key" | "supporting" | "noise";
+  finding: string | null;
+}
+
+export interface StoryQuestionOption {
+  id: string;
+  text: string;
+  correct: boolean;
+  explanation: string;
+}
+
+export interface StoryQuestion {
+  id: string;
+  prompt: string;
+  kind: "single" | "multiple";
+  options: StoryQuestionOption[];
+  hint: string | null;
+}
+
+export interface StoryDecisionOption {
+  id: string;
+  text: string;
+  quality: "best" | "acceptable" | "poor";
+  feedback: string;
+}
+
+export interface StoryDecision {
+  id: string;
+  prompt: string;
+  context: string | null;
+  options: StoryDecisionOption[];
+}
+
+export type GraphNodeType =
+  "user" | "host" | "process" | "ip" | "domain" | "detection" | "alert" | "technique";
+
+export type GraphRelation =
+  "executed" | "connected to" | "triggered" | "mapped to" | "associated with";
+
+export interface StoryGraphNode {
+  id: string;
+  type: GraphNodeType;
+  label: string;
+  ref: string | null;
+}
+
+export interface StoryGraphEdge {
+  source: string;
+  target: string;
+  relation: GraphRelation;
+}
+
+export interface StoryEvent {
+  index: number;
+  timestamp: string;
+  source: string;
+  category: string;
+  host: string | null;
+  user: string | null;
+  message: string;
+  raw: string;
+  note: string | null;
+  fields: Record<string, unknown>;
+}
+
+export interface StoryDetection {
+  slug: string;
+  title: string;
+  level: string;
+  format: RuleFormat;
+  is_correlation: boolean;
+  techniques: string[];
+  events: number[];
+  declared: boolean;
+  why: { summary: string; event: number } | null;
+}
+
+export interface StoryStep {
+  id: string;
+  time: string;
+  timestamp: string;
+  title: string;
+  narrative: string;
+  events: StoryEvent[];
+  evidence: StoryEvidence[];
+  detections: StoryDetection[];
+  alert: { title: string; severity: string; rule: string | null } | null;
+  techniques: { id: string; name: string | null }[];
+  questions: StoryQuestion[];
+  decision: StoryDecision | null;
+  graph: { nodes: StoryGraphNode[]; edges: StoryGraphEdge[] };
+}
+
+export interface StoryContainment {
+  id: string;
+  action: string;
+  category: string;
+  quality: "recommended" | "optional" | "harmful";
+  effect: string;
+  feedback: string;
+}
+
+export interface Story extends StorySummary {
+  briefing: string;
+  attack_chain: {
+    tactic: string;
+    technique: string;
+    technique_name: string | null;
+    step: string;
+    description: string;
+  }[];
+  steps: StoryStep[];
+  containment: StoryContainment[];
+  postmortem: {
+    summary: string;
+    root_cause: string;
+    what_worked: string[];
+    what_to_improve: string[];
+    detections_to_add: string[];
+    lessons: string[];
+  };
+}
+
+// ── v0.2: demo mode and the live event stream ────────────────────────────────────────────────
+export interface DemoScenarioSummary {
+  slug: string;
+  title: string;
+  summary: string;
+  duration_seconds: number;
+  host: string;
+}
+
+export interface DemoEvent {
+  id: string;
+  t: number;
+  timestamp: string;
+  host: string | null;
+  user: string | null;
+  source: string;
+  category: string;
+  message: string;
+  command_line: string | null;
+  raw: string;
+  fields: Record<string, unknown>;
+  note: string | null;
+  detections: string[];
+  severity: string;
+}
+
+export interface DemoAlert {
+  id: string;
+  t: number;
+  rule: string;
+  title: string;
+  severity: string;
+  event_id: string;
+  host: string | null;
+  technique: string | null;
+}
+
+export interface DemoTechnique {
+  id: string;
+  name: string;
+  tactics: { id: string; name: string }[];
+  t: number;
+  rule: string;
+}
+
+export interface DemoProcessNode {
+  id: string;
+  label: string;
+  host: string | null;
+  t: number;
+  flagged: boolean;
+  in_chain: boolean;
+}
+
+export interface DemoScript {
+  slug: string;
+  title: string;
+  summary: string;
+  duration_seconds: number;
+  start: string;
+  host: string;
+  user: string;
+  events: DemoEvent[];
+  alerts: DemoAlert[];
+  techniques: DemoTechnique[];
+  tactics: { id: string; name: string }[];
+  process_tree: {
+    nodes: DemoProcessNode[];
+    edges: { source: string; target: string; t: number; kind?: string }[];
+  };
+  severity_timeline: { t: number; severity: string }[];
+  notes: { t: number; analyst: string; body: string }[];
+  containment: {
+    t: number;
+    state: "monitoring" | "containing" | "contained";
+    label: string;
+    detail: string;
+  }[];
+  incident_summary: {
+    t: number;
+    headline: string;
+    paragraphs: string[];
+    stats: {
+      events: number;
+      suspicious_events: number;
+      alerts: number;
+      rules: number;
+      techniques: number;
+      tactics: number;
+      peak_severity: string;
+      seconds_to_first_alert: number;
+      seconds_to_containment: number | null;
+    };
+  };
+}
+
+export interface StreamEvent {
+  seq: number;
+  timestamp: string;
+  source: string | null;
+  host: string;
+  event_type: string;
+  message: string;
+  rule: string | null;
+  rule_slug: string | null;
+  severity: string;
+  dataset: string;
 }

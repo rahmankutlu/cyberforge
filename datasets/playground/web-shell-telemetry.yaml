@@ -1,0 +1,108 @@
+slug: web-shell-telemetry
+name: Web shell telemetry
+description: >
+  Three views of the same intrusion on a Windows web server: the HTTP requests, the file the web
+  server process wrote into its own web root, and the commands that worker process then ran. No
+  single log proves a web shell; together they do. Practise correlating them by time and host.
+source_type: IIS access log, Sysmon file-create and process-creation events
+difficulty: intermediate
+mitre: [T1505.003, T1190, T1059.003]
+expected_rules:
+  - web-webshell-command-parameter-request
+  - win-webshell-file-written-in-webroot
+  - win-webserver-spawns-shell
+try_this:
+  - Put the three matches in time order. Which detection fires first, and would it have been enough on its own?
+  - The web-request rule needs three selections to agree. Remove one and see how many benign requests appear.
+  - Write a rule for a web server worker creating any script file outside the deployment folder.
+events:
+  # Normal site traffic and normal IIS behaviour
+  - t: 0
+    repeat: 90
+    every: 30
+    category: web_request
+    host: SRV-WEB01
+    fields:
+      c-ip: '198.51.100.{i*1}'
+      cs-method: GET
+      cs-uri-stem: '/catalog/item{i}.aspx'
+      cs-user-agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0'
+      sc-status: 200
+  - t: 5
+    repeat: 12
+    every: 240
+    category: file_event
+    host: SRV-WEB01
+    fields:
+      Image: 'C:\Windows\System32\inetsrv\w3wp.exe'
+      TargetFilename: 'C:\inetpub\wwwroot\logs\app-{i}.log'
+    note: The worker writing its own logs into the web root. Not a script extension, so no alert.
+  - t: 60
+    repeat: 6
+    every: 480
+    category: process_creation
+    host: SRV-WEB01
+    fields:
+      Image: 'C:\Windows\System32\inetsrv\appcmd.exe'
+      ParentImage: 'C:\Windows\System32\inetsrv\w3wp.exe'
+      CommandLine: 'appcmd.exe list wp'
+    note: A management helper started by the worker. Not a shell.
+
+  # The intrusion
+  - t: 2000
+    category: web_request
+    host: SRV-WEB01
+    fields:
+      c-ip: 203.0.113.81
+      cs-method: POST
+      cs-uri-stem: /upload/avatar.aspx
+      cs-user-agent: 'Mozilla/5.0'
+      sc-status: 200
+    note: A file upload endpoint that does not check file types.
+  - t: 2003
+    category: file_event
+    host: SRV-WEB01
+    fields:
+      Image: 'C:\Windows\System32\inetsrv\w3wp.exe'
+      TargetFilename: 'C:\inetpub\wwwroot\uploads\help.aspx'
+    note: The web server process wrote a script file into the web root.
+  - t: 2040
+    category: web_request
+    host: SRV-WEB01
+    fields:
+      c-ip: 203.0.113.81
+      cs-method: GET
+      cs-uri-stem: /uploads/help.aspx
+      cs-uri-query: 'cmd=whoami'
+      cs-user-agent: 'Mozilla/5.0'
+      sc-status: 200
+    note: A GET to the new file with a command parameter.
+  - t: 2041
+    category: process_creation
+    host: SRV-WEB01
+    user: 'IIS APPPOOL\DefaultAppPool'
+    fields:
+      Image: 'C:\Windows\System32\cmd.exe'
+      ParentImage: 'C:\Windows\System32\inetsrv\w3wp.exe'
+      CommandLine: 'cmd.exe /c whoami'
+      IntegrityLevel: High
+    note: The worker process starting a shell. The parent is the giveaway.
+  - t: 2070
+    category: web_request
+    host: SRV-WEB01
+    fields:
+      c-ip: 203.0.113.81
+      cs-method: GET
+      cs-uri-stem: /uploads/help.aspx
+      cs-uri-query: 'cmd=net+user'
+      cs-user-agent: 'Mozilla/5.0'
+      sc-status: 200
+  - t: 2071
+    category: process_creation
+    host: SRV-WEB01
+    user: 'IIS APPPOOL\DefaultAppPool'
+    fields:
+      Image: 'C:\Windows\System32\net.exe'
+      ParentImage: 'C:\Windows\System32\inetsrv\w3wp.exe'
+      CommandLine: 'net user'
+      IntegrityLevel: High

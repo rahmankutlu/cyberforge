@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cyberforge-api"
-version = "0.1.0"
+version = "1.1.0"
 description = "CyberForge API — telemetry, detections, MITRE mapping and the mini SOC."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
-authors = [{ name = "Abdurrahman Kutlu" }]
+authors = [{ name = "Abdurrahman Kutlu", email = "info@rahmankutlu.com" }]
+maintainers = [{ name = "Abdurrahman Kutlu", email = "info@rahmankutlu.com" }]
 keywords = ["cybersecurity", "soc", "sigma", "mitre-attack", "detection-engineering"]
 dependencies = [
   "fastapi>=0.121,<1",
@@ -35,6 +36,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest>=8.3",
+  "pytest-cov>=6",
+  "pip-audit>=2.9",
   "python-multipart>=0.0.20",  # only used to exercise the lab app in tests
   "ruff>=0.8",
   "mypy>=1.13",
@@ -44,6 +47,8 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/rahmankutlu/cyberforge"
+Author = "https://rahmankutlu.com"
+Documentation = "https://github.com/rahmankutlu/cyberforge/tree/main/docs"
 Repository = "https://github.com/rahmankutlu/cyberforge"
 Issues = "https://github.com/rahmankutlu/cyberforge/issues"
 
@@ -54,6 +59,18 @@ include = ["cyberforge*"]
 testpaths = ["tests"]
 addopts = "-ra"
 filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["cyberforge"]
+branch = true
+omit = ["cyberforge/migrations/*"]
+
+[tool.coverage.report]
+# Measured at 91% when this gate was added. The floor only moves up; raise it with the coverage.
+fail_under = 88
+skip_covered = true
+show_missing = true
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError", "@overload"]
 
 [tool.ruff]
 line-length = 100

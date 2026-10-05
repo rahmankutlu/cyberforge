@@ -31,12 +31,16 @@ import { CodeBlock } from "@/components/code-block";
 import { apiGet, apiGetOrNull } from "@/lib/api";
 import { formatDateTimeFull } from "@/lib/format";
 import { first, type SearchParams } from "@/lib/params";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
+import { localizeContentTree } from "@/lib/i18n/content";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<SearchParams> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  return { title: `Alert #${id}` };
+  const c = createCopyTranslator(await getLocale());
+  return { title: `${c("Alert")} #${id}` };
 }
 
 const TABS = ["overview", "lifecycle", "evidence", "notes", "ai"] as const;
@@ -51,16 +55,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default async function AlertPage({ params, searchParams }: Props) {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
   const { id } = await params;
   const sp = await searchParams;
   if (!/^\d+$/.test(id)) notFound();
 
-  const alert = await apiGetOrNull<AlertDetail>(`/alerts/${id}`);
-  if (!alert) notFound();
-  const [lifecycle, analysts] = await Promise.all([
+  const sourceAlert = await apiGetOrNull<AlertDetail>(`/alerts/${id}`);
+  if (!sourceAlert) notFound();
+  const [sourceLifecycle, analysts] = await Promise.all([
     apiGet<Lifecycle>(`/alerts/${id}/lifecycle`),
     apiGet<Analyst[]>("/analysts"),
   ]);
+  const alert = localizeContentTree(locale, sourceAlert);
+  const lifecycle = localizeContentTree(locale, sourceLifecycle);
 
   const requested = first(sp.tab);
   const tab = (TABS as readonly string[]).includes(requested ?? "")
@@ -71,8 +79,8 @@ export default async function AlertPage({ params, searchParams }: Props) {
     <>
       <PageHeader
         breadcrumbs={[
-          { label: "Mini SOC", href: "/soc" },
-          { label: "Alerts", href: "/soc/alerts" },
+          { label: c("Mini SOC"), href: "/soc" },
+          { label: c("Alerts"), href: "/soc/alerts" },
           { label: `#${alert.id}` },
         ]}
         title={alert.title}
@@ -83,13 +91,13 @@ export default async function AlertPage({ params, searchParams }: Props) {
             {alert.synthetic ? (
               <SyntheticBadge />
             ) : (
-              <Badge variant="success">Live lab activity</Badge>
+              <Badge variant="success">{c("Live lab activity")}</Badge>
             )}
             {alert.technique ? (
               <TechniqueChip id={alert.technique.id} name={alert.technique.name} />
             ) : null}
             <span className="text-xs text-muted-foreground">
-              <RelativeTime iso={alert.timestamp} /> · {formatDateTimeFull(alert.timestamp)}
+              <RelativeTime iso={alert.timestamp} /> · {formatDateTimeFull(alert.timestamp, locale)}
             </span>
           </>
         }
@@ -98,16 +106,18 @@ export default async function AlertPage({ params, searchParams }: Props) {
 
       <Tabs defaultValue={tab}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview">{c("Overview")}</TabsTrigger>
           <TabsTrigger value="lifecycle" data-testid="tab-lifecycle">
-            Lifecycle
+            {c("Lifecycle")}
           </TabsTrigger>
-          <TabsTrigger value="evidence">Evidence ({alert.events.length})</TabsTrigger>
+          <TabsTrigger value="evidence">
+            {c("Evidence")} ({alert.events.length})
+          </TabsTrigger>
           <TabsTrigger value="notes" data-testid="tab-notes">
-            Notes ({alert.notes.length})
+            {c("Notes")} ({alert.notes.length})
           </TabsTrigger>
           <TabsTrigger value="ai" data-testid="tab-ai">
-            AI analysis
+            {c("AI analysis")}
           </TabsTrigger>
         </TabsList>
 
@@ -116,7 +126,7 @@ export default async function AlertPage({ params, searchParams }: Props) {
             <div className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>What happened</CardTitle>
+                  <CardTitle>{c("What happened")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-[13px] leading-relaxed text-muted-foreground">
@@ -127,7 +137,7 @@ export default async function AlertPage({ params, searchParams }: Props) {
               {alert.evidence.match?.length ? (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Matched evidence</CardTitle>
+                    <CardTitle>{c("Matched evidence")}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {alert.evidence.match.map((m, i) => (
@@ -145,7 +155,7 @@ export default async function AlertPage({ params, searchParams }: Props) {
               ) : null}
               {alert.related_alerts.length ? (
                 <section>
-                  <h2 className="mb-2 text-sm font-semibold">Related alerts</h2>
+                  <h2 className="mb-2 text-sm font-semibold">{c("Related alerts")}</h2>
                   <AlertsTable alerts={alert.related_alerts} compact />
                 </section>
               ) : null}
@@ -153,21 +163,21 @@ export default async function AlertPage({ params, searchParams }: Props) {
 
             <Card className="h-fit">
               <CardHeader>
-                <CardTitle>Details</CardTitle>
+                <CardTitle>{c("Details")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-                  <Field label="Host">
+                  <Field label={c("Host")}>
                     <span className="font-mono">{alert.host ?? "—"}</span>
                   </Field>
-                  <Field label="User">
+                  <Field label={c("User")}>
                     <span className="font-mono">{alert.user ?? "—"}</span>
                   </Field>
-                  <Field label="Source">{alert.source}</Field>
-                  <Field label="Confidence">{alert.confidence}%</Field>
-                  <Field label="Tactic">{alert.tactic ?? "—"}</Field>
-                  <Field label="Assignee">{alert.assignee?.name ?? "Unassigned"}</Field>
-                  <Field label="Rule">
+                  <Field label={c("Source")}>{alert.source}</Field>
+                  <Field label={c("Confidence")}>{alert.confidence}%</Field>
+                  <Field label={c("Tactic")}>{alert.tactic ?? "—"}</Field>
+                  <Field label={c("Assignee")}>{alert.assignee?.name ?? c("Unassigned")}</Field>
+                  <Field label={c("Rule")}>
                     {alert.rule ? (
                       <Link
                         href={`/detections/${alert.rule.slug}`}
@@ -179,13 +189,13 @@ export default async function AlertPage({ params, searchParams }: Props) {
                       "—"
                     )}
                   </Field>
-                  <Field label="Lab">
+                  <Field label={c("Lab")}>
                     {alert.lab ? (
                       <Link
                         href={`/labs/${alert.lab.slug}`}
                         className="text-primary hover:underline"
                       >
-                        Lab {String(alert.lab.number).padStart(2, "0")}
+                        {c("Lab")} {String(alert.lab.number).padStart(2, "0")}
                       </Link>
                     ) : (
                       "—"
@@ -210,7 +220,7 @@ export default async function AlertPage({ params, searchParams }: Props) {
                     <Badge variant="outline" className="font-mono">
                       {e.source}
                     </Badge>
-                    <span>{formatDateTimeFull(e.timestamp)}</span>
+                    <span>{formatDateTimeFull(e.timestamp, locale)}</span>
                     <span>· {e.message}</span>
                   </p>
                   <CodeBlock code={e.raw} title={`event #${e.id}`} maxHeight="10rem" />
@@ -219,7 +229,7 @@ export default async function AlertPage({ params, searchParams }: Props) {
             ))}
             {alert.events.length > 25 ? (
               <p className="text-xs text-muted-foreground">
-                Showing 25 of {alert.events.length} evidence events.
+                {c("Showing 25 of {{count}} evidence events.", { count: alert.events.length })}
               </p>
             ) : null}
           </div>

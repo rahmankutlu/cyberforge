@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 const NODE_ICON: Record<string, LucideIcon> = {
   user: User,
@@ -105,6 +106,7 @@ export function TrustBoundaryChain({
   overview: AISecurityOverview;
   findingsByBoundary: Record<string, number>;
 }) {
+  const { c } = useLocale();
   const [selected, setSelected] = useState<string>("context");
   const node = (id: string) => overview.nodes.find((n) => n.id === id);
   const boundary = (id: string): TrustBoundary | undefined =>
@@ -134,7 +136,7 @@ export function TrustBoundaryChain({
       <div
         className="flex flex-col items-center gap-0"
         role="group"
-        aria-label="Agent trust boundary chain"
+        aria-label={c("Agent trust boundary chain")}
       >
         <div className="grid w-full grid-cols-2 gap-3">
           {(["user", "content"] as const).map((id) => {
@@ -178,7 +180,7 @@ export function TrustBoundaryChain({
             </div>
             <div>
               <h4 className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-sev-high">
-                Where the boundary fails
+                {c("Where the boundary fails")}
               </h4>
               <ul className="list-disc space-y-1 pl-5 text-[13px]">
                 {active.failure_modes.map((f) => (
@@ -188,7 +190,7 @@ export function TrustBoundaryChain({
             </div>
             <div>
               <h4 className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-ok">
-                Controls that belong here
+                {c("Controls that belong here")}
               </h4>
               <ul className="list-disc space-y-1 pl-5 text-[13px]">
                 {active.controls.map((c) => (
@@ -198,7 +200,7 @@ export function TrustBoundaryChain({
             </div>
             <div>
               <h4 className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                Detections
+                {c("Detections")}
               </h4>
               {active.rules.length ? (
                 <div className="flex flex-wrap gap-1.5">
@@ -212,8 +214,9 @@ export function TrustBoundaryChain({
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  No detection rule yet: this boundary is enforced by design (approvals, structured
-                  output), not by log matching.
+                  {c(
+                    "No detection rule yet: this boundary is enforced by design (approvals, structured output), not by log matching.",
+                  )}
                 </p>
               )}
             </div>
@@ -221,8 +224,7 @@ export function TrustBoundaryChain({
               href="/ai-security/findings"
               className="inline-block text-xs text-primary hover:underline"
             >
-              {findingsByBoundary[active.id] ?? 0} finding
-              {(findingsByBoundary[active.id] ?? 0) === 1 ? "" : "s"} at this boundary
+              {findingsByBoundary[active.id] ?? 0} {c("finding")} {c("at this boundary")}
             </Link>
           </CardContent>
         ) : null}

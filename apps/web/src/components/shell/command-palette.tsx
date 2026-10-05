@@ -6,7 +6,9 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Command } from "cmdk";
 import {
   BookOpen,
+  BookOpenCheck,
   Crosshair,
+  Database,
   FileText,
   FlaskConical,
   GraduationCap,
@@ -22,22 +24,30 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { apiGet } from "@/lib/api";
-import { ALL_NAV } from "@/lib/nav";
+import { useLocale } from "@/components/i18n/locale-provider";
+import { getAllNavigation } from "@/lib/nav";
 
 export const OPEN_PALETTE_EVENT = "cyberforge:open-palette";
 
-const KIND_META: Record<SearchHit["kind"], { label: string; icon: LucideIcon }> = {
-  lab: { label: "Labs", icon: FlaskConical },
-  rule: { label: "Detection rules", icon: Crosshair },
-  technique: { label: "MITRE techniques", icon: Grid3x3 },
-  alert: { label: "Alerts", icon: ShieldAlert },
-  doc: { label: "Documentation", icon: FileText },
-  learning: { label: "Learning modules", icon: GraduationCap },
-  indicator: { label: "Indicators", icon: Target },
+const KIND_META: Record<
+  SearchHit["kind"],
+  { labelKey: Parameters<ReturnType<typeof useLocale>["t"]>[0]; icon: LucideIcon }
+> = {
+  lab: { labelKey: "search.kind.labs", icon: FlaskConical },
+  story: { labelKey: "search.kind.stories", icon: BookOpenCheck },
+  rule: { labelKey: "search.kind.rules", icon: Crosshair },
+  dataset: { labelKey: "search.kind.datasets", icon: Database },
+  technique: { labelKey: "search.kind.techniques", icon: Grid3x3 },
+  alert: { labelKey: "search.kind.alerts", icon: ShieldAlert },
+  doc: { labelKey: "search.kind.docs", icon: FileText },
+  learning: { labelKey: "search.kind.learning", icon: GraduationCap },
+  indicator: { labelKey: "search.kind.indicators", icon: Target },
 };
 const KIND_ORDER: SearchHit["kind"][] = [
   "lab",
+  "story",
   "rule",
+  "dataset",
   "technique",
   "alert",
   "learning",
@@ -59,6 +69,8 @@ export function CommandPalette() {
   const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const { locale, t } = useLocale();
+  const allNav = getAllNavigation(locale);
   const debounced = useDebounced(query.trim(), 150);
 
   useEffect(() => {
@@ -94,7 +106,7 @@ export function CommandPalette() {
   );
 
   const needle = query.trim().toLowerCase();
-  const navItems = ALL_NAV.filter(
+  const navItems = allNav.filter(
     (item) => !needle || `${item.label} ${item.keywords ?? ""}`.toLowerCase().includes(needle),
   );
   const hits = debounced.length >= 2 ? (search.data?.hits ?? []) : [];
@@ -115,21 +127,19 @@ export function CommandPalette() {
       }}
     >
       <DialogContent hideClose className="top-[10vh] max-w-xl gap-0 overflow-hidden p-0">
-        <DialogTitle className="sr-only">Command palette</DialogTitle>
-        <DialogDescription className="sr-only">
-          Search CyberForge or jump to a page.
-        </DialogDescription>
-        <Command shouldFilter={false} label="Command palette" loop>
+        <DialogTitle className="sr-only">{t("search.palette")}</DialogTitle>
+        <DialogDescription className="sr-only">{t("search.description")}</DialogDescription>
+        <Command shouldFilter={false} label={t("search.palette")} loop>
           <Command.Input
             value={query}
             onValueChange={setQuery}
             autoFocus
-            placeholder="Search labs, rules, techniques, alerts, docs…"
+            placeholder={t("search.placeholder")}
             className="h-11 w-full border-b border-border bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground"
           />
           <Command.List className="max-h-[52vh] overflow-y-auto p-1.5">
             <Command.Empty className="px-3 py-8 text-center text-xs text-muted-foreground">
-              {search.isFetching ? "Searching…" : "No results."}
+              {search.isFetching ? t("search.searching") : t("search.noResults")}
             </Command.Empty>
 
             {grouped.map(({ kind, items }) => {
@@ -137,7 +147,7 @@ export function CommandPalette() {
               return (
                 <Command.Group
                   key={kind}
-                  heading={meta.label}
+                  heading={t(meta.labelKey)}
                   className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground"
                 >
                   {items.map((hit) => (
@@ -165,7 +175,7 @@ export function CommandPalette() {
 
             {navItems.length > 0 ? (
               <Command.Group
-                heading="Go to"
+                heading={t("search.goTo")}
                 className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground"
               >
                 {navItems.map((item) => (
@@ -190,7 +200,7 @@ export function CommandPalette() {
 
             {!needle || "theme".includes(needle) || "dark light".includes(needle) ? (
               <Command.Group
-                heading="Actions"
+                heading={t("search.actions")}
                 className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground"
               >
                 <Command.Item
@@ -206,7 +216,7 @@ export function CommandPalette() {
                   ) : (
                     <Moon className="size-4 text-muted-foreground" />
                   )}
-                  <span className="flex-1">Switch to {dark ? "light" : "dark"} theme</span>
+                  <span className="flex-1">{dark ? t("theme.light") : t("theme.dark")}</span>
                 </Command.Item>
                 <Command.Item
                   value="action:shortcuts"
@@ -217,7 +227,7 @@ export function CommandPalette() {
                   className={itemClass}
                 >
                   <BookOpen className="size-4 text-muted-foreground" />
-                  <span className="flex-1">Keyboard shortcuts</span>
+                  <span className="flex-1">{t("search.keyboardShortcuts")}</span>
                   <Kbd>?</Kbd>
                 </Command.Item>
               </Command.Group>

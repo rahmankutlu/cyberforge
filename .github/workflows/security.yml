@@ -1,0 +1,42 @@
+name: Security audit
+
+# Known-vulnerability scan of the locked dependencies. Dependency review (pull requests) covers new
+# dependencies; this covers advisories published after a dependency was added.
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  pull_request:
+    paths:
+      - pnpm-lock.yaml
+      - apps/api/pyproject.toml
+      - .github/workflows/security.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  node:
+    name: Node dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm audit --prod --audit-level=moderate
+
+  python:
+    name: Python dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          python: "true"
+          node: "false"
+      # PYSEC-2026-2447 (diskcache pickle deserialisation) has no fixed release. diskcache is a
+      # transitive dependency of pySigma's ATT&CK data helper, which CyberForge never calls, and
+      # exploiting it needs write access to a cache directory CyberForge does not create. Remove
+      # this exception when diskcache publishes a fix.
+      - run: apps/api/.venv/bin/pip-audit --skip-editable --progress-spinner off --ignore-vuln PYSEC-2026-2447

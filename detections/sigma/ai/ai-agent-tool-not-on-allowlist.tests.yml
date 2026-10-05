@@ -1,0 +1,21 @@
+tests:
+  - name: detects a tool call the gateway flagged as off the allow-list
+    event:
+      event_type: tool_call
+      tool_name: shell_exec
+      guardrail_flags: [tool_not_allowlisted]
+    expected: true
+
+  - name: ignores an allow-listed tool call with no flags
+    event:
+      event_type: tool_call
+      tool_name: search_docs
+      guardrail_flags: []
+    expected: false
+
+  - name: ignores other guardrail flags on a tool call
+    event:
+      event_type: tool_call
+      tool_name: search_docs
+      guardrail_flags: [rate_limited]
+    expected: false

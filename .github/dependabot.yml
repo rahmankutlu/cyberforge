@@ -1,4 +1,4 @@
-# Dependency maintenance is deliberately conservative. The v0.1.x runtime baseline is Node 22 and
+# Dependency maintenance is deliberately conservative. The 1.x runtime baseline is Node 22 and
 # Python 3.12, so major base-image upgrades are not proposed automatically; they are evaluated by
 # hand. Patch and minor updates are grouped to keep the number of pull requests low.
 version: 2
@@ -8,7 +8,7 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    # Keep automated updates on the toolchain majors supported by the v0.1.x baseline. Dependabot
+    # Keep automated updates on the toolchain majors supported by the 1.x baseline. Dependabot
     # still proposes dependencies that do not match a group, so the minor-and-patch group below is
     # not sufficient to prevent these incompatible major updates.
     ignore:

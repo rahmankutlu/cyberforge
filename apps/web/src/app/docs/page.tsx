@@ -5,8 +5,13 @@ import Link from "next/link";
 
 import { PageHeader } from "@/components/page-header";
 import { apiGet } from "@/lib/api";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
 
-export const metadata = { title: "Documentation" };
+export async function generateMetadata() {
+  const c = createCopyTranslator(await getLocale());
+  return { title: c("Documentation") };
+}
 
 const ORDER = [
   "getting-started",
@@ -20,6 +25,7 @@ const ORDER = [
 ];
 
 export default async function DocsPage() {
+  const c = createCopyTranslator(await getLocale());
   const docs = await apiGet<DocSummary[]>("/docs-pages");
   const sorted = [...docs].sort((a, b) => {
     const ai = ORDER.indexOf(a.slug);
@@ -29,8 +35,10 @@ export default async function DocsPage() {
   return (
     <>
       <PageHeader
-        title="Documentation"
-        description="Guides for running, extending and securely operating CyberForge. The same files live in the repository's docs folder."
+        title={c("Documentation")}
+        description={c(
+          "Guides for running, extending and securely operating CyberForge. The same files live in the repository's docs folder.",
+        )}
       />
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {sorted.map((doc) => (

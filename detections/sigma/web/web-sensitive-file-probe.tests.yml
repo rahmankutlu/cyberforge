@@ -1,0 +1,24 @@
+tests:
+  - name: detects a request for /.env
+    event:
+      cs-uri-stem: /.env
+      sc-status: 404
+    expected: true
+
+  - name: detects a request for a git config
+    event:
+      cs-uri-stem: /app/.git/config
+      sc-status: 404
+    expected: true
+
+  - name: ignores a request for an ordinary page
+    event:
+      cs-uri-stem: /about.html
+      sc-status: 200
+    expected: false
+
+  - name: ignores a path that only mentions a sensitive name in the middle
+    event:
+      cs-uri-stem: /docs/env-guide.html
+      sc-status: 200
+    expected: false

@@ -1,0 +1,537 @@
+slug: suspicious-admin-account-activity
+title: Suspicious Admin Account Activity
+summary: >
+  An engineer's cloud console login comes from a country nobody expected. Minutes later a new key
+  appears on a service account, that account becomes an administrator, a storage bucket opens to
+  the internet and the audit trail is switched off. Read the audit log like a story.
+difficulty: beginner
+duration_minutes: 20
+order: 2
+domain: cloud
+tags: [aws, iam, cloudtrail, privilege-escalation, defense-impairment]
+briefing: >
+  At 09:14 a colleague messages the security channel: dev-bob "got an MFA prompt he did not
+  trigger". You have read access to the cloud audit log for a synthetic AWS account. Establish
+  what normal looked like, then follow the actions the audit trail records. All data in this
+  story is synthetic.
+
+attack_chain:
+  - tactic: Initial Access
+    technique: T1078.004
+    step: unexpected-login
+    description: The intruder signs in to the console as dev-bob from an unexpected country.
+  - tactic: Persistence
+    technique: T1098.001
+    step: new-key
+    description: A new access key is created for the svc-deploy service account so access survives a password reset.
+  - tactic: Privilege Escalation
+    technique: T1098
+    step: admin-policy
+    description: The service account is granted the AdministratorAccess policy.
+  - tactic: Exfiltration
+    technique: T1530
+    step: public-bucket
+    description: A bucket holding customer exports is made readable by anyone.
+  - tactic: Defense Impairment
+    technique: T1685.005
+    step: logging-off
+    description: CloudTrail logging is stopped so later actions are not recorded.
+
+steps:
+  - id: baseline
+    time: "09:02"
+    title: What normal looks like
+    narrative: >
+      Before you look at the alert, look at a normal morning: named engineers sign in from the UK
+      and the US, and the deployment account reads and writes objects.
+    telemetry:
+      - t: 0
+        repeat: 6
+        every: 45
+        category: cloud_audit
+        fields:
+          eventSource: ec2.amazonaws.com
+          eventName: DescribeInstances
+          userIdentity.type: IAMUser
+          userIdentity.userName: ops-ana
+          geo.country: US
+          sourceIPAddress: 192.0.2.10
+        note: Routine inventory calls from the operations engineer.
+      - t: 30
+        category: cloud_audit
+        fields:
+          eventSource: signin.amazonaws.com
+          eventName: ConsoleLogin
+          userIdentity.type: IAMUser
+          userIdentity.userName: dev-bob
+          responseElements.ConsoleLogin: Success
+          geo.country: GB
+          sourceIPAddress: 192.0.2.77
+        note: dev-bob's usual login, from the United Kingdom.
+      - t: 80
+        repeat: 4
+        every: 60
+        category: cloud_audit
+        fields:
+          eventSource: s3.amazonaws.com
+          eventName: GetObject
+          userIdentity.type: IAMUser
+          userIdentity.userName: svc-deploy
+          geo.country: US
+          sourceIPAddress: 192.0.2.44
+        note: The deployment account reading build artefacts.
+    evidence:
+      - id: normal-logins
+        title: Console logins in the last 30 days for dev-bob
+        kind: log
+        significance: key
+        content: |
+          2026-02-12 .. 2026-03-09   47 logins   all from GB (192.0.2.77)
+          Typical hours 08:30 .. 18:00 UTC
+        finding: Forty-seven logins, one country. That is the baseline the next event has to be judged against.
+      - id: service-accounts
+        title: Service accounts in this account
+        kind: note
+        significance: supporting
+        content: |
+          svc-deploy   used by CI. Access keys rotate every 90 days. Permissions: read/write on the artefact bucket.
+          svc-reports  read-only on the reports bucket.
+    detections: []
+    questions:
+      - id: q-baseline
+        prompt: Why start an investigation with normal activity?
+        options:
+          - id: a
+            text: Without a baseline you cannot tell whether a login country, hour or action is unusual.
+            correct: true
+            explanation: Almost every detection is a comparison. Knowing the normal countries, hours and actions is what turns a log line into evidence.
+          - id: b
+            text: It is required by the audit log format.
+            explanation: No format requires it. It is a working habit.
+          - id: c
+            text: Normal activity is where attackers hide, so you should ignore everything else.
+            explanation: Attackers do blend in, but you find them by comparing against normal, not by ignoring the rest.
+    graph_nodes:
+      - { id: user-bob, type: user, label: dev-bob }
+      - { id: user-deploy, type: user, label: svc-deploy }
+    graph_edges: []
+
+  - id: unexpected-login
+    time: "09:12"
+    title: Login from an unexpected country
+    narrative: >
+      A successful console login for dev-bob, but the source address is in a country he has never
+      signed in from.
+    telemetry:
+      - t: 5
+        category: cloud_audit
+        fields:
+          eventSource: signin.amazonaws.com
+          eventName: ConsoleLogin
+          userIdentity.type: IAMUser
+          userIdentity.userName: dev-bob
+          responseElements.ConsoleLogin: Success
+          geo.country: KP
+          sourceIPAddress: 203.0.113.99
+        note: Success from an address geolocated to a country not in the allowed list.
+    evidence:
+      - id: bob-login
+        title: The login event
+        kind: log
+        significance: key
+        content: |
+          eventName            ConsoleLogin
+          userIdentity         IAMUser dev-bob
+          responseElements     ConsoleLogin = Success
+          sourceIPAddress      203.0.113.99   (KP)
+          additionalEventData  MFAUsed = Yes
+        finding: The login used MFA, so a stolen password alone is not the explanation. Think session theft or MFA fatigue.
+      - id: mfa-report
+        title: Bob's message
+        kind: ticket
+        significance: supporting
+        content: '"I got an MFA prompt I did not trigger and pressed approve to make it stop."'
+        finding: An approved prompt the user did not start is the classic MFA-fatigue pattern.
+    detections: [cloud-console-login-from-unexpected-country]
+    alert:
+      title: Console login from an unexpected country
+      severity: medium
+      rule: cloud-console-login-from-unexpected-country
+    techniques: [T1078.004]
+    questions:
+      - id: q-mfa
+        prompt: The login used MFA. What does that change?
+        options:
+          - id: a
+            text: It shows a password alone was not enough, so the intruder also got an approved MFA prompt or a stolen session.
+            correct: true
+            explanation: MFA raises the bar but is not absolute. An approved fatigue prompt or a stolen session token defeats it, and Bob's message describes the first.
+          - id: b
+            text: It proves the login was legitimate.
+            explanation: MFA proves that some second factor was satisfied, not that the right person did it.
+          - id: c
+            text: It means the source country can be ignored.
+            explanation: The country still matters. It is the reason to look closer.
+    graph_nodes:
+      - { id: ip-intruder, type: ip, label: "203.0.113.99" }
+      - {
+          id: det-country,
+          type: detection,
+          label: Login from unexpected country,
+          ref: cloud-console-login-from-unexpected-country,
+        }
+      - { id: alert-country, type: alert, label: Console login from unexpected country }
+      - { id: tech-cloud, type: technique, label: Cloud Accounts, ref: T1078.004 }
+    graph_edges:
+      - { source: ip-intruder, target: user-bob, relation: connected to }
+      - { source: det-country, target: alert-country, relation: triggered }
+      - { source: det-country, target: tech-cloud, relation: mapped to }
+      - { source: alert-country, target: user-bob, relation: associated with }
+
+  - id: new-key
+    time: "09:15"
+    title: A key for another user
+    narrative: >
+      Three minutes later dev-bob's session creates an access key, but for a different user.
+    telemetry:
+      - t: 20
+        category: cloud_audit
+        fields:
+          eventSource: iam.amazonaws.com
+          eventName: CreateAccessKey
+          userIdentity.type: IAMUser
+          userIdentity.userName: dev-bob
+          requestParameters.userName: svc-deploy
+          geo.country: KP
+          sourceIPAddress: 203.0.113.99
+        note: dev-bob creates a programmatic key for svc-deploy.
+    evidence:
+      - id: create-key
+        title: CreateAccessKey event
+        kind: log
+        significance: key
+        content: |
+          eventName          CreateAccessKey
+          caller             dev-bob (203.0.113.99)
+          requestParameters  userName = svc-deploy
+        finding: A key for someone else is durable access that survives a password reset of the account the intruder came in through.
+      - id: key-policy
+        title: Who may create keys
+        kind: note
+        significance: supporting
+        content: 'IAM policy "engineers" allows iam:CreateAccessKey on any user. It was meant for self-service only.'
+        finding: The policy is broader than intended. Fix it after containment.
+    detections: [cloud-access-key-created-for-another-user]
+    alert:
+      title: Access key created for another user
+      severity: high
+      rule: cloud-access-key-created-for-another-user
+    techniques: [T1098.001]
+    questions:
+      - id: q-key
+        prompt: Why create a key for svc-deploy instead of using dev-bob's console session?
+        options:
+          - id: a
+            text: A programmatic key works without MFA or a browser session and outlives a password reset of dev-bob.
+            correct: true
+            explanation: Access keys are long-lived and non-interactive, which is why intruders like them. Resetting dev-bob would not remove this one.
+          - id: b
+            text: Service accounts are not logged.
+            explanation: Their actions are logged like any other identity's.
+          - id: c
+            text: The key is needed to sign in to the console.
+            explanation: Access keys are for the API and CLI, not the console.
+    graph_nodes:
+      - {
+          id: det-key,
+          type: detection,
+          label: Key created for another user,
+          ref: cloud-access-key-created-for-another-user,
+        }
+      - { id: alert-key, type: alert, label: Access key for another user }
+      - { id: tech-cred, type: technique, label: Additional Cloud Credentials, ref: T1098.001 }
+    graph_edges:
+      - { source: user-bob, target: user-deploy, relation: executed }
+      - { source: det-key, target: alert-key, relation: triggered }
+      - { source: det-key, target: tech-cred, relation: mapped to }
+      - { source: alert-key, target: user-deploy, relation: associated with }
+
+  - id: admin-policy
+    time: "09:18"
+    title: Administrator rights granted
+    narrative: >
+      The service account, now under the intruder's control, gets the AdministratorAccess policy.
+    telemetry:
+      - t: 30
+        category: cloud_audit
+        fields:
+          eventSource: iam.amazonaws.com
+          eventName: AttachUserPolicy
+          userIdentity.type: IAMUser
+          userIdentity.userName: dev-bob
+          requestParameters.userName: svc-deploy
+          requestParameters.policyArn: "arn:aws:iam::aws:policy/AdministratorAccess"
+          geo.country: KP
+          sourceIPAddress: 203.0.113.99
+        note: Full administrator rights attached to the CI account.
+    evidence:
+      - id: attach-policy
+        title: AttachUserPolicy event
+        kind: log
+        significance: key
+        content: |
+          eventName          AttachUserPolicy
+          caller             dev-bob (203.0.113.99)
+          requestParameters  userName = svc-deploy
+                             policyArn = arn:aws:iam::aws:policy/AdministratorAccess
+        finding: From this moment the intruder can do anything in the account, using a key that belongs to a service.
+    detections: [cloud-admin-policy-attached-to-user]
+    alert:
+      title: Administrator policy attached to a user
+      severity: high
+      rule: cloud-admin-policy-attached-to-user
+    techniques: [T1098]
+    decision:
+      id: d-cloud
+      prompt: You now know three actions, two accounts and one address. What is the most valuable next move?
+      options:
+        - id: revoke
+          text: Deactivate the new svc-deploy key, detach AdministratorAccess and end dev-bob's sessions.
+          quality: best
+          feedback: This removes the intruder's foothold and privilege at once. Do it before you investigate further, and record the exact state first so you can undo it.
+        - id: password
+          text: Reset dev-bob's password only.
+          quality: poor
+          feedback: The intruder holds a separate administrator key. Resetting the first account does not touch it.
+        - id: delete-user
+          text: Delete the svc-deploy user.
+          quality: poor
+          feedback: Deleting removes evidence and breaks production deployments. Deactivate the key and detach the policy instead.
+    graph_nodes:
+      - {
+          id: det-admin,
+          type: detection,
+          label: Admin policy attached,
+          ref: cloud-admin-policy-attached-to-user,
+        }
+      - { id: alert-admin, type: alert, label: Administrator policy attached }
+      - { id: tech-acct, type: technique, label: Account Manipulation, ref: T1098 }
+    graph_edges:
+      - { source: user-bob, target: user-deploy, relation: associated with }
+      - { source: det-admin, target: alert-admin, relation: triggered }
+      - { source: det-admin, target: tech-acct, relation: mapped to }
+      - { source: alert-admin, target: user-deploy, relation: associated with }
+
+  - id: public-bucket
+    time: "09:22"
+    title: A bucket opens to the internet
+    narrative: >
+      With administrator rights the intruder changes a bucket's access control so anyone can read it.
+    telemetry:
+      - t: 15
+        category: cloud_audit
+        fields:
+          eventSource: s3.amazonaws.com
+          eventName: PutBucketAcl
+          userIdentity.type: IAMUser
+          userIdentity.userName: svc-deploy
+          requestParameters.bucketName: cf-lab-customer-exports
+          requestParameters.grantee_uri: "http://acs.amazonaws.com/groups/global/AllUsers"
+          geo.country: KP
+          sourceIPAddress: 203.0.113.99
+        note: The bucket is granted to AllUsers.
+    evidence:
+      - id: bucket-acl
+        title: PutBucketAcl on cf-lab-customer-exports
+        kind: log
+        significance: key
+        content: |
+          eventName          PutBucketAcl
+          caller             svc-deploy (203.0.113.99)
+          bucket             cf-lab-customer-exports
+          grantee            http://acs.amazonaws.com/groups/global/AllUsers  READ
+        finding: Customer exports are readable by anyone with the URL. Treat the data as exposed from this minute.
+      - id: data-events
+        title: Data-event logging for the bucket
+        kind: note
+        significance: supporting
+        content: Object-level (data) events are not enabled for this bucket, so who downloaded what is not recorded.
+        finding: A gap in logging. You cannot prove what was read, which matters for breach notification.
+    detections: [cloud-storage-bucket-made-public]
+    alert:
+      title: Storage bucket made public
+      severity: critical
+      rule: cloud-storage-bucket-made-public
+    techniques: [T1530]
+    questions:
+      - id: q-data
+        prompt: Object-level logging was off. What does that mean for the incident report?
+        options:
+          - id: a
+            text: You must assume the data was accessed, because you cannot prove it was not.
+            correct: true
+            explanation: Absence of logs is not absence of access. Report on the assumption of exposure and enable data events going forward.
+          - id: b
+            text: You can state that no data was accessed.
+            explanation: The log cannot support that claim.
+          - id: c
+            text: The bucket change does not matter without data events.
+            explanation: The change itself is the exposure. Data events would only tell you who used it.
+    graph_nodes:
+      - { id: bucket, type: host, label: cf-lab-customer-exports }
+      - {
+          id: det-bucket,
+          type: detection,
+          label: Bucket made public,
+          ref: cloud-storage-bucket-made-public,
+        }
+      - { id: alert-bucket, type: alert, label: Storage bucket made public }
+      - { id: tech-data, type: technique, label: Data from Cloud Storage, ref: T1530 }
+    graph_edges:
+      - { source: user-deploy, target: bucket, relation: executed }
+      - { source: det-bucket, target: alert-bucket, relation: triggered }
+      - { source: det-bucket, target: tech-data, relation: mapped to }
+      - { source: alert-bucket, target: bucket, relation: associated with }
+
+  - id: logging-off
+    time: "09:26"
+    title: The audit trail stops
+    narrative: >
+      The last visible action: audit logging is switched off. Anything after this is invisible.
+    telemetry:
+      - t: 10
+        category: cloud_audit
+        fields:
+          eventSource: cloudtrail.amazonaws.com
+          eventName: StopLogging
+          userIdentity.type: IAMUser
+          userIdentity.userName: svc-deploy
+          requestParameters.name: management-events
+          geo.country: KP
+          sourceIPAddress: 203.0.113.99
+        note: StopLogging on the organisation trail.
+    evidence:
+      - id: stop-logging
+        title: StopLogging on the management-events trail
+        kind: log
+        significance: key
+        content: |
+          eventName          StopLogging
+          caller             svc-deploy (203.0.113.99)
+          trail              management-events
+        finding: Stopping the trail is the intruder hiding what happens next. The StopLogging call itself is the last thing you can see.
+      - id: what-next
+        title: What you cannot see after 09:26
+        kind: note
+        significance: supporting
+        content: "From this point management events are not recorded. Check the log storage for a gap and compare with any secondary trail or service-level logs."
+    detections: [cloud-audit-logging-disabled]
+    alert:
+      title: Audit logging disabled
+      severity: critical
+      rule: cloud-audit-logging-disabled
+    techniques: [T1685.005]
+    questions:
+      - id: q-trail
+        prompt: What should you do about the missing audit data after 09:26?
+        options:
+          - id: a
+            text: Re-enable the trail immediately, then reconstruct the period from other sources such as service logs and network flow.
+            correct: true
+            explanation: Restoring visibility comes first. The gap is then bridged with whatever else records activity.
+          - id: b
+            text: Nothing, the gap cannot be recovered.
+            explanation: Some activity is still visible in service-level logs, billing and network flow.
+          - id: c
+            text: Delete the trail and start again.
+            explanation: Deleting a trail removes evidence and makes the gap worse.
+    graph_nodes:
+      - {
+          id: det-trail,
+          type: detection,
+          label: Audit logging disabled,
+          ref: cloud-audit-logging-disabled,
+        }
+      - { id: alert-trail, type: alert, label: Audit logging disabled }
+      - { id: tech-logs, type: technique, label: Disable Cloud Logs, ref: T1685.005 }
+    graph_edges:
+      - { source: user-deploy, target: ip-intruder, relation: associated with }
+      - { source: det-trail, target: alert-trail, relation: triggered }
+      - { source: det-trail, target: tech-logs, relation: mapped to }
+      - { source: alert-trail, target: user-deploy, relation: associated with }
+
+containment:
+  - id: end-sessions
+    action: Revoke dev-bob's active sessions and reset his credentials and MFA
+    category: credentials
+    quality: recommended
+    effect: Ends the intruder's console access and removes the approved MFA registration.
+    feedback: Correct. Reset the second factor too, since the prompt was approved by mistake.
+  - id: deactivate-key
+    action: Deactivate the access key created at 09:15 for svc-deploy
+    category: credentials
+    quality: recommended
+    effect: Removes the intruder's durable programmatic access without deleting the account.
+    feedback: Correct. Deactivating is reversible and preserves the key metadata as evidence.
+  - id: detach-admin
+    action: Detach AdministratorAccess from svc-deploy
+    category: eradicate
+    quality: recommended
+    effect: Returns the service account to its intended permissions.
+    feedback: Correct and urgent. This is the privilege the intruder gained.
+  - id: reenable-trail
+    action: Re-enable the management-events trail and turn on object-level logging for sensitive buckets
+    category: monitor
+    quality: recommended
+    effect: Restores visibility and closes the gap that made the data exposure unprovable.
+    feedback: Correct. You cannot investigate what is not recorded.
+  - id: block-public
+    action: Remove the AllUsers grant and enable Block Public Access on the bucket
+    category: block
+    quality: recommended
+    effect: Stops further public reads of the customer exports.
+    feedback: Correct. Note the time you did it so the exposure window is documented.
+  - id: delete-svc
+    action: Delete the svc-deploy IAM user
+    category: eradicate
+    quality: harmful
+    effect: Breaks production deployments and removes the identity's history before you have captured it.
+    feedback: Too blunt. Deactivate the key and detach the policy, capture the state, then decide.
+  - id: broadcast
+    action: Post the incident details in the public engineering channel
+    category: communicate
+    quality: harmful
+    effect: Spreads unverified details widely, including the fact that the intruder still holds access.
+    feedback: Use a restricted incident channel until access is revoked.
+  - id: review-policy
+    action: Tighten the engineers policy so iam:CreateAccessKey is limited to the caller's own user
+    category: other
+    quality: optional
+    effect: Prevents the same technique next time.
+    feedback: A good follow-up, after the immediate risk is contained.
+
+postmortem:
+  summary: >
+    An engineer approved an MFA prompt he did not start. The intruder used the session to create a
+    key for a service account, made that account an administrator, exposed a bucket of customer
+    exports and turned off audit logging, all within fourteen minutes. Each step triggered a
+    detection; the failure was that the first alert (medium severity) was not acted on.
+  root_cause: >
+    MFA fatigue: an approved push notification let the intruder in, and over-broad IAM permissions
+    let a developer create keys and attach policies for other users.
+  what_worked:
+    - Five separate detections covered five stages, so the sequence was visible even after the first.
+    - The audit log recorded the actor, the target and the source address for every change.
+  what_to_improve:
+    - Use number-matching or phishing-resistant MFA so an unsolicited approval is not possible.
+    - Limit iam:CreateAccessKey and iam:AttachUserPolicy to the caller's own identity and a small admin group.
+    - Enable object-level logging on buckets that hold customer data.
+    - Alert on StopLogging with the highest priority, and protect the trail with a separate account.
+  detections_to_add:
+    - Many MFA prompts followed by an approval for one user.
+    - Any IAM change made from a country the caller has never used.
+  lessons:
+    - A "medium" alert can be the first move in a critical incident; read the chain, not the label.
+    - Attackers turn a login into durable access by minting keys for someone else.
+    - Turning off logging is itself a strong signal, and the last thing you get to see.
+    - What you do not log, you cannot prove.

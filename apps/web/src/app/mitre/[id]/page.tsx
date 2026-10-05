@@ -22,6 +22,9 @@ import { PageHeader } from "@/components/page-header";
 import { AlertsTable } from "@/components/soc/alerts-table";
 import { StatCard } from "@/components/stat-card";
 import { apiGetOrNull } from "@/lib/api";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
+import { localizeContentTree } from "@/lib/i18n/content";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -31,6 +34,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TechniquePage({ params }: Props) {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
   const { id } = await params;
   const tech = await apiGetOrNull<TechniqueDetail>(`/mitre/techniques/${encodeURIComponent(id)}`);
   if (!tech) notFound();
@@ -77,21 +82,21 @@ export default async function TechniquePage({ params }: Props) {
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="technique-stats">
-        <StatCard label="Labs" value={tech.labs} />
+        <StatCard label={c("Labs")} value={tech.labs} />
         <StatCard
-          label="Rules"
+          label={c("Rules")}
           value={tech.rules}
           tone={tech.rules === 0 ? "high" : undefined}
-          hint={tech.rules === 0 ? "Detection gap" : undefined}
+          hint={tech.rules === 0 ? c("Detection gap") : undefined}
         />
-        <StatCard label="Alerts" value={tech.alerts} />
-        <StatCard label="Investigations" value={tech.investigations} />
+        <StatCard label={c("Alerts")} value={tech.alerts} />
+        <StatCard label={c("Investigations")} value={tech.investigations} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Mapped labs</CardTitle>
+            <CardTitle>{c("Mapped labs")}</CardTitle>
           </CardHeader>
           <CardContent>
             {tech.lab_refs.length ? (
@@ -109,9 +114,9 @@ export default async function TechniquePage({ params }: Props) {
               </ul>
             ) : (
               <p className="text-xs text-muted-foreground">
-                No lab teaches this technique yet.{" "}
+                {c("No lab teaches this technique yet.")}{" "}
                 <Link href="/docs/contributing-labs" className="text-primary hover:underline">
-                  Contribute one.
+                  {c("Contribute one.")}
                 </Link>
               </p>
             )}
@@ -119,7 +124,7 @@ export default async function TechniquePage({ params }: Props) {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Mapped detection rules</CardTitle>
+            <CardTitle>{c("Mapped detection rules")}</CardTitle>
           </CardHeader>
           <CardContent>
             {tech.rule_refs.length ? (
@@ -138,7 +143,7 @@ export default async function TechniquePage({ params }: Props) {
               </ul>
             ) : (
               <p className="text-xs text-muted-foreground">
-                No rule detects this technique. That is a coverage gap.
+                {c("No rule detects this technique. That is a coverage gap.")}
               </p>
             )}
           </CardContent>
@@ -147,15 +152,15 @@ export default async function TechniquePage({ params }: Props) {
 
       {tech.sub_techniques.length ? (
         <section className="mt-5">
-          <h2 className="mb-2 text-sm font-semibold">Sub-techniques</h2>
+          <h2 className="mb-2 text-sm font-semibold">{c("Sub-techniques")}</h2>
           <Table>
             <THead>
               <TR className="hover:bg-transparent">
-                <TH className="w-32">ID</TH>
-                <TH>Name</TH>
-                <TH className="w-16 text-right">Labs</TH>
-                <TH className="w-16 text-right">Rules</TH>
-                <TH className="w-16 text-right">Alerts</TH>
+                <TH className="w-32">{c("ID")}</TH>
+                <TH>{c("Name")}</TH>
+                <TH className="w-16 text-right">{c("Labs")}</TH>
+                <TH className="w-16 text-right">{c("Rules")}</TH>
+                <TH className="w-16 text-right">{c("Alerts")}</TH>
               </TR>
             </THead>
             <TBody>
@@ -179,14 +184,14 @@ export default async function TechniquePage({ params }: Props) {
 
       {tech.recent_alerts.length ? (
         <section className="mt-5">
-          <h2 className="mb-2 text-sm font-semibold">Recent alerts</h2>
-          <AlertsTable alerts={tech.recent_alerts} compact />
+          <h2 className="mb-2 text-sm font-semibold">{c("Recent alerts")}</h2>
+          <AlertsTable alerts={localizeContentTree(locale, tech.recent_alerts)} compact />
         </section>
       ) : null}
 
       {tech.mitigations.length ? (
         <section className="mt-5">
-          <h2 className="mb-2 text-sm font-semibold">MITRE mitigations</h2>
+          <h2 className="mb-2 text-sm font-semibold">{c("MITRE mitigations")}</h2>
           <div className="grid gap-2 md:grid-cols-2">
             {tech.mitigations.map((m) => (
               <Card key={m.id}>

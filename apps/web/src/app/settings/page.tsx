@@ -1,13 +1,21 @@
 import type { RuntimeSettings } from "@cyberforge/types";
+import type { Metadata } from "next";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@cyberforge/ui";
 import { ShieldCheck } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
+import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { DemoResetButton, LearningProgressActions } from "@/components/settings/settings-actions";
 import { apiGet } from "@/lib/api";
 import { formatNumber, titleCase } from "@/lib/format";
+import { createTranslator } from "@/lib/i18n";
+import { getLocale } from "@/lib/i18n/server";
+import { PROJECT } from "@/lib/project";
 
-export const metadata = { title: "Settings" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = createTranslator(await getLocale());
+  return { title: t("settings.title") };
+}
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -18,43 +26,73 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target={href.startsWith("mailto:") ? undefined : "_blank"}
+      rel="noopener noreferrer"
+      className="text-primary underline underline-offset-2 hover:no-underline"
+    >
+      {children}
+    </a>
+  );
+}
+
 export default async function SettingsPage() {
+  const locale = await getLocale();
+  const t = createTranslator(locale);
   const s = await apiGet<RuntimeSettings>("/settings/runtime");
   return (
     <>
-      <PageHeader
-        title="Settings"
-        description="Runtime configuration is read from environment variables (see .env.example). This page shows what the running instance is using; secrets are never displayed."
-      />
+      <PageHeader title={t("settings.title")} description={t("settings.description")} />
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>{t("settings.languageTitle")}</CardTitle>
+          <CardDescription>{t("settings.languageDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="max-w-xs">
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+              {t("settings.interfaceLanguage")}
+            </label>
+            <LanguageSwitcher />
+          </div>
+        </CardContent>
+      </Card>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Instance</CardTitle>
+            <CardTitle>{t("settings.instance")}</CardTitle>
           </CardHeader>
           <CardContent>
             <dl>
-              <Row label="Version">v{s.version}</Row>
-              <Row label="Environment">
+              <Row label={t("settings.version")}>v{s.version}</Row>
+              <Row label={t("settings.environment")}>
                 <Badge variant={s.env === "production" ? "warning" : "outline"}>{s.env}</Badge>
               </Row>
-              <Row label="Demo mode">
+              <Row label={t("settings.demoMode")}>
                 {s.demo_mode ? (
-                  <Badge variant="accent">on: synthetic data</Badge>
+                  <Badge variant="accent">{t("settings.demoOn")}</Badge>
                 ) : (
-                  <Badge variant="outline">off</Badge>
+                  <Badge variant="outline">{t("settings.off")}</Badge>
                 )}
               </Row>
-              <Row label="MITRE data">
+              <Row label={t("settings.mitreData")}>
                 {Object.entries(s.content.mitre)
                   .map(([k, v]) => `${k.toUpperCase()} ${v}`)
                   .join(" · ")}
               </Row>
-              <Row label="Content">
-                {s.content.labs} labs · {s.content.rules} rules · {s.content.docs} docs
+              <Row label={t("settings.content")}>
+                {t("settings.contentSummary", {
+                  labs: s.content.labs,
+                  rules: s.content.rules,
+                  docs: s.content.docs,
+                })}
               </Row>
               {Object.entries(s.counts).map(([k, v]) => (
                 <Row key={k} label={titleCase(k)}>
-                  <span className="tabular-nums">{formatNumber(v)}</span>
+                  <span className="tabular-nums">{formatNumber(v, locale)}</span>
                 </Row>
               ))}
             </dl>
@@ -69,33 +107,26 @@ export default async function SettingsPage() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>AI analyst</CardTitle>
-              <CardDescription>
-                Optional. CyberForge is fully functional without it.
-              </CardDescription>
+              <CardTitle>{t("settings.aiAnalyst")}</CardTitle>
+              <CardDescription>{t("settings.aiDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <dl>
-                <Row label="Status">
+                <Row label={t("settings.status")}>
                   {s.ai.enabled ? (
-                    <Badge variant="success">enabled</Badge>
+                    <Badge variant="success">{t("settings.enabled")}</Badge>
                   ) : (
-                    <Badge variant="outline">not configured</Badge>
+                    <Badge variant="outline">{t("settings.notConfigured")}</Badge>
                   )}
                 </Row>
-                <Row label="Provider">{s.ai.provider}</Row>
-                {s.ai.model ? <Row label="Model">{s.ai.model}</Row> : null}
+                <Row label={t("settings.provider")}>{s.ai.provider}</Row>
+                {s.ai.model ? <Row label={t("settings.model")}>{s.ai.model}</Row> : null}
               </dl>
               {s.ai.reason ? (
                 <p className="mt-2 text-xs text-muted-foreground">{s.ai.reason}</p>
               ) : null}
               <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-                Set <code className="font-mono">CYBERFORGE_AI_PROVIDER</code> (
-                <code className="font-mono">openai</code>, <code className="font-mono">gemini</code>{" "}
-                or <code className="font-mono">ollama</code>),{" "}
-                <code className="font-mono">CYBERFORGE_AI_MODEL</code> and, where needed,{" "}
-                <code className="font-mono">CYBERFORGE_AI_API_KEY</code>. Use Ollama to keep
-                telemetry on your machine.
+                {t("settings.aiHelp")}
               </p>
             </CardContent>
           </Card>
@@ -103,7 +134,7 @@ export default async function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <ShieldCheck className="size-4 text-ok" /> Lab network
+                <ShieldCheck className="size-4 text-ok" /> {t("settings.labNetwork")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -119,11 +150,8 @@ export default async function SettingsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Learning progress</CardTitle>
-              <CardDescription>
-                Stored in this browser. You can optionally back it up to this instance under an
-                anonymous profile.
-              </CardDescription>
+              <CardTitle>{t("settings.learningProgress")}</CardTitle>
+              <CardDescription>{t("settings.learningDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <LearningProgressActions />
@@ -131,6 +159,28 @@ export default async function SettingsPage() {
           </Card>
         </div>
       </div>
+
+      <Card className="mt-4" data-testid="about-card">
+        <CardHeader>
+          <CardTitle>{t("settings.aboutTitle")}</CardTitle>
+          <CardDescription>{t("settings.aboutDescription")}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <dl>
+            <Row label={t("settings.author")}>{PROJECT.author}</Row>
+            <Row label={t("settings.website")}>
+              <ExternalLink href={PROJECT.website}>{PROJECT.websiteLabel}</ExternalLink>
+            </Row>
+            <Row label={t("settings.contact")}>
+              <ExternalLink href={`mailto:${PROJECT.email}`}>{PROJECT.email}</ExternalLink>
+            </Row>
+            <Row label={t("settings.sourceCode")}>
+              <ExternalLink href={PROJECT.repository}>{PROJECT.repositoryLabel}</ExternalLink>
+            </Row>
+            <Row label={t("settings.license")}>{PROJECT.license}</Row>
+          </dl>
+        </CardContent>
+      </Card>
     </>
   );
 }

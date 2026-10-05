@@ -87,9 +87,26 @@ class ValidateResponse(BaseModel):
     mitre: list[MitreLookup]
 
 
+TranslateTarget = Literal["elastic", "splunk", "sentinel", "opensearch", "sql"]
+
+
 class TranslateRequest(BaseModel):
     content: str = Field(min_length=1, max_length=65536)
-    targets: list[Literal["elastic", "splunk", "sentinel", "opensearch", "sql"]] | None = None
+    targets: list[TranslateTarget] | None = None
+    pipelines: dict[TranslateTarget, str] | None = Field(
+        None,
+        description=(
+            "Processing pipeline per target: `none` (the default, field names unchanged), `auto` "
+            "(the first pipeline that fits the rule) or an id from "
+            "`GET /detections/translate/pipelines`."
+        ),
+    )
+
+
+class FieldChangeOut(BaseModel):
+    source: str
+    targets: list[str]
+    changed: bool
 
 
 class TranslationOut(BaseModel):
@@ -99,6 +116,27 @@ class TranslationOut(BaseModel):
     queries: list[str]
     error: str | None
     notes: list[str]
+    pipeline: str | None = Field(None, description="Id of the pipeline that mapped the fields")
+    pipeline_label: str | None = None
+    field_changes: list[FieldChangeOut] = Field(
+        default_factory=list, description="How each field in the rule was mapped"
+    )
+    added_fields: list[str] = Field(
+        default_factory=list, description="Fields the pipeline added, such as a channel filter"
+    )
+    dropped_fields: list[str] = Field(
+        default_factory=list, description="Rule fields the pipeline removed or could not pair"
+    )
+    pipeline_error: str | None = Field(
+        None, description="Why a requested pipeline could not be used; the query is then unmapped"
+    )
+
+
+class PipelineOut(BaseModel):
+    id: str
+    label: str
+    description: str
+    auto: bool = Field(description="Tried when a client asks for `auto`")
 
 
 class TranslateResponse(BaseModel):
@@ -132,3 +170,60 @@ class TestResponse(BaseModel):
     matched_count: int
     matches: list[TestMatch]
     correlation: list[dict[str, Any]]
+
+
+# --- rule tests and quality ---------------------------------------------------------------------
+
+
+class RuleTestCaseOut(BaseModel):
+    name: str
+    expected: bool
+    passed: bool
+    message: str
+    matched_events: list[int]
+    hits: int
+    definition: dict[str, Any]
+
+
+class QualityCheckOut(BaseModel):
+    id: str
+    label: str
+    passed: bool
+    detail: str
+
+
+class RuleQualityOut(BaseModel):
+    slug: str
+    title: str
+    level: str
+    technique_ids: list[str]
+    passed: int
+    total: int
+    checks: list[QualityCheckOut]
+    positive_tests: int
+    negative_tests: int
+    failing_tests: int
+
+
+class RuleTestsOut(BaseModel):
+    slug: str
+    tests_path: str | None
+    source: str | None
+    errors: list[str]
+    cases: list[RuleTestCaseOut]
+    quality: RuleQualityOut | None = None
+
+
+class CoverageOut(BaseModel):
+    rules: int
+    tested: int
+    percent: int
+    tests: int
+    failing: int
+
+
+class QualityResponse(BaseModel):
+    coverage: CoverageOut
+    checks_passed: int
+    checks_total: int
+    rules: list[RuleQualityOut]

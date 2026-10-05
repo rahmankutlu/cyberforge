@@ -10,27 +10,40 @@ import { Markdown } from "@/components/markdown";
 import { PageHeader } from "@/components/page-header";
 import { ApiError, apiGet } from "@/lib/api";
 import { formatDuration } from "@/lib/format";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
+import { localizeContent, localizeContentTree } from "@/lib/i18n/content";
 
 type Props = { params: Promise<{ track: string; module: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const { module: slug } = await params;
   const mod = await apiGet<ModuleDetail>(`/learning/modules/${slug}`).catch(() => null);
-  return { title: mod?.title ?? "Lesson" };
+  const locale = await getLocale();
+  return {
+    title: mod ? localizeContent(locale, mod.title) : createCopyTranslator(locale)("Lesson"),
+  };
 }
 
 export default async function ModulePage({ params }: Props) {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
   const { track: trackSlug, module: slug } = await params;
-  const mod = await apiGet<ModuleDetail>(`/learning/modules/${slug}`).catch((e: unknown) => {
-    if (e instanceof ApiError && e.status === 404) return null;
-    throw e;
-  });
-  if (!mod || mod.track !== trackSlug) notFound();
+  const sourceModule = await apiGet<ModuleDetail>(`/learning/modules/${slug}`).catch(
+    (e: unknown) => {
+      if (e instanceof ApiError && e.status === 404) return null;
+      throw e;
+    },
+  );
+  if (!sourceModule || sourceModule.track !== trackSlug) notFound();
+  const mod = localizeContentTree(locale, sourceModule);
 
-  const [overview, labs] = await Promise.all([
+  const [sourceOverview, sourceLabs] = await Promise.all([
     apiGet<LearningOverview>("/learning"),
     apiGet<LabSummary[]>("/labs"),
   ]);
+  const overview = localizeContentTree(locale, sourceOverview);
+  const labs = localizeContentTree(locale, sourceLabs);
   const track =
     trackSlug === "30-days"
       ? overview.thirty_days
@@ -45,16 +58,19 @@ export default async function ModulePage({ params }: Props) {
     <>
       <PageHeader
         breadcrumbs={[
-          { label: "Learn", href: "/learn" },
-          { label: track?.title ?? trackSlug, href: `/learn/${trackSlug}` },
-          { label: mod.title },
+          { label: c("Learn"), href: "/learn" },
+          {
+            label: localizeContent(locale, track?.title ?? trackSlug),
+            href: `/learn/${trackSlug}`,
+          },
+          { label: localizeContent(locale, mod.title) },
         ]}
-        title={mod.title}
-        description={mod.summary}
+        title={localizeContent(locale, mod.title)}
+        description={localizeContent(locale, mod.summary)}
         meta={
           <span className="text-xs text-muted-foreground">
-            {formatDuration(mod.duration_minutes)}
-            {mod.day ? ` · Day ${mod.day} of 30` : ""}
+            {formatDuration(mod.duration_minutes, locale)}
+            {mod.day ? ` · ${c("Day {{day}} of 30", { day: mod.day })}` : ""}
           </span>
         }
         actions={<CompleteButton slug={mod.slug} />}
@@ -69,7 +85,7 @@ export default async function ModulePage({ params }: Props) {
           {relatedLabs.length ? (
             <Card>
               <CardHeader>
-                <CardTitle>Try it in a lab</CardTitle>
+                <CardTitle>{c("Try it in a lab")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1.5">
                 {relatedLabs.map((lab) => (
@@ -88,7 +104,7 @@ export default async function ModulePage({ params }: Props) {
           {mod.rule_slugs.length ? (
             <Card>
               <CardHeader>
-                <CardTitle>Related detections</CardTitle>
+                <CardTitle>{c("Related detections")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
                 {mod.rule_slugs.map((r) => (
@@ -106,7 +122,7 @@ export default async function ModulePage({ params }: Props) {
           {mod.technique_ids.length ? (
             <Card>
               <CardHeader>
-                <CardTitle>MITRE techniques</CardTitle>
+                <CardTitle>{c("MITRE techniques")}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 {mod.technique_ids.map((t) => (
@@ -118,7 +134,10 @@ export default async function ModulePage({ params }: Props) {
         </aside>
       </div>
 
-      <nav aria-label="Lesson navigation" className="mt-6 flex items-center justify-between gap-3">
+      <nav
+        aria-label={c("Lesson navigation")}
+        className="mt-6 flex items-center justify-between gap-3"
+      >
         {prev ? (
           <Button asChild variant="outline">
             <Link href={`/learn/${trackSlug}/${prev.slug}`}>

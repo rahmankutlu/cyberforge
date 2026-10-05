@@ -1,0 +1,24 @@
+tests:
+  - name: detects a bucket ACL granting AllUsers
+    event:
+      eventName: PutBucketAcl
+      requestParameters:
+        bucketName: cf-lab-reports
+        grantee_uri: http://acs.amazonaws.com/groups/global/AllUsers
+    expected: true
+
+  - name: detects a bucket policy change granting AllUsers
+    event:
+      eventName: PutBucketPolicy
+      requestParameters:
+        bucketName: cf-lab-reports
+        grantee_uri: http://acs.amazonaws.com/groups/global/AllUsers
+    expected: true
+
+  - name: ignores an ACL that grants a specific account
+    event:
+      eventName: PutBucketAcl
+      requestParameters:
+        bucketName: cf-lab-reports
+        grantee_uri: arn:aws:iam::111122223333:root
+    expected: false

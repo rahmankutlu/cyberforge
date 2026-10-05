@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { apiSend } from "@/lib/api";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /** Opens an investigation seeded with this alert, then jumps to it. */
 export function CreateInvestigationButton({
@@ -19,27 +20,28 @@ export function CreateInvestigationButton({
   defaultTitle: string;
   severity: Severity;
 }) {
+  const { c } = useLocale();
   const router = useRouter();
   const mutation = useMutation({
     mutationFn: () =>
       apiSend<InvestigationDetail>("POST", "/investigations", {
-        title: `Investigation: ${defaultTitle}`.slice(0, 200),
+        title: `${c("Investigation:")} ${defaultTitle}`.slice(0, 200),
         summary: "",
         severity,
         alert_ids: [alertId],
       }),
     onSuccess: (inv) => {
-      toast.success("Investigation created", { description: `#${inv.id} · ${inv.title}` });
+      toast.success(c("Investigation created"), { description: `#${inv.id} · ${inv.title}` });
       router.push(`/soc/investigations/${inv.id}`);
     },
     onError: (error: Error) =>
-      toast.error("Could not create the investigation", { description: error.message }),
+      toast.error(c("Could not create the investigation"), { description: error.message }),
   });
 
   return (
     <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
       <FolderPlus />
-      {mutation.isPending ? "Creating…" : "Create investigation"}
+      {mutation.isPending ? c("Creating…") : c("Create investigation")}
     </Button>
   );
 }

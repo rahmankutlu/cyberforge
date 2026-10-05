@@ -1,0 +1,28 @@
+tests:
+  - name: detects a service installed from a user profile
+    event:
+      EventID: 7045
+      ServiceName: Updater
+      ImagePath: 'C:\Users\jdoe\AppData\Roaming\svc.exe'
+    expected: true
+
+  - name: detects a service that launches PowerShell
+    event:
+      EventID: 7045
+      ServiceName: Helper
+      ImagePath: '%COMSPEC% /c powershell -nop -w hidden'
+    expected: true
+
+  - name: ignores a service installed under Program Files
+    event:
+      EventID: 7045
+      ServiceName: VendorAgent
+      ImagePath: '"C:\Program Files\Vendor\agent.exe" --service'
+    expected: false
+
+  - name: ignores a different system event
+    event:
+      EventID: 7036
+      ServiceName: Updater
+      ImagePath: 'C:\Users\jdoe\AppData\Roaming\svc.exe'
+    expected: false

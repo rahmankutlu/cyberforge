@@ -17,7 +17,7 @@ If in doubt, open an issue and ask before writing code.
 
 ## Environment setup
 
-Requirements: Node 22, pnpm 10 and Python 3.12. This is the runtime baseline for the v0.1.x line, and CI and the Docker images use it; newer major runtimes are evaluated separately. Docker is only needed for the container setup and the lab profile.
+Requirements: Node 22, pnpm 10 and Python 3.12. This is the runtime baseline for the 1.x line, and CI and the Docker images use it; newer major runtimes are evaluated separately. Docker is only needed for the container setup and the lab profile.
 
 ```bash
 git clone https://github.com/rahmankutlu/cyberforge.git
@@ -51,15 +51,19 @@ pnpm typecheck:api  # mypy
 pnpm test:api       # pytest
 ```
 
+The REST API is a public contract ([versioning](docs/versioning.md)): after changing a route or schema run `pnpm openapi:write` and commit `docs/api/openapi.json`; CI fails when it is stale, and removals or type changes need a major version.
+
 A schema change needs an Alembic migration in `apps/api/cyberforge/migrations/versions`; the tests check that migrations produce every model table. Use SQLAlchemy Core/ORM constructs rather than raw SQL, `yaml.safe_load` for YAML, and type hints on public functions.
 
 ## Tests
 
-| Suite      | Command         | Covers                                                         |
-| ---------- | --------------- | -------------------------------------------------------------- |
-| Pytest     | `pnpm test:api` | content integrity, Sigma engine, guardrails, HTTP API          |
-| Vitest     | `pnpm test:web` | UI logic and components                                        |
-| Playwright | `pnpm test:e2e` | critical user flows against a fresh API and a production build |
+| Suite      | Command                | Covers                                                         |
+| ---------- | ---------------------- | -------------------------------------------------------------- |
+| Pytest     | `pnpm test:api`        | content integrity, Sigma engine, guardrails, HTTP API          |
+| Detections | `pnpm test:detections` | every Sigma rule's positive and negative tests                 |
+| Vitest     | `pnpm test:web`        | UI logic and components, translation parity and terminology    |
+| i18n       | `pnpm i18n:check`      | every English content string has a valid Turkish translation   |
+| Playwright | `pnpm test:e2e`        | critical user flows against a fresh API and a production build |
 
 Behaviour changes need tests; a bug fix needs a test that fails without the fix. Run `pnpm test:e2e` when you touch a user-facing flow (set `PW_CHANNEL=msedge` or `chrome` to reuse an installed browser instead of downloading one).
 
@@ -71,18 +75,28 @@ pnpm validate:content
 
 This checks lab and rule schemas, Sigma syntax, MITRE identifiers, that every lab's scenario triggers exactly the rules it declares, and that links resolve. Run it whenever you touch `labs/`, `detections/`, `datasets/`, `mitre/`, `examples/`, `packages/security-content/` or `docs/`.
 
+## Translations
+
+The interface and all authored content are available in English and Turkish; read [Localization](docs/localization.md) first.
+
+- Write whole sentences with placeholders, never sentences assembled from fragments.
+- After changing English text in `labs/`, `stories/`, `detections/`, `examples/` or `packages/security-content/`, run `pnpm i18n:sync`, translate the new empty entries by hand and run `pnpm i18n:check`. CI fails on missing, stale or damaged translations.
+- Use the terms in `apps/web/src/lib/i18n/glossary.tr.json`; `pnpm test:web` fails on the known wrong ones.
+- Do not machine-translate: it produced wrong security terminology in the first version of the Turkish catalogue.
+
 ## Adding a lab
 
-Follow [Contributing labs](docs/contributing-labs.md). A lab is a directory under `labs/<domain>/<slug>/` with a `lab.yaml` (the source of truth), a `telemetry/scenario.jsonl`, and a README produced by `pnpm content:labs`. The scenario must trigger the detections the lab declares, and it must be entirely synthetic.
+Start with `pnpm create:lab <domain> <slug>` and follow [Creating a lab](docs/creating-a-lab.md); the older [Contributing labs](docs/contributing-labs.md) has the design background. A lab is a directory under `labs/<domain>/<slug>/` with a `lab.yaml` (the source of truth), a `telemetry/scenario.jsonl`, and a README produced by `pnpm content:labs`. The scenario must trigger the detections the lab declares, and it must be entirely synthetic.
 
 ## Adding a Sigma detection
 
 Rules live in `detections/sigma/<area>/`, one rule (or one base-plus-correlation set) per file.
 
 - Include `title`, `description`, `logsource`, `detection`, `falsepositives`, `level`, `references` and ATT&CK `tags`. The first `attack.t…` tag is the primary technique.
+- Test it: add `<slug>.tests.yml` next to the rule with at least one event that must match and one that must not. See [Testing detections](docs/testing-detections.md); `pnpm test:detections` runs them and CI requires them.
 - Prove it: add or extend a lab scenario so the rule fires, and make sure benign activity in the datasets does not trigger it.
 - Give a new rule the placeholder id `00000000-0000-0000-0000-000000000001` and run `python scripts/assign_rule_ids.py` to replace it with a stable UUID.
-- Validate it in the [playground](docs/detections.md) or with `pnpm validate:content`.
+- Validate it in the [playground](docs/detections.md) or with `pnpm validate:content`. The shortest path is [Creating a detection](docs/creating-a-detection.md).
 
 ## MITRE mappings
 
@@ -93,10 +107,21 @@ Techniques come from `mitre/curated.yaml`. Add an ID there and run `pnpm content
 - Do one thing and explain why in the description; link the issue.
 - Include tests and update documentation and `.env.example` when behaviour or configuration changes.
 - Keep dependencies minimal; prefer the standard library or an already-used package.
-- Before pushing, run `pnpm lint`, `pnpm typecheck`, `pnpm typecheck:api`, `pnpm test` and `pnpm validate:content`, plus `pnpm format` for Prettier (`ruff format` for Python). CI runs the same checks.
+- Before pushing, run `pnpm lint`, `pnpm typecheck`, `pnpm typecheck:api`, `pnpm test`, `pnpm validate:content` and `pnpm i18n:check`, plus `pnpm format` for Prettier (`ruff format` for Python). CI runs the same checks.
 - Use short, imperative commit subjects (`Add encoded-PowerShell filter for SCCM`). PRs are squash-merged.
 
 A maintainer reviews for safety, correctness, teaching quality and maintainability, in that order.
+
+## Releasing
+
+Maintainers cut a release from a green `main`:
+
+1. Move the changelog's **Unreleased** entries under a new `## [X.Y.Z] - date` heading and update the compare links.
+2. Bump `version` in every `package.json`, `apps/api/pyproject.toml`, `apps/api/cyberforge/__init__.py` and `CITATION.cff` (including `date-released`).
+3. Run `pnpm versions:check`, `pnpm openapi:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm test:e2e`.
+4. Tag `vX.Y.Z` on the release commit and push the tag. The release workflow checks the tag against every version, verifies the build, publishes the images and drafts the GitHub release from the changelog.
+
+A breaking change to the [public contract](docs/versioning.md) is only released as a new major version.
 
 ## Generated files
 

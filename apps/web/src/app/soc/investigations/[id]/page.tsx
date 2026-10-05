@@ -27,26 +27,34 @@ import { ReportEditor } from "@/components/soc/report-editor";
 import { TimelinePanel } from "@/components/soc/timeline-panel";
 import { apiGet, apiGetOrNull } from "@/lib/api";
 import { first, type SearchParams } from "@/lib/params";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
+import { localizeContentTree } from "@/lib/i18n/content";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<SearchParams> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  return { title: `Investigation #${id}` };
+  const c = createCopyTranslator(await getLocale());
+  return { title: `${c("Investigation")} #${id}` };
 }
 
 const TABS = ["overview", "timeline", "notes", "report"];
 
 export default async function InvestigationPage({ params, searchParams }: Props) {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
   const { id } = await params;
   const sp = await searchParams;
   if (!/^\d+$/.test(id)) notFound();
-  const investigation = await apiGetOrNull<InvestigationDetail>(`/investigations/${id}`);
-  if (!investigation) notFound();
-  const [analysts, report] = await Promise.all([
+  const sourceInvestigation = await apiGetOrNull<InvestigationDetail>(`/investigations/${id}`);
+  if (!sourceInvestigation) notFound();
+  const [analysts, sourceReport] = await Promise.all([
     apiGet<Analyst[]>("/analysts"),
     apiGet<IncidentReport>(`/investigations/${id}/report`),
   ]);
+  const investigation = localizeContentTree(locale, sourceInvestigation);
+  const report = localizeContentTree(locale, sourceReport);
   const requested = first(sp.tab);
   const tab = TABS.includes(requested ?? "") ? (requested as string) : "overview";
 
@@ -54,8 +62,8 @@ export default async function InvestigationPage({ params, searchParams }: Props)
     <>
       <PageHeader
         breadcrumbs={[
-          { label: "Mini SOC", href: "/soc" },
-          { label: "Investigations", href: "/soc/investigations" },
+          { label: c("Mini SOC"), href: "/soc" },
+          { label: c("Investigations"), href: "/soc/investigations" },
           { label: `#${investigation.id}` },
         ]}
         title={investigation.title}
@@ -66,7 +74,7 @@ export default async function InvestigationPage({ params, searchParams }: Props)
             <InvestigationStatusBadge status={investigation.status} />
             {investigation.synthetic ? <SyntheticBadge /> : null}
             <span className="text-xs text-muted-foreground">
-              Updated <RelativeTime iso={investigation.updated_at} />
+              {c("Updated")} <RelativeTime iso={investigation.updated_at} />
             </span>
           </>
         }
@@ -75,13 +83,15 @@ export default async function InvestigationPage({ params, searchParams }: Props)
 
       <Tabs defaultValue={tab}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline ({investigation.timeline.length})</TabsTrigger>
+          <TabsTrigger value="overview">{c("Overview")}</TabsTrigger>
+          <TabsTrigger value="timeline">
+            {c("Timeline")} ({investigation.timeline.length})
+          </TabsTrigger>
           <TabsTrigger value="notes" data-testid="inv-tab-notes">
-            Notes ({investigation.notes.length})
+            {c("Notes")} ({investigation.notes.length})
           </TabsTrigger>
           <TabsTrigger value="report" data-testid="inv-tab-report">
-            Report
+            {c("Report")}
           </TabsTrigger>
         </TabsList>
 
@@ -89,18 +99,20 @@ export default async function InvestigationPage({ params, searchParams }: Props)
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <section>
               <h2 className="mb-2 text-sm font-semibold">
-                Linked alerts ({investigation.alerts.length})
+                {c("Linked alerts")} ({investigation.alerts.length})
               </h2>
               <AlertsTable
                 alerts={investigation.alerts}
                 compact
-                emptyTitle="No alerts attached"
-                emptyDescription="Open an alert and use “Create investigation”, or attach alerts through the API."
+                emptyTitle={c("No alerts attached")}
+                emptyDescription={c(
+                  "Open an alert and use “Create investigation”, or attach alerts through the API.",
+                )}
               />
             </section>
             <Card className="h-fit">
               <CardHeader>
-                <CardTitle>MITRE techniques</CardTitle>
+                <CardTitle>{c("MITRE techniques")}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-2">
                 {investigation.techniques.length ? (
@@ -108,10 +120,10 @@ export default async function InvestigationPage({ params, searchParams }: Props)
                     <TechniqueChip key={t.id} id={t.id} name={t.name} />
                   ))
                 ) : (
-                  <p className="text-xs text-muted-foreground">None yet.</p>
+                  <p className="text-xs text-muted-foreground">{c("None yet.")}</p>
                 )}
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Lead: {investigation.lead?.name ?? "not assigned"}
+                  {c("Lead:")} {investigation.lead?.name ?? c("not assigned")}
                 </p>
               </CardContent>
             </Card>

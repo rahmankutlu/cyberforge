@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Questions, training and collaboration
+    url: https://rahmankutlu.com
+    about: Reach the author at info@rahmankutlu.com or through the website. See SUPPORT.md for where to ask what.
   - name: Report a security vulnerability
     url: https://github.com/rahmankutlu/cyberforge/security/advisories/new
     about: Please report vulnerabilities privately. See SECURITY.md.

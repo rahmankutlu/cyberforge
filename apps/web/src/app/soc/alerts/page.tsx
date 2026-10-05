@@ -13,10 +13,16 @@ import {
 } from "@/components/data/url-filters";
 import { AlertsTable } from "@/components/soc/alerts-table";
 import { apiGet } from "@/lib/api";
-import { ALERT_STATUS_LABEL, SEVERITY_LABEL } from "@/lib/format";
 import { all, first, positiveInt, type SearchParams } from "@/lib/params";
+import { createTranslator } from "@/lib/i18n";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { localizeContentTree } from "@/lib/i18n/content";
+import { getLocale } from "@/lib/i18n/server";
 
-export const metadata = { title: "Alerts" };
+export async function generateMetadata() {
+  const c = createCopyTranslator(await getLocale());
+  return { title: c("Alerts") };
+}
 
 const PAGE_SIZE = 20;
 
@@ -25,6 +31,9 @@ export default async function AlertsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
+  const t = createTranslator(locale);
   const sp = await searchParams;
   const page = positiveInt(sp.page, 1);
   const sort = first(sp.sort) ?? "timestamp";
@@ -46,6 +55,7 @@ export default async function AlertsPage({
     apiGet<Analyst[]>("/analysts"),
     apiGet<TechniqueCoverage[]>("/mitre/techniques", { framework: "attack", covered: true }),
   ]);
+  const localizedResult = localizeContentTree(locale, result);
 
   const technique = first(sp.technique);
   const chipClasses = {
@@ -53,13 +63,30 @@ export default async function AlertsPage({
     high: "border-sev-high/50 bg-sev-high/12",
     medium: "border-sev-medium/50 bg-sev-medium/12",
   };
+  const severityLabels = {
+    critical: t("severity.critical"),
+    high: t("severity.high"),
+    medium: t("severity.medium"),
+    low: t("severity.low"),
+    informational: t("severity.informational"),
+  };
+  const statusLabels = {
+    new: t("alertStatus.new"),
+    investigating: t("alertStatus.investigating"),
+    contained: t("alertStatus.contained"),
+    resolved: t("alertStatus.resolved"),
+    false_positive: t("alertStatus.falsePositive"),
+  };
 
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: "Mini SOC", href: "/soc" }, { label: "Alerts" }]}
-        title="Alerts"
-        description={`${stats.open} open of ${stats.total} total. Filters are kept in the URL and remembered for your next visit.`}
+        breadcrumbs={[{ label: c("Mini SOC"), href: "/soc" }, { label: c("Alerts") }]}
+        title={c("Alerts")}
+        description={c(
+          "{{open}} open of {{total}} total. Filters are kept in the URL and remembered for your next visit.",
+          { open: stats.open, total: stats.total },
+        )}
       />
 
       <Suspense>
@@ -67,22 +94,22 @@ export default async function AlertsPage({
         <div className="mb-4 space-y-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <UrlSearch
-              placeholder="Search title, host, user…"
+              placeholder={c("Search title, host, user…")}
               className="w-full sm:w-72"
-              label="Search alerts"
+              label={c("Search alerts")}
             />
             <UrlSearch
               param="technique"
-              placeholder="MITRE technique, e.g. T1059"
+              placeholder={c("MITRE technique, e.g. T1059")}
               className="w-full sm:w-56"
-              label="Filter by MITRE technique"
+              label={c("Filter by MITRE technique")}
             />
             <UrlSelect
               param="assignee"
-              label="Assignee"
-              allLabel="Anyone"
+              label={c("Assignee")}
+              allLabel={c("Anyone")}
               options={[
-                { value: "unassigned", label: "Unassigned" },
+                { value: "unassigned", label: c("Unassigned") },
                 ...analysts.map((a) => ({ value: String(a.id), label: a.name })),
               ]}
               className="w-52"
@@ -95,41 +122,41 @@ export default async function AlertsPage({
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <UrlChips
               param="severity"
-              label="Severity"
+              label={c("Severity")}
               options={SEVERITIES.map((s) => ({
                 value: s,
-                label: `${SEVERITY_LABEL[s]} ${stats.by_severity[s] ?? 0}`,
+                label: `${severityLabels[s]} ${stats.by_severity[s] ?? 0}`,
               }))}
               colorClasses={chipClasses}
             />
             <UrlChips
               param="status"
-              label="Status"
+              label={c("Status")}
               options={ALERT_STATUSES.map((s) => ({
                 value: s,
-                label: `${ALERT_STATUS_LABEL[s]} ${stats.by_status[s] ?? 0}`,
+                label: `${statusLabels[s]} ${stats.by_status[s] ?? 0}`,
               }))}
             />
           </div>
           {technique &&
           !techniques.some((t) => t.id === technique || technique.startsWith(`${t.id}.`)) ? (
             <p className="text-xs text-muted-foreground">
-              Tip: technique filters accept a parent (T1059) to include its sub-techniques.
+              {c("Tip: technique filters accept a parent (T1059) to include its sub-techniques.")}
             </p>
           ) : null}
         </div>
       </Suspense>
 
       <AlertsTable
-        alerts={result.items}
+        alerts={localizedResult.items}
         sorting={{ path: "/soc/alerts", params: sp, sort, order }}
         showSynthetic
       />
       <Pagination
-        page={result.page}
-        pages={result.pages}
-        total={result.total}
-        pageSize={result.page_size}
+        page={localizedResult.page}
+        pages={localizedResult.pages}
+        total={localizedResult.total}
+        pageSize={localizedResult.page_size}
         path="/soc/alerts"
         params={sp}
         noun="alerts"

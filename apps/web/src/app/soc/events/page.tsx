@@ -8,8 +8,13 @@ import { EventsTable } from "@/components/soc/events-table";
 import { apiGet } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
 import { first, positiveInt, type SearchParams } from "@/lib/params";
+import { createCopyTranslator } from "@/lib/i18n/copy";
+import { getLocale } from "@/lib/i18n/server";
 
-export const metadata = { title: "Events" };
+export async function generateMetadata() {
+  const c = createCopyTranslator(await getLocale());
+  return { title: c("Events") };
+}
 
 const PAGE_SIZE = 30;
 
@@ -18,6 +23,8 @@ export default async function EventsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
+  const locale = await getLocale();
+  const c = createCopyTranslator(locale);
   const sp = await searchParams;
   const page = positiveInt(sp.page, 1);
   const sort = first(sp.sort) ?? "timestamp";
@@ -38,37 +45,44 @@ export default async function EventsPage({
     apiGet<EventFacets>("/events/facets"),
   ]);
   const opts = (values: { value: string; count: number }[]) =>
-    values.map((f) => ({ value: f.value, label: `${f.value} (${formatNumber(f.count)})` }));
+    values.map((f) => ({ value: f.value, label: `${f.value} (${formatNumber(f.count, locale)})` }));
 
   return (
     <>
       <PageHeader
-        breadcrumbs={[{ label: "Mini SOC", href: "/soc" }, { label: "Events" }]}
-        title="Events"
-        description="Normalised telemetry from seeded datasets, simulated labs and local lab containers. Expand a row to see the raw log line and the parsed fields."
+        breadcrumbs={[{ label: c("Mini SOC"), href: "/soc" }, { label: c("Events") }]}
+        title={c("Events")}
+        description={c(
+          "Normalised telemetry from seeded datasets, simulated labs and local lab containers. Expand a row to see the raw log line and the parsed fields.",
+        )}
       />
       <Suspense>
         <PersistFilters storageKey="events" />
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <UrlSearch
-            placeholder="Search message, host, user, IP, raw…"
+            placeholder={c("Search message, host, user, IP, raw…")}
             className="w-full sm:w-80"
-            label="Search events"
+            label={c("Search events")}
           />
-          <UrlSelect param="source" label="Source" options={opts(facets.source)} className="w-52" />
+          <UrlSelect
+            param="source"
+            label={c("Source")}
+            options={opts(facets.source)}
+            className="w-52"
+          />
           <UrlSelect
             param="category"
-            label="Category"
+            label={c("Category")}
             options={opts(facets.category)}
             className="w-56"
           />
           <UrlSelect
             param="outcome"
-            label="Outcome"
+            label={c("Outcome")}
             options={opts(facets.outcome)}
             className="w-48"
           />
-          <UrlSelect param="host" label="Host" options={opts(facets.host)} className="w-52" />
+          <UrlSelect param="host" label={c("Host")} options={opts(facets.host)} className="w-52" />
           <ClearFilters keys={["q", "source", "category", "outcome", "host"]} storageKey="events" />
         </div>
       </Suspense>

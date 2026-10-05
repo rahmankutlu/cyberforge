@@ -1,0 +1,12 @@
+tests:
+  - name: detects a container started with the Docker socket mounted
+    event:
+      Image: debug-tools:latest
+      Mounts: /var/run/docker.sock:/var/run/docker.sock
+    expected: true
+
+  - name: ignores a container with an ordinary volume
+    event:
+      Image: web:latest
+      Mounts: /srv/data:/data
+    expected: false

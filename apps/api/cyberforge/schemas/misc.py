@@ -24,6 +24,10 @@ class TechniqueCoverage(BaseModel):
     rules: int
     alerts: int
     investigations: int
+    stories: int = 0  # attack stories that teach it
+    tested_rules: int = 0  # mapped Sigma rules with positive and negative tests
+    lacking_tests: bool = False  # something covers it, but no tested rule does
+    domains: list[str] = []  # Windows, Linux, Network, Web, Cloud, AI Security
 
 
 class TechniqueDetail(TechniqueCoverage):
@@ -248,7 +252,9 @@ class AISecurityOverview(BaseModel):
 
 
 class SearchHit(BaseModel):
-    kind: Literal["lab", "rule", "technique", "alert", "doc", "learning", "indicator"]
+    kind: Literal[
+        "lab", "story", "rule", "dataset", "technique", "alert", "doc", "learning", "indicator"
+    ]
     id: str
     title: str
     subtitle: str | None = None

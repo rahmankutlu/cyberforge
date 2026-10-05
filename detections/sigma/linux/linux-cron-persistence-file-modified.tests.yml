@@ -1,0 +1,35 @@
+tests:
+  - name: detects a write to a system cron directory by an unexpected process
+    event:
+      Operation: write
+      TargetFilename: /etc/cron.d/updater
+      Image: /bin/bash
+    expected: true
+
+  - name: detects a write to a user crontab spool
+    event:
+      Operation: write
+      TargetFilename: /var/spool/cron/crontabs/www-data
+      Image: /usr/bin/python3
+    expected: true
+
+  - name: ignores the package manager updating cron files
+    event:
+      Operation: write
+      TargetFilename: /etc/cron.d/logrotate
+      Image: /usr/bin/dpkg
+    expected: false
+
+  - name: ignores crontab editing the spool itself
+    event:
+      Operation: write
+      TargetFilename: /var/spool/cron/crontabs/alice
+      Image: /usr/bin/crontab
+    expected: false
+
+  - name: ignores reads of cron files
+    event:
+      Operation: read
+      TargetFilename: /etc/cron.d/updater
+      Image: /bin/cat
+    expected: false

@@ -1,0 +1,41 @@
+tests:
+  - name: detects eight failed SSH passwords from one source within two minutes
+    events:
+      - repeat: 8
+        every: 5
+        fields:
+          Program: sshd
+          SrcIP: 203.0.113.50
+          Message: "Failed password for root from 203.0.113.50 port {i+40000} ssh2"
+    expected: true
+    hits: 1
+
+  - name: ignores seven failures, one short of the threshold
+    events:
+      - repeat: 7
+        every: 5
+        fields:
+          Program: sshd
+          SrcIP: 203.0.113.50
+          Message: "Failed password for root from 203.0.113.50 port {i+40000} ssh2"
+    expected: false
+
+  - name: ignores failures spread too thin for the two-minute window
+    events:
+      - repeat: 8
+        every: 60
+        fields:
+          Program: sshd
+          SrcIP: 203.0.113.50
+          Message: "Failed password for root from 203.0.113.50 port {i+40000} ssh2"
+    expected: false
+
+  - name: ignores eight failures split across eight different sources
+    events:
+      - repeat: 8
+        every: 5
+        fields:
+          Program: sshd
+          SrcIP: "203.0.113.{i*1}"
+          Message: "Failed password for root from a-source port 40000 ssh2"
+    expected: false

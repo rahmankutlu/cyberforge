@@ -11,7 +11,15 @@ import {
   truncate,
 } from "./format";
 import { highlightSegments, patternNeedles } from "./highlight";
-import { coverageSummary, heatBackground, heatLevel, nestTechniques } from "./mitre";
+import {
+  DOMAINS,
+  contentCoverage,
+  coverageSummary,
+  heatBackground,
+  heatLevel,
+  isDomain,
+  nestTechniques,
+} from "./mitre";
 import { hrefWith, mergeParams, positiveInt, toggleValue } from "./params";
 
 describe("format", () => {
@@ -34,6 +42,8 @@ describe("format", () => {
     expect(formatDuration(45)).toBe("45 min");
     expect(formatDuration(60)).toBe("1h");
     expect(formatDuration(95)).toBe("1h 35m");
+    expect(formatDuration(45, "tr")).toBe("45 dk");
+    expect(formatDuration(95, "tr")).toBe("1 sa 35 dk");
     expect(titleCase("windows-sim")).toBe("Windows Sim");
     expect(titleCase("false_positive")).toBe("False Positive");
     expect(truncate("abcdefghij", 5)).toBe("abcd…");
@@ -158,6 +168,46 @@ describe("api client", () => {
 });
 
 describe("mitre helpers", () => {
+  it("answers the four content-coverage questions", () => {
+    const t = (id: string, over: Partial<TechniqueCoverage>) =>
+      ({
+        id,
+        name: id,
+        framework: "attack",
+        is_subtechnique: false,
+        parent_id: null,
+        tactic_ids: [],
+        labs: 0,
+        rules: 0,
+        alerts: 0,
+        investigations: 0,
+        stories: 0,
+        tested_rules: 0,
+        lacking_tests: false,
+        domains: [],
+        ...over,
+      }) as TechniqueCoverage;
+    const c = contentCoverage([
+      t("T1", { labs: 1, rules: 1, tested_rules: 1, stories: 1 }),
+      t("T2", { labs: 2, lacking_tests: true }),
+      t("T3", { rules: 1, lacking_tests: true }),
+      t("T3.001", { rules: 1, is_subtechnique: true, parent_id: "T3" }),
+      t("T4", {}),
+    ]);
+    expect(c.total).toBe(4);
+    expect(c.labs.map((x) => x.id)).toEqual(["T1", "T2"]);
+    expect(c.detections.map((x) => x.id)).toEqual(["T1", "T3"]);
+    expect(c.stories.map((x) => x.id)).toEqual(["T1"]);
+    expect(c.lackingTests.map((x) => x.id)).toEqual(["T2", "T3"]);
+  });
+
+  it("recognises only the six platform domains", () => {
+    expect(DOMAINS).toEqual(["Windows", "Linux", "Network", "Web", "Cloud", "AI Security"]);
+    expect(isDomain("Web")).toBe(true);
+    expect(isDomain("Mainframe")).toBe(false);
+    expect(isDomain(undefined)).toBe(false);
+  });
+
   const tech = (
     id: string,
     rules: number,
@@ -173,6 +223,10 @@ describe("mitre helpers", () => {
     rules,
     alerts: 0,
     investigations: 0,
+    stories: 0,
+    tested_rules: 0,
+    lacking_tests: false,
+    domains: [],
     ...extra,
   });
 

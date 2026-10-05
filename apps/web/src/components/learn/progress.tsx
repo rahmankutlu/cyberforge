@@ -4,6 +4,7 @@ import { Button, Progress, cn } from "@cyberforge/ui";
 import { Check, CircleCheck } from "lucide-react";
 
 import { progressFor, useLearningProgress } from "@/lib/learning-progress";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 /** Progress is stored in this browser's localStorage. No account needed. */
 export function TrackProgress({
@@ -15,14 +16,15 @@ export function TrackProgress({
   className?: string;
   showLabel?: boolean;
 }) {
+  const { c } = useLocale();
   const { completed } = useLearningProgress();
   const { done, total, pct } = progressFor(completed, slugs);
   return (
     <div className={className} data-testid="track-progress">
-      <Progress value={done} max={Math.max(total, 1)} label="Track progress" />
+      <Progress value={done} max={Math.max(total, 1)} label={c("Track progress")} />
       {showLabel ? (
         <p className="mt-1.5 text-[11px] tabular-nums text-muted-foreground">
-          {done}/{total} complete · {pct}%
+          {done}/{total} {c("complete")} · {pct}%
         </p>
       ) : null}
     </div>
@@ -30,6 +32,7 @@ export function TrackProgress({
 }
 
 export function ModuleCheck({ slug, title }: { slug: string; title: string }) {
+  const { c } = useLocale();
   const { isDone, toggle } = useLearningProgress();
   const done = isDone(slug);
   return (
@@ -37,7 +40,7 @@ export function ModuleCheck({ slug, title }: { slug: string; title: string }) {
       type="button"
       role="checkbox"
       aria-checked={done}
-      aria-label={`Mark “${title}” as ${done ? "not complete" : "complete"}`}
+      aria-label={`${title}: ${done ? c("not complete") : c("complete")}`}
       onClick={() => toggle(slug)}
       data-done={done}
       className={cn(
@@ -53,6 +56,7 @@ export function ModuleCheck({ slug, title }: { slug: string; title: string }) {
 }
 
 export function CompleteButton({ slug }: { slug: string }) {
+  const { c } = useLocale();
   const { isDone, toggle } = useLearningProgress();
   const done = isDone(slug);
   return (
@@ -63,7 +67,7 @@ export function CompleteButton({ slug }: { slug: string }) {
       aria-pressed={done}
     >
       <CircleCheck />
-      {done ? "Completed" : "Mark as complete"}
+      {done ? c("Completed") : c("Mark as complete")}
     </Button>
   );
 }
@@ -79,6 +83,7 @@ export function DayCell({
   title: string;
   href: string;
 }) {
+  const { c } = useLocale();
   const { isDone } = useLearningProgress();
   const done = isDone(slug);
   return (
@@ -91,7 +96,7 @@ export function DayCell({
       )}
     >
       <span className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-        Day {String(day).padStart(2, "0")}
+        {c("Day")} {String(day).padStart(2, "0")}
         {done ? <CircleCheck className="size-3.5 text-ok" /> : null}
       </span>
       <span className="mt-1 text-[13px] font-medium leading-snug group-hover:text-primary">

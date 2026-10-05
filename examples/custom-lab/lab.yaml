@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=../../schemas/lab.schema.json
+# A complete, minimal lab. To try it in your checkout:
+#   cp -r examples/custom-lab labs/linux/sudoers-edit-detection
+#   pnpm content:labs && pnpm validate:content
+slug: sudoers-edit-detection
+number: 900
+title: Sudoers Edit Detection
+domain: linux
+category: Privilege Escalation
+difficulty: beginner
+duration_minutes: 20
+summary: A user edits the sudoers file through sudo. See what the auth log records and write the detection that separates it from everyday sudo use.
+tags: [linux, sudo, privilege-escalation]
+objectives:
+  - Explain why editing the sudoers file is a common step in gaining lasting root access.
+  - Recognise a sudoers edit in a Linux authentication log.
+  - Read the lab's Sigma rule and its tests, and say why each negative test exists.
+architecture:
+  description: >
+    A single Linux host writes sudo and sshd events to auth.log. CyberForge replays those events as
+    synthetic telemetry; nothing runs on your machine and nothing is scanned.
+  components:
+    - { name: app-host-01, role: "Linux host whose auth.log is replayed", network: none }
+scenario: >
+  An engineer's account is used to run a series of ordinary administrative commands. Partway through, the
+  same account opens the sudoers file in an editor. Your job is to find that line among the routine ones
+  and decide whether it needs a human's attention.
+setup:
+  requires_containers: false
+  steps:
+    - "Press Run simulation in CyberForge: the lab replays synthetic telemetry, so no setup is needed."
+telemetry:
+  sources:
+    - {
+        name: auth.log,
+        description: "sudo records who ran which command as which user, from which terminal.",
+        log_source: linux/auth,
+      }
+  scenario_file: telemetry/scenario.jsonl
+attack_simulation:
+  description: >
+    The simulation replays three routine sudo commands, then a sudoers edit, then two more routine commands.
+    Only the edit should stand out.
+  steps:
+    - {
+        title: Routine administration,
+        detail: "Package updates and a service restart, all through sudo. Nothing here is unusual.",
+      }
+    - {
+        title: The sudoers edit,
+        detail: "The same account runs visudo. This is the event the rule exists to catch.",
+      }
+expected_detection:
+  description: >
+    The lab's own Sigma rule matches sudo running a sudoers editor or opening /etc/sudoers, and stays
+    quiet for ordinary commands.
+  rules: [sudoers-edit-via-sudo]
+mitre: [T1548.003]
+investigation_questions:
+  - question: Which log line is the sudoers edit, and what makes it different from the lines around it?
+    hint: Read the COMMAND= part of each sudo line.
+    answer: "The line whose COMMAND is /usr/sbin/visudo. The others run package and service tools."
+  - question: The rule also has a negative test for `apt update`. What does that test protect?
+    hint: Think about what would happen if the rule matched every sudo line.
+    answer: It proves the rule does not turn into an alert on all administration, which would be ignored within a day.
+mitigation:
+  - Restrict who may edit sudoers and log every change to a separate, append-only destination.
+  - Manage sudoers through configuration management so a manual edit is by definition an exception.
+  - Alert on sudoers changes at the file level as well as at the command level.
+cleanup:
+  - "Nothing to clean up: the simulation only adds synthetic events to your local instance."
+references:
+  - {
+      title: "MITRE ATT&CK T1548.003 Sudo and Sudo Caching",
+      url: "https://attack.mitre.org/techniques/T1548/003/",
+    }
+safety:
+  scope: simulation-only
+  network: none

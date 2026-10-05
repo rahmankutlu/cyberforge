@@ -1,0 +1,37 @@
+title: Download Piped Straight Into A Shell
+id: 3b1d4c1e-5f0a-5a53-8f52-6d6a0f6f2c01
+status: experimental
+description: >
+  Detects curl or wget output piped directly into a shell interpreter. The script is executed
+  without ever being written to disk or reviewed, which is how many droppers and "one-line
+  installers" run. Legitimate installers use the same pattern, so treat a hit as a prompt to
+  check where the script came from, not as proof of compromise.
+references:
+  - https://attack.mitre.org/techniques/T1105/
+  - https://attack.mitre.org/techniques/T1059/004/
+author: CyberForge contributors
+date: 2026-09-29
+tags:
+  - attack.t1059.004
+  - attack.t1105
+logsource:
+  category: process_creation
+  product: linux
+detection:
+  selection_download:
+    CommandLine|contains:
+      - "curl "
+      - "wget "
+  selection_pipe_to_shell:
+    CommandLine|contains:
+      - "| sh"
+      - "| bash"
+      - "|sh"
+      - "|bash"
+  filter_internal_mirror:
+    CommandLine|contains: "packages.lab.internal"
+  condition: selection_download and selection_pipe_to_shell and not filter_internal_mirror
+falsepositives:
+  - Documented one-line installers for developer tooling
+  - Provisioning scripts that pull from an approved internal mirror
+level: medium

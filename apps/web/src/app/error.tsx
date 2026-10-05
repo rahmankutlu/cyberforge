@@ -3,6 +3,7 @@
 import { Button, EmptyState } from "@cyberforge/ui";
 import { PlugZap, RotateCw } from "lucide-react";
 import { useEffect } from "react";
+import { useLocale } from "@/components/i18n/locale-provider";
 
 export default function GlobalError({
   error,
@@ -11,6 +12,7 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { c } = useLocale();
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -19,14 +21,15 @@ export default function GlobalError({
     <EmptyState
       className="mt-10"
       icon={<PlugZap />}
-      title="This page could not be loaded"
+      title={c("This page could not be loaded")}
       description={
-        "The CyberForge API may still be starting or is unreachable. Check that it is running (docker compose up, or `pnpm dev:api`) and try again." +
-        (error.digest ? ` (ref ${error.digest})` : "")
+        c(
+          "The CyberForge API may still be starting or is unreachable. Check that it is running (docker compose up, or `pnpm dev:api`) and try again.",
+        ) + (error.digest ? ` (ref ${error.digest})` : "")
       }
       action={
         <Button onClick={reset}>
-          <RotateCw /> Try again
+          <RotateCw /> {c("Try again")}
         </Button>
       }
     />

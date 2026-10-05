@@ -1,0 +1,24 @@
+tests:
+  - name: detects sudo launching a bash shell
+    event:
+      Program: sudo
+      Message: 'alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/bin/bash'
+    expected: true
+
+  - name: detects sudo su
+    event:
+      Program: sudo
+      Message: 'alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/su'
+    expected: true
+
+  - name: ignores sudo running a single administrative command
+    event:
+      Program: sudo
+      Message: 'alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update'
+    expected: false
+
+  - name: ignores the same text from a different program
+    event:
+      Program: sshd
+      Message: 'COMMAND=/bin/bash'
+    expected: false

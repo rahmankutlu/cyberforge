@@ -1,0 +1,24 @@
+tests:
+  - name: detects a command parameter sent to a script in an uploads directory
+    event:
+      cs-uri-stem: /uploads/avatar.php
+      cs-uri-query: cmd=whoami
+    expected: true
+
+  - name: ignores a script outside the upload directories
+    event:
+      cs-uri-stem: /admin/console.php
+      cs-uri-query: cmd=status
+    expected: false
+
+  - name: ignores a static file in uploads with a command-like parameter
+    event:
+      cs-uri-stem: /uploads/photo.jpg
+      cs-uri-query: cmd=resize
+    expected: false
+
+  - name: ignores an uploads script called without a command parameter
+    event:
+      cs-uri-stem: /uploads/avatar.php
+      cs-uri-query: size=64
+    expected: false

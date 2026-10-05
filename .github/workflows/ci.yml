@@ -23,7 +23,8 @@ jobs:
       - run: pnpm -r --if-present lint
       - run: pnpm typecheck
       - run: pnpm format:check
-      - run: pnpm test:web
+      # Coverage floors are in apps/web/vitest.config.ts and only move up.
+      - run: pnpm test:web:coverage
       - uses: actions/cache@v6
         with:
           path: apps/web/.next/cache
@@ -42,9 +43,11 @@ jobs:
           python: "true"
       - run: pnpm lint:api
       - run: pnpm typecheck:api
-      - run: pnpm test:api
-      - name: Export OpenAPI
-        run: pnpm --silent openapi > openapi.json
+      # Coverage floor is in apps/api/pyproject.toml and only moves up.
+      - run: pnpm test:api:coverage
+      # docs/api/openapi.json is the 1.x REST contract (docs/versioning.md).
+      - name: API contract is unchanged or reviewed
+        run: pnpm openapi:check
 
   content:
     name: Content validation
@@ -56,6 +59,27 @@ jobs:
         with:
           python: "true"
       - run: pnpm validate:content
+      # The README counts and the JSON Schemas are generated from the repository.
+      - run: pnpm content:readme:check
+      - run: pnpm schemas:check
+      # One version everywhere: packages, API, CITATION.cff and the changelog.
+      - run: pnpm versions:check
+      # Every authored English string needs a reviewed Turkish translation that keeps code intact.
+      - run: pnpm i18n:check
+
+  detections:
+    name: Detection tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+        with:
+          python: "true"
+      # Fails when a rule or its tests file is invalid, a positive test does not match, a negative
+      # test matches, a MITRE identifier is unknown, or a rule has no positive and negative test.
+      # Writes the coverage table to the job summary.
+      - run: pnpm test:detections
 
   postgres:
     name: PostgreSQL migrations
@@ -125,6 +149,20 @@ jobs:
           curl --fail --silent --output /dev/null http://127.0.0.1:3000/
           curl --fail --silent http://127.0.0.1:3000/api/v1/labs --output /dev/null
           curl --fail --silent http://127.0.0.1:8081/healthz
+      - name: Demo mode works from a fresh stack
+        run: |
+          curl --fail --silent --output /dev/null http://127.0.0.1:3000/demo
+          slug=suspicious-powershell-to-credential-access
+          curl --fail --silent "http://127.0.0.1:3000/api/v1/demo/scenarios/$slug" |
+            python3 -c '
+          import json, sys
+          s = json.load(sys.stdin)
+          assert 60 <= s["duration_seconds"] <= 90, s["duration_seconds"]
+          assert s["events"] and s["alerts"] and s["techniques"] and s["containment"], "script is empty"
+          print("demo script ok:", len(s["events"]), "events,", len(s["alerts"]), "alerts,", len(s["techniques"]), "techniques")
+          '
+          curl --fail --silent --max-time 20 \
+            "http://127.0.0.1:3000/api/v1/stream/events?limit=3&rate=20" | grep -c '^data:' | grep -qx 3
       - name: Logs on failure
         if: failure()
         run: docker compose --profile labs logs --no-color --tail=200
