@@ -297,7 +297,7 @@ pnpm screenshots         # regenerate the README visuals (see docs/demo-assets.m
 
 The `cyberforge` command line (`python -m cyberforge --help`) covers `detections test`, `detections quality`, `content stats`, `story validate`, `lab create`, `lab validate` and `validate`.
 
-CI runs lint, type checks, Pytest, Vitest, the detection tests, Playwright, content and translation validation, PostgreSQL migrations, a Docker smoke test, CodeQL and dependency review; see [CONTRIBUTING.md](CONTRIBUTING.md).
+The REST API, content schemas, CLI and configuration are a stable contract from 1.0 ([Versioning](docs/versioning.md)); CI runs lint, type checks, Pytest and Vitest with coverage floors, the API contract check, the detection tests, Playwright, content and translation validation, PostgreSQL migrations, a Docker smoke test, CodeQL and dependency review; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Roadmap
 

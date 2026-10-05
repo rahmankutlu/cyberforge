@@ -30,6 +30,11 @@ The release theme is _understanding and trusting detections_: see why a rule mat
 - **Turkish language support:** the whole interface and all authored content (labs, stories, learning tracks, detections, the AI security model, threat intelligence, example incidents) are available in Turkish, chosen with the language switcher or the browser's `Accept-Language` and stored in a cookie. Dates, numbers and `<html lang>` follow the locale. The 2,239-entry content catalogue is human-reviewed against a terminology glossary.
 - **Translation tooling and guardrails:** `pnpm i18n:check` (CI) lists missing, stale and damaged translations and rejects any that alter code, links, addresses, ATT&CK ids or placeholders; `pnpm i18n:sync` adds empty entries; Vitest enforces key parity, placeholder and tag parity, and the Turkish glossary; Playwright covers the switcher, translated pages and axe checks in Turkish. See [Localization](docs/localization.md).
 
+- **Stable 1.x contract:** the REST API is now a versioned contract. `docs/api/openapi.json` is generated from the code, `pnpm openapi:check` fails CI when it drifts, and [docs/versioning.md](docs/versioning.md) states what is compatible, what needs a major release and how deprecation works.
+- **Coverage gates:** Pytest with branch coverage (91% measured, floor 88%) and Vitest with coverage (floors on `src/lib` and overall), both run in CI. New unit tests cover navigation and its Turkish labels.
+- **Security audit workflow:** a weekly and on-change `pnpm audit` and `pip-audit` of the locked dependencies, in addition to CodeQL and dependency review.
+- **Dev container:** `.devcontainer` with Node 22, Python 3.12, Docker and Playwright for a one-step contributor environment.
+
 ### Changed
 
 - The README leads with the attack-to-investigation flow, a demo, and generated counts.
@@ -43,6 +48,7 @@ The release theme is _understanding and trusting detections_: see why a rule mat
 
 ### Security
 
+- `pip-audit` reports PYSEC-2026-2447 (pickle deserialisation in `diskcache`, a transitive dependency of pySigma with no fixed release). CyberForge does not call the affected ATT&CK data helper and creates no cache directory, so the advisory is ignored in the audit workflow with this rationale until a fix is published.
 - YARA and Suricata previews use small teaching evaluators that report what they cannot run instead of guessing; user regular expressions in them are refused when they are long or have nested quantifiers (a linear check), and the Suricata rule parser has no backtracking regular expressions.
 - Stories, demos and datasets may only use RFC 1918 and RFC 5737 addresses and reserved host names (enforced by validation).
 - The live stream is bounded (at most 20 concurrent streams, ten minutes each) and rate-limited like other expensive endpoints.
