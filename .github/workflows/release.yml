@@ -18,6 +18,8 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           python: "true"
+      # The tag, every package, the API, CITATION.cff and the changelog must agree.
+      - run: node scripts/py.mjs scripts/check_versions.py --tag "$GITHUB_REF_NAME"
       - run: pnpm lint
       - run: pnpm typecheck && pnpm typecheck:api
       - run: pnpm test
@@ -55,6 +57,10 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/cyberforge-${{ matrix.name }}
+          labels: |
+            org.opencontainers.image.authors=Abdurrahman Kutlu <info@rahmankutlu.com>
+            org.opencontainers.image.vendor=Abdurrahman Kutlu
+            org.opencontainers.image.url=https://rahmankutlu.com
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

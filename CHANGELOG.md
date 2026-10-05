@@ -33,6 +33,7 @@ The release theme is _understanding and trusting detections_: see why a rule mat
 - **Stable 1.x contract:** the REST API is now a versioned contract. `docs/api/openapi.json` is generated from the code, `pnpm openapi:check` fails CI when it drifts, and [docs/versioning.md](docs/versioning.md) states what is compatible, what needs a major release and how deprecation works.
 - **Coverage gates:** Pytest with branch coverage (91% measured, floor 88%) and Vitest with coverage (floors on `src/lib` and overall), both run in CI. New unit tests cover navigation and its Turkish labels.
 - **Security audit workflow:** a weekly and on-change `pnpm audit` and `pip-audit` of the locked dependencies, in addition to CodeQL and dependency review.
+- **Authorship and contact:** the project is credited to Abdurrahman Kutlu ([rahmankutlu.com](https://rahmankutlu.com), info@rahmankutlu.com) in the licence, package metadata, API contract, container labels, `CITATION.cff` (GitHub's **Cite this repository**), `SUPPORT.md`, the security and conduct contacts and an **About** card in Settings. `pnpm versions:check` fails CI, and the release workflow, when the version differs between packages, the API, `CITATION.cff`, the changelog or the tag.
 - **Dev container:** `.devcontainer` with Node 22, Python 3.12, Docker and Playwright for a one-step contributor environment.
 
 ### Changed

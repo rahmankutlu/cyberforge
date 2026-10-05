@@ -4,7 +4,11 @@
   "private": true,
   "description": "CyberForge: The Open Cybersecurity Lab. Learn. Simulate. Detect. Investigate. Defend.",
   "license": "MIT",
-  "author": "Abdurrahman Kutlu",
+  "author": {
+    "name": "Abdurrahman Kutlu",
+    "email": "info@rahmankutlu.com",
+    "url": "https://rahmankutlu.com"
+  },
   "homepage": "https://github.com/rahmankutlu/cyberforge#readme",
   "repository": {
     "type": "git",
@@ -56,6 +60,7 @@
     "openapi:check": "node scripts/py.mjs scripts/export_openapi.py --check",
     "content:mitre": "node scripts/py.mjs scripts/build_mitre_data.py",
     "content:labs": "node scripts/py.mjs scripts/generate_lab_readmes.py",
+    "versions:check": "node scripts/py.mjs scripts/check_versions.py",
     "i18n:check": "node scripts/py.mjs scripts/i18n_catalog.py check",
     "i18n:sync": "node scripts/py.mjs scripts/i18n_catalog.py sync",
     "screenshots": "node scripts/screenshots.mjs",

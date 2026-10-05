@@ -112,6 +112,17 @@ Techniques come from `mitre/curated.yaml`. Add an ID there and run `pnpm content
 
 A maintainer reviews for safety, correctness, teaching quality and maintainability, in that order.
 
+## Releasing
+
+Maintainers cut a release from a green `main`:
+
+1. Move the changelog's **Unreleased** entries under a new `## [X.Y.Z] - date` heading and update the compare links.
+2. Bump `version` in every `package.json`, `apps/api/pyproject.toml`, `apps/api/cyberforge/__init__.py` and `CITATION.cff` (including `date-released`).
+3. Run `pnpm versions:check`, `pnpm openapi:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm test:e2e`.
+4. Tag `vX.Y.Z` on the release commit and push the tag. The release workflow checks the tag against every version, verifies the build, publishes the images and drafts the GitHub release from the changelog.
+
+A breaking change to the [public contract](docs/versioning.md) is only released as a new major version.
+
 ## Generated files
 
 `mitre/*.json`, `datasets/**` and lab READMEs are generated. Change the generator or the source, then regenerate (`pnpm content:mitre`, `python scripts/generate_datasets.py`, `pnpm content:labs`).
