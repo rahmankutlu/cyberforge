@@ -4,6 +4,8 @@ All notable changes to CyberForge are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-05
+
 ### Added
 
 - **Sigma processing pipelines:** translations map a rule's fields to each SIEM's schema: ECS for Elastic and OpenSearch, the Windows add-on and CIM data models for Splunk, and ASIM, Azure Monitor and Defender XDR for Sentinel. The playground and the rule workbench get a picker per target (default `auto`) and a table of what each field became, what the pipeline added and what it dropped. A rule a pipeline cannot map falls back to the unmapped query and says why. `POST /api/v1/detections/translate` accepts `pipelines` (default `none`, so existing clients are unchanged) and `GET /api/v1/detections/translate/pipelines` lists the choices. See [Detections](docs/detections.md#translation-pipelines).
@@ -91,5 +93,6 @@ First release.
 - GitHub Actions for CI (lint, type checks, Vitest, Pytest, build, content validation, PostgreSQL migrations, container build), Playwright end-to-end tests, CodeQL, dependency review and tagged releases; Dependabot.
 
 [0.1.0]: https://github.com/rahmankutlu/cyberforge/releases/tag/v0.1.0
-[Unreleased]: https://github.com/rahmankutlu/cyberforge/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/rahmankutlu/cyberforge/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/rahmankutlu/cyberforge/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/rahmankutlu/cyberforge/compare/v0.1.0...v1.0.0
