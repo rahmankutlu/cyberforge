@@ -23,7 +23,8 @@ jobs:
       - run: pnpm -r --if-present lint
       - run: pnpm typecheck
       - run: pnpm format:check
-      - run: pnpm test:web
+      # Coverage floors are in apps/web/vitest.config.ts and only move up.
+      - run: pnpm test:web:coverage
       - uses: actions/cache@v6
         with:
           path: apps/web/.next/cache
@@ -32,7 +33,7 @@ jobs:
       - run: pnpm build
 
   api:
-    name: API (ruff, mypy, pytest, OpenAPI)
+    name: API (ruff, mypy, pytest with coverage, OpenAPI contract)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -42,9 +43,11 @@ jobs:
           python: "true"
       - run: pnpm lint:api
       - run: pnpm typecheck:api
-      - run: pnpm test:api
-      - name: Export OpenAPI
-        run: pnpm --silent openapi > openapi.json
+      # Coverage floor is in apps/api/pyproject.toml and only moves up.
+      - run: pnpm test:api:coverage
+      # docs/api/openapi.json is the 1.x REST contract (docs/versioning.md).
+      - name: API contract is unchanged or reviewed
+        run: pnpm openapi:check
 
   content:
     name: Content validation
