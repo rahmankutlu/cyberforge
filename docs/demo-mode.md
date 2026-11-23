@@ -25,9 +25,16 @@ Start, pause or reset the replay at 1×, 2× or 4× speed. Use the timeline slid
 
 Select an event in the telemetry table or **Inspect evidence** under a SOC alert to pause and examine the original event and its parsed fields. The inspector shows matching rules and the alerts they have raised by that point in the replay.
 
+Choose **Trace match** next to a rule to open it in the [Detection playground](detections.md#the-playground) with the source event selected. The dataset includes events up to and including the source event's timestamp, so correlation rules can still evaluate their earlier evidence. Choose **Back to replay evidence** to reopen the inspector at the original playback position.
+
 <picture>
   <source media="(prefers-color-scheme: light)" srcset="assets/screenshots/demo-evidence-light.png">
   <img alt="A synthetic event in the evidence inspector with parsed fields, the rule it matched and the SOC alert it raised" src="assets/screenshots/demo-evidence-dark.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="assets/screenshots/replay-trace-light.png">
+  <img alt="The detection playground shows the selected replay event and the fields and conditions that matched" src="assets/screenshots/replay-trace-dark.png">
 </picture>
 
 ## Linking to a moment

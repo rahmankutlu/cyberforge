@@ -6,6 +6,8 @@ All notable changes to CyberForge are documented here. The format follows [Keep 
 
 ### Added
 
+- Open a match trace directly from demo evidence. The playground loads the selected rule and the replay through the source event, including earlier events for correlation, and links back to the same replay position.
+
 - Seek through the live demo by time or incident milestone. Inspect the raw event, parsed fields and matching rules from telemetry or SOC alerts, and copy a link to the same moment or evidence.
 
 ### Changed

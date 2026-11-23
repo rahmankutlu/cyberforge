@@ -17,7 +17,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, HTTPException, Path, Query, Request
 from fastapi.responses import StreamingResponse
 
-from cyberforge.api.deps import BundleDep
+from cyberforge.api.deps import BundleDep, demo_scripts
 from cyberforge.services import demo as demo_service
 
 router = APIRouter(tags=["demo"])
@@ -25,14 +25,6 @@ router = APIRouter(tags=["demo"])
 MAX_STREAMS = 20  # concurrent SSE connections per process: enough for a demo, bounded for safety
 MAX_STREAM_SECONDS = 600
 _active = 0
-
-
-def _scripts(request: Request, bundle: BundleDep) -> dict[str, dict[str, Any]]:
-    cached = getattr(request.app.state, "demo_scripts", None)
-    if cached is None:
-        cached = {d.slug: demo_service.build_script(d, bundle) for d in bundle.demos}
-        request.app.state.demo_scripts = cached
-    return cached
 
 
 @router.get("/demo/scenarios", summary="Demo scenarios")
@@ -53,7 +45,7 @@ def list_scenarios(bundle: BundleDep) -> list[dict[str, Any]]:
 def get_scenario(
     slug: Annotated[str, Path(max_length=96)], request: Request, bundle: BundleDep
 ) -> dict[str, Any]:
-    scripts = _scripts(request, bundle)
+    scripts = demo_scripts(request, bundle)
     if slug not in scripts:
         raise HTTPException(404, "Demo scenario not found")
     return scripts[slug]

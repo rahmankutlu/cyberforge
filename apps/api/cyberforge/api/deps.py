@@ -27,6 +27,17 @@ def get_bundle(request: Request) -> ContentBundle:
 BundleDep = Annotated[ContentBundle, Depends(get_bundle)]
 
 
+def demo_scripts(request: Request, bundle: ContentBundle) -> dict[str, dict[str, Any]]:
+    """Share the deterministic replay across the demo and detection playground."""
+    from cyberforge.services.demo import build_script
+
+    cached = getattr(request.app.state, "demo_scripts", None)
+    if cached is None:
+        cached = {scenario.slug: build_script(scenario, bundle) for scenario in bundle.demos}
+        request.app.state.demo_scripts = cached
+    return cached
+
+
 def detection_health(request: Request, bundle: BundleDep) -> tuple[Any, list[Any]]:
     """Rule test results and quality checks for the loaded content.
 

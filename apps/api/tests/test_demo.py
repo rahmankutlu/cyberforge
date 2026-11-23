@@ -108,6 +108,35 @@ def test_scenarios_endpoints(client: TestClient) -> None:
     assert client.get("/api/v1/demo/scenarios/nope").status_code == 404
 
 
+def test_replay_evidence_runs_at_the_original_time(client: TestClient) -> None:
+    script = client.get(f"/api/v1/demo/scenarios/{SLUG}").json()
+    alert = script["alerts"][-1]
+    index = next(i for i, event in enumerate(script["events"]) if event["id"] == alert["event_id"])
+    event = script["events"][index]
+    ref = f"demo:{SLUG}:{event['id']}"
+    dataset = client.get(f"/api/v1/playground/datasets/{ref}").json()
+    items = dataset["items"]
+    assert 1 < len(items) < len(script["events"])
+    assert len(items) == dataset["item_count"]
+    assert [item["timestamp"] for item in items] == [
+        row["timestamp"] for row in script["events"] if row["t"] <= event["t"]
+    ]
+    assert items[index]["raw"] == event["raw"]
+    assert items[index]["fields"] == event["fields"]
+    assert alert["rule"] in [rule["slug"] for rule in dataset["expected_rules"]]
+
+    content = client.get(f"/api/v1/detections/{alert['rule']}").json()["content"]
+    body = {"dataset": ref, "format": "sigma", "content": content}
+    result = client.post("/api/v1/playground/run", json=body).json()
+    assert result["results"][index]["verdict"] == "matched"
+    trace = client.post("/api/v1/playground/explain", json={**body, "index": index}).json()
+    assert trace["explanation"]["matched"] is True
+
+    missing = f"demo:{SLUG}:evt-999999"
+    assert client.get(f"/api/v1/playground/datasets/{missing}").status_code == 404
+    assert client.post("/api/v1/playground/run", json={**body, "dataset": missing}).status_code == 404
+
+
 def _sse_messages(client: TestClient, url: str, count: int) -> list[dict]:
     messages: list[dict] = []
     with client.stream("GET", url) as response:

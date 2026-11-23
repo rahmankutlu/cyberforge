@@ -171,6 +171,35 @@ test.describe("demo mode", () => {
     await expect(evidence).toContainText("No detection matched this event.");
   });
 
+  test("opens the selected evidence and original rule in the playground", async ({ page }) => {
+    await page.goto("/demo?t=52&speed=2");
+    await main(page)
+      .getByTestId("alert-row")
+      .first()
+      .getByRole("button", { name: "Inspect evidence" })
+      .click();
+    const dialog = page.getByRole("dialog", { name: "Event evidence" });
+    await dialog.getByRole("link", { name: "Trace match" }).click();
+
+    const m = main(page);
+    await expect(page).toHaveURL(/\/detections\/playground\?/);
+    await expect(m.getByTestId("replay-evidence-context")).toContainText("Event 16");
+    await expect(m.getByTestId("rule-editor")).toHaveValue(
+      /Run Key Set To Script Or User-Writable Path/,
+    );
+    await expect(m.getByTestId("event-row")).toHaveCount(16);
+    await expect(m.getByTestId("event-row").nth(15)).toHaveAttribute("data-selected", "true");
+    await expect(m.getByTestId("match-outcome")).toHaveAttribute("data-outcome", "MATCHED");
+    await expect(m.getByTestId("why-matched")).toContainText("TargetObject");
+
+    await page.reload();
+    await expect(m.getByTestId("event-row").nth(15)).toHaveAttribute("data-selected", "true");
+    await m.getByRole("link", { name: "Back to replay evidence" }).click();
+    await expect(dialog.getByText("ALT-1007")).toBeVisible();
+    await expect(main(page).getByTestId("demo-elapsed")).toHaveText("00:52 / 01:20");
+    await expect(main(page).getByTestId("demo-speed-2")).toHaveAttribute("aria-pressed", "true");
+  });
+
   test("is operable with the keyboard", async ({ page }) => {
     await page.goto("/demo");
     const m = main(page);

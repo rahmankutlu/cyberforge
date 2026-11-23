@@ -182,6 +182,9 @@ export function DemoPlayer({
           event={selectedEvent}
           alerts={state.alerts.filter((alert) => alert.event_id === selectedEvent.id)}
           time={clockAt(script, selectedEvent.t)}
+          scenario={script.slug}
+          elapsed={clock.elapsed}
+          speed={clock.speed}
           copyLink={() => replayLink(selectedEvent.id)}
           onClose={() => setSelectedEventId(undefined)}
           restoreFocus={restoreEvidenceFocus}
