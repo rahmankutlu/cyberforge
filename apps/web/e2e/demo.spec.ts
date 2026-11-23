@@ -100,6 +100,77 @@ test.describe("demo mode", () => {
     await expect(main(page).getByTestId("incident-summary")).toHaveAttribute("data-ready", "true");
   });
 
+  test("seeks with milestones and the keyboard, rewinding the replay state", async ({ page }) => {
+    await page.goto("/demo?autoplay=1");
+    const m = main(page);
+    const firstAlert = m.getByRole("button", { name: /First alert/ });
+    await firstAlert.click();
+    await expect(firstAlert).toHaveAttribute("aria-current", "step");
+    await expect(m.getByTestId("demo-start")).toHaveText("Resume");
+    await expect(m.getByTestId("alert-row")).toHaveCount(1);
+
+    await m.getByRole("button", { name: /Report ready/ }).click();
+    await expect(m.getByTestId("incident-summary")).toHaveAttribute("data-ready", "true");
+    const slider = m.getByRole("slider", { name: "Playback position" });
+    await slider.focus();
+    await slider.press("Home");
+    await expect(m.getByTestId("demo-elapsed")).toHaveText("00:00 / 01:20");
+    await expect(m.getByTestId("alert-row")).toHaveCount(0);
+    await expect(m.getByTestId("incident-summary")).toHaveAttribute("data-ready", "false");
+    await slider.press("ArrowRight");
+    await expect(m.getByTestId("demo-elapsed")).toHaveText("00:01 / 01:20");
+  });
+
+  test("opens the evidence behind an alert and copies a paused deep link", async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.goto("/demo?t=52&speed=2");
+    const m = main(page);
+    const trigger = m
+      .getByTestId("alert-row")
+      .first()
+      .getByRole("button", { name: "Inspect evidence" });
+    await trigger.click();
+    const evidence = page.getByRole("dialog", { name: "Event evidence" });
+    await expect(evidence.getByRole("tab", { name: "Raw event" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await expect(evidence.getByRole("tabpanel").locator("code")).not.toBeEmpty();
+    await evidence.getByRole("tab", { name: "Parsed fields" }).click();
+    await expect(evidence.getByRole("tabpanel").locator("code")).toContainText("TargetObject");
+    await expect(evidence.getByRole("link", { name: /Run Key Set/ })).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(evidence).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await trigger.click();
+    await evidence.getByRole("button", { name: /Copy evidence link/ }).click();
+    await expect(evidence.getByRole("button", { name: "Copied" })).toBeVisible();
+    const url = new URL(await page.evaluate(() => navigator.clipboard.readText()));
+    expect(url.pathname).toBe("/demo");
+    expect(url.searchParams.get("t")).toBe("52");
+    expect(url.searchParams.get("speed")).toBe("2");
+    expect(url.searchParams.has("autoplay")).toBe(false);
+    expect(url.searchParams.get("event")).toMatch(/^evt-\d+$/);
+
+    await page.goto(url.href);
+    await expect(evidence).toBeVisible();
+    await expect(evidence.getByText("ALT-1007")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(m.getByRole("slider")).toBeFocused();
+
+    await page.goto("/demo?t=0&event=" + url.searchParams.get("event"));
+    await expect(evidence).toHaveCount(0);
+
+    await page.goto("/demo?t=52");
+    const normalEvent = m.locator('[data-testid="demo-event"][data-matched="false"]').first();
+    await normalEvent.getByRole("button").click();
+    await expect(evidence).toContainText("No detection matched this event.");
+  });
+
   test("is operable with the keyboard", async ({ page }) => {
     await page.goto("/demo");
     const m = main(page);
@@ -111,5 +182,24 @@ test.describe("demo mode", () => {
     await expect(m.getByTestId("demo-pause")).toBeVisible();
     await page.keyboard.press("Enter"); // the focus stays on the toggle
     await expect(m.getByTestId("demo-start")).toBeVisible();
+  });
+
+  test("fits the Turkish replay and evidence dialog on a narrow screen", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    await context.addCookies([{ name: "cyberforge_locale", value: "tr", url: baseURL! }]);
+    await page.setViewportSize({ width: 320, height: 760 });
+    await page.goto("/demo?t=52");
+    await expect(main(page).getByText(/Makro içeren bir ek/)).toBeVisible();
+    await expect(main(page).getByRole("slider", { name: "Oynatma konumu" })).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      320,
+    );
+    await main(page).getByRole("button", { name: "Kanıtı incele" }).first().click();
+    const evidence = page.getByRole("dialog", { name: "Olay kanıtı" });
+    await expect(evidence).toBeInViewport({ ratio: 1 });
+    await expect(evidence.getByRole("tab", { name: "Ham olay" })).toBeVisible();
   });
 });

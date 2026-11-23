@@ -68,7 +68,7 @@ The database starts with labs, synthetic telemetry, alerts and incidents. See [G
 
 ## Try your first investigation
 
-1. **Watch a synthetic incident unfold.** Open [Live demo](http://localhost:3000/demo) and press **Start demo**. Follow the telemetry, alerts and ATT&CK techniques as the incident moves toward containment.
+1. **Watch a synthetic incident unfold.** Open [Live demo](http://localhost:3000/demo) and press **Start demo**. Follow the replay, or jump to **First alert** and select **Inspect evidence** to see the original event, its parsed fields and the matching rule.
 2. **Explain a match.** Open the [Detection playground](http://localhost:3000/detections/playground), choose **Suspicious PowerShell simulation**, load **PowerShell Launched With Encoded Command**, and run the rule. Select a matched event to see the fields and condition behind the result.
 3. **Make the analyst's call.** Pick a case in [Attack stories](http://localhost:3000/stories), review the evidence and choose a containment action. Use the [Mini SOC](http://localhost:3000/soc/alerts) to practice triage, notes, assignment and incident reporting.
 

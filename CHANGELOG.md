@@ -4,6 +4,10 @@ All notable changes to CyberForge are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Added
+
+- Seek through the live demo by time or incident milestone. Inspect the raw event, parsed fields and matching rules from telemetry or SOC alerts, and copy a link to the same moment or evidence.
+
 ### Changed
 
 - Put the demo and guided investigations near the top of the dashboard, and added a first-investigation walkthrough to the README.

@@ -33,6 +33,23 @@ export type PipelineStage =
   "idle" | "ingest" | "detect" | "alert" | "mitre" | "investigate" | "contain" | "summary";
 
 export const SEVERITY_LEVELS = ["informational", "low", "medium", "high", "critical"] as const;
+export const DEMO_SPEEDS = [1, 2, 4] as const;
+export type DemoSpeed = (typeof DEMO_SPEEDS)[number];
+
+export function demoMilestones(script: DemoScript) {
+  const firstAlert = script.alerts[0]?.t;
+  const points = [
+    ["event", script.events[0]?.t],
+    ["alert", firstAlert],
+    ["escalation", script.severity_timeline.find(({ t }) => t > (firstAlert ?? Infinity))?.t],
+    ["containment", script.containment.find(({ state }) => state === "contained")?.t],
+    ["report", script.incident_summary.t],
+  ] as const;
+
+  return points
+    .flatMap(([kind, t]) => (t === undefined || t > script.duration_seconds ? [] : [{ kind, t }]))
+    .sort((a, b) => a.t - b.t);
+}
 
 const upTo = <T extends { t: number }>(items: readonly T[], t: number): T[] =>
   items.filter((i) => i.t <= t);

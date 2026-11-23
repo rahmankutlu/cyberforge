@@ -130,6 +130,30 @@
   background-size: 12px 100%;
   animation: flow 1.2s linear infinite;
 }
+
+.demo-scrubber {
+  appearance: none;
+  background: transparent;
+}
+
+.demo-scrubber::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--card);
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.demo-scrubber::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--card);
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
 @media (prefers-reduced-motion: reduce) {
   .flow-line {
     animation: none;

@@ -136,6 +136,22 @@ const shots = [
     wait: "[data-testid=demo-alerts]",
   },
   {
+    name: "demo-evidence",
+    path: "/demo?t=52",
+    wait: "[data-testid=demo-alerts]",
+    prepare: async (page) => {
+      await page
+        .getByTestId("alert-row")
+        .first()
+        .getByRole("button", { name: "Inspect evidence" })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Event evidence" })
+        .getByRole("tab", { name: "Parsed fields" })
+        .click();
+    },
+  },
+  {
     name: "rule-quality",
     path: "/detections/win-encoded-powershell-command",
     wait: "[data-testid=quality-card]",
@@ -163,6 +179,7 @@ async function capture(browser, base) {
       viewport: { width: 1440, height: 900 },
       deviceScaleFactor: 1,
       colorScheme: theme,
+      locale: "en-US",
     });
     await context.addInitScript((t) => window.localStorage.setItem("theme", t), theme);
     const page = await context.newPage();
@@ -193,6 +210,7 @@ async function recordGif(browser, base) {
     viewport: { width, height },
     deviceScaleFactor: 1,
     colorScheme: "dark",
+    locale: "en-US",
   });
   await context.addInitScript(() => window.localStorage.setItem("theme", "dark"));
   const page = await context.newPage();
