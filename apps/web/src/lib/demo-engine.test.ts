@@ -1,7 +1,7 @@
 import type { DemoScript } from "@cyberforge/types";
 import { describe, expect, it } from "vitest";
 
-import { clockAt, mmss, processLines, stateAt, tacticHeat } from "./demo-engine";
+import { clockAt, demoMilestones, mmss, processLines, stateAt, tacticHeat } from "./demo-engine";
 import { clock, parseStreamEvent, pushEvent, STREAM_WINDOW } from "./live-stream";
 
 const ev = (id: string, t: number, detections: string[] = []) =>
@@ -168,6 +168,20 @@ describe("stateAt", () => {
 });
 
 describe("demo helpers", () => {
+  it("uses actual scenario times and omits milestones that never occur", () => {
+    expect(demoMilestones(script)).toEqual([
+      { kind: "event", t: 2 },
+      { kind: "alert", t: 11 },
+      { kind: "escalation", t: 21 },
+      { kind: "containment", t: 40 },
+      { kind: "report", t: 54 },
+    ]);
+    expect(demoMilestones({ ...script, alerts: [], containment: [] })).toEqual([
+      { kind: "event", t: 2 },
+      { kind: "report", t: 54 },
+    ]);
+  });
+
   it("formats the scenario clock and elapsed time", () => {
     expect(clockAt(script, 52)).toBe("09:14:52");
     expect(clockAt(script, 75)).toBe("09:15:15");

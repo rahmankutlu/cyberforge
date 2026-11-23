@@ -31,6 +31,15 @@ const pages: {
     },
   },
   { name: "demo", path: "/demo?t=52", ready: "[data-testid=demo-alerts]" },
+  {
+    name: "demo evidence",
+    path: "/demo?t=52",
+    ready: "[data-testid=demo-alerts]",
+    prepare: async (page) => {
+      await page.getByRole("button", { name: "Inspect evidence" }).first().click();
+      await page.getByRole("dialog", { name: "Event evidence" }).waitFor();
+    },
+  },
   { name: "MITRE explorer", path: "/mitre", ready: "[data-testid=matrix]" },
   {
     name: "MITRE content coverage",

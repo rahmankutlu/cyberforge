@@ -10,65 +10,68 @@ import {
   Crosshair,
   FileText,
   Grid3x3,
-  Pause,
-  Play,
-  RotateCcw,
   ShieldCheck,
   Stethoscope,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SeverityBadge } from "@/components/badges";
+import { DemoEvidence } from "@/components/demo/demo-evidence";
+import { DemoTimeline } from "@/components/demo/demo-timeline";
 import {
   clockAt,
-  mmss,
   processLines,
   SEVERITY_LEVELS,
   stateAt,
   tacticHeat,
+  type DemoSpeed,
   type PipelineStage,
 } from "@/lib/demo-engine";
 import { localizeKnownCopy } from "@/lib/i18n/copy";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { renderRich } from "@/lib/i18n/rich";
 
-const SPEEDS = [1, 2, 4] as const;
-type Speed = (typeof SPEEDS)[number];
-
-/** A clock that advances `speed` seconds per real second and can be paused, reset and set. */
-function useDemoClock(duration: number, initial: number, autoplay: boolean, initialSpeed: Speed) {
-  const [elapsed, setElapsed] = useState(initial);
-  const [playing, setPlaying] = useState(autoplay && initial < duration);
-  const [speed, setSpeed] = useState<Speed>(initialSpeed);
-  const last = useRef(0);
+function useDemoClock(
+  duration: number,
+  initial: number,
+  autoplay: boolean,
+  initialSpeed: DemoSpeed,
+) {
+  const [{ elapsed, playing }, setPlayback] = useState({
+    elapsed: initial,
+    playing: autoplay && initial < duration,
+  });
+  const [speed, setSpeed] = useState(initialSpeed);
 
   useEffect(() => {
     if (!playing) return;
-    last.current = performance.now();
+    let last = performance.now();
     const id = window.setInterval(() => {
       const now = performance.now();
-      const delta = ((now - last.current) / 1000) * speed;
-      last.current = now;
-      setElapsed((e) => {
-        const next = Math.min(duration, e + delta);
-        if (next >= duration) setPlaying(false);
-        return next;
+      const delta = ((now - last) / 1000) * speed;
+      last = now;
+      setPlayback((current) => {
+        if (!current.playing) return current;
+        const elapsed = Math.min(duration, current.elapsed + delta);
+        return { elapsed, playing: elapsed < duration };
       });
     }, 100);
     return () => window.clearInterval(id);
   }, [playing, speed, duration]);
 
-  const start = useCallback(() => {
-    setElapsed((e) => (e >= duration ? 0 : e));
-    setPlaying(true);
-  }, [duration]);
-  const pause = useCallback(() => setPlaying(false), []);
-  const reset = useCallback(() => {
-    setPlaying(false);
-    setElapsed(0);
-  }, []);
-  return { elapsed, playing, speed, setSpeed, start, pause, reset };
+  function toggle() {
+    setPlayback((current) => ({
+      elapsed: current.elapsed >= duration ? 0 : current.elapsed,
+      playing: !current.playing,
+    }));
+  }
+
+  function seek(time: number) {
+    setPlayback({ elapsed: Math.max(0, Math.min(time, duration)), playing: false });
+  }
+
+  return { elapsed, playing, speed, setSpeed, toggle, seek };
 }
 
 const STAGES: { key: PipelineStage; label: string; icon: typeof Activity }[] = [
@@ -97,15 +100,20 @@ const SEVERITY_TONE: Record<string, string> = {
 export function DemoPlayer({
   script,
   initialTime = 0,
+  initialEventId,
   autoplay = false,
   initialSpeed = 1,
 }: {
   script: DemoScript;
   initialTime?: number;
+  initialEventId?: string;
   autoplay?: boolean;
-  initialSpeed?: Speed;
+  initialSpeed?: DemoSpeed;
 }) {
-  const { locale, c } = useLocale();
+  const { locale, c, t } = useLocale();
+  const [selectedEventId, setSelectedEventId] = useState(initialEventId);
+  const sliderRef = useRef<HTMLInputElement>(null);
+  const evidenceTrigger = useRef<HTMLElement | null>(null);
   const clock = useDemoClock(script.duration_seconds, initialTime, autoplay, initialSpeed);
   const state = useMemo(() => stateAt(script, clock.elapsed), [script, clock.elapsed]);
   const heat = useMemo(() => tacticHeat(script, state.techniques), [script, state.techniques]);
@@ -113,7 +121,8 @@ export function DemoPlayer({
     () => processLines(state.processNodes, state.processEdges),
     [state.processNodes, state.processEdges],
   );
-  const shownEvents = useMemo(() => [...state.events].reverse().slice(0, 14), [state.events]);
+  const shownEvents = [...state.events].reverse();
+  const selectedEvent = state.events.find((event) => event.id === selectedEventId);
   const latestAlert = state.alerts[state.alerts.length - 1];
   const counts: Record<PipelineStage, string> = {
     idle: "",
@@ -125,93 +134,62 @@ export function DemoPlayer({
     contain: state.containment.label,
     summary: state.summaryVisible ? "ready" : "-",
   };
-  const started = clock.elapsed > 0;
+
+  function severityLabel(value: string) {
+    const level = SEVERITY_LEVELS.find((level) => level === value);
+    return locale === "tr" && level ? t(`severity.${level}`) : value;
+  }
+
+  function openEvidence(id: string, trigger: HTMLElement) {
+    evidenceTrigger.current = trigger;
+    clock.seek(clock.elapsed);
+    setSelectedEventId(id);
+  }
+
+  function replayLink(eventId?: string) {
+    const url = new URL(window.location.href);
+    url.hash = "";
+    url.search = new URLSearchParams({
+      scenario: script.slug,
+      t: String(clock.elapsed),
+      speed: String(clock.speed),
+    }).toString();
+    if (eventId) url.searchParams.set("event", eventId);
+    return url.href;
+  }
+
+  function restoreEvidenceFocus() {
+    const trigger = evidenceTrigger.current;
+    (trigger?.isConnected ? trigger : sliderRef.current)?.focus();
+    evidenceTrigger.current = null;
+  }
 
   return (
     <div className="space-y-4" data-testid="demo" data-elapsed={Math.floor(clock.elapsed)}>
-      {/* Controls */}
-      <Card className="p-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            {clock.playing ? (
-              <Button onClick={clock.pause} data-testid="demo-pause">
-                <Pause /> {c("Pause")}
-              </Button>
-            ) : (
-              <Button onClick={clock.start} data-testid="demo-start">
-                <Play /> {state.finished ? c("Replay") : started ? c("Resume") : c("Start demo")}
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              onClick={clock.reset}
-              data-testid="demo-reset"
-              disabled={!started}
-            >
-              <RotateCcw /> {c("Reset")}
-            </Button>
-          </div>
-          <div
-            role="group"
-            aria-label={c("Playback speed")}
-            className="inline-flex rounded-md border border-border p-0.5"
-          >
-            {SPEEDS.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => clock.setSpeed(s)}
-                aria-pressed={clock.speed === s}
-                data-testid={`demo-speed-${s}`}
-                className={cn(
-                  "rounded-[5px] px-2.5 py-1 text-xs font-medium tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  clock.speed === s
-                    ? "bg-card text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {s}x
-              </button>
-            ))}
-          </div>
-          <div className="ml-auto flex items-baseline gap-4 font-mono text-sm tabular-nums">
-            <span data-testid="demo-clock" title={c("Scenario clock")}>
-              {clockAt(script, clock.elapsed)}
-            </span>
-            <span className="text-muted-foreground" data-testid="demo-elapsed">
-              {mmss(clock.elapsed)} / {mmss(script.duration_seconds)}
-            </span>
-          </div>
-        </div>
-        <div
-          className="relative mt-3 h-1.5 rounded-full bg-muted"
-          role="progressbar"
-          aria-label={c("Demo progress")}
-          aria-valuemin={0}
-          aria-valuemax={script.duration_seconds}
-          aria-valuenow={Math.floor(clock.elapsed)}
-        >
-          <div
-            className="h-full rounded-full bg-primary/80 transition-[width] duration-100 ease-linear"
-            style={{ width: `${(clock.elapsed / script.duration_seconds) * 100}%` }}
-          />
-          {script.alerts.map((a) => (
-            <span
-              key={a.id}
-              aria-hidden
-              className={cn(
-                "absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-background",
-                a.t <= clock.elapsed ? "bg-sev-high" : "bg-muted-foreground/40",
-              )}
-              style={{ left: `${(a.t / script.duration_seconds) * 100}%` }}
-            />
-          ))}
-        </div>
-      </Card>
-
+      <DemoTimeline
+        script={script}
+        elapsed={clock.elapsed}
+        playing={clock.playing}
+        speed={clock.speed}
+        onSpeed={clock.setSpeed}
+        onToggle={clock.toggle}
+        onSeek={clock.seek}
+        copyLink={() => replayLink()}
+        sliderRef={sliderRef}
+      />
+      {selectedEvent ? (
+        <DemoEvidence
+          event={selectedEvent}
+          alerts={state.alerts.filter((alert) => alert.event_id === selectedEvent.id)}
+          time={clockAt(script, selectedEvent.t)}
+          copyLink={() => replayLink(selectedEvent.id)}
+          onClose={() => setSelectedEventId(undefined)}
+          restoreFocus={restoreEvidenceFocus}
+        />
+      ) : null}
       {/* Pipeline */}
       <ol
-        className="flex flex-wrap items-stretch gap-y-2 rounded-lg border border-border bg-card p-1.5"
+        className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-card p-1.5 sm:flex sm:flex-wrap sm:items-stretch sm:gap-x-0 sm:gap-y-2"
         aria-label={c("Detection pipeline")}
         data-testid="demo-pipeline"
         data-stage={state.stage}
@@ -220,15 +198,16 @@ export function DemoPlayer({
           const Icon = stage.icon;
           const active = state.stage === stage.key;
           return (
-            <li key={stage.key} className="flex items-center" data-stage={stage.key}>
+            <li key={stage.key} className="flex min-w-0 items-center" data-stage={stage.key}>
               <div
                 className={cn(
-                  "min-w-[6.25rem] rounded-md px-2.5 py-1.5 transition-colors duration-300",
+                  "min-w-0 flex-1 rounded-md px-2 py-1.5 transition-colors duration-300 sm:min-w-[6.25rem] sm:px-2.5",
                   active ? "bg-primary/15" : "",
                 )}
               >
                 <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  <Icon className="size-3" aria-hidden /> {localizeKnownCopy(locale, stage.label)}
+                  <Icon className="size-3 shrink-0" aria-hidden />{" "}
+                  {localizeKnownCopy(locale, stage.label)}
                 </p>
                 <p className="truncate text-[13px] font-semibold tabular-nums">
                   {counts[stage.key] || "-"}
@@ -236,7 +215,7 @@ export function DemoPlayer({
               </div>
               {i < STAGES.length - 1 ? (
                 <ChevronRight
-                  className="mx-0.5 size-3.5 shrink-0 text-muted-foreground/60"
+                  className="mx-0.5 hidden size-3.5 shrink-0 text-muted-foreground/60 sm:block"
                   aria-hidden
                 />
               ) : null}
@@ -249,7 +228,7 @@ export function DemoPlayer({
         {latestAlert
           ? c("Latest alert: {{title}}, {{severity}} severity.", {
               title: latestAlert.title,
-              severity: localizeKnownCopy(locale, latestAlert.severity),
+              severity: severityLabel(latestAlert.severity),
             })
           : c("No alerts yet")}
       </p>
@@ -273,12 +252,17 @@ export function DemoPlayer({
                 })}
               </span>
             </div>
-            <div className="overflow-hidden rounded-lg border border-border">
-              <table className="w-full table-fixed text-xs" data-testid="demo-events">
+            <div
+              className="max-h-[27rem] overflow-auto rounded-lg border border-border focus-visible:ring-2 focus-visible:ring-ring"
+              role="region"
+              aria-label={c("Event ingestion")}
+              tabIndex={0}
+            >
+              <table className="w-full min-w-72 table-fixed text-xs" data-testid="demo-events">
                 <caption className="sr-only">
                   {c("Telemetry as it is ingested, newest first")}
                 </caption>
-                <thead>
+                <thead className="sticky top-0 z-[1] bg-card">
                   <tr className="border-b border-border text-left text-[10px] uppercase tracking-wide text-muted-foreground">
                     <th scope="col" className="w-[4.5rem] px-2 py-1.5">
                       {c("Time")}
@@ -317,13 +301,16 @@ export function DemoPlayer({
                         {clockAt(script, e.t)}
                       </td>
                       <td className="truncate px-2 py-1.5 font-mono text-[11px]">{e.host}</td>
-                      <td className="px-2 py-1.5">
-                        <p
-                          className="truncate font-mono text-[11px]"
+                      <td>
+                        <button
+                          type="button"
+                          onClick={(interaction) => openEvidence(e.id, interaction.currentTarget)}
+                          aria-haspopup="dialog"
+                          className="block w-full truncate rounded px-2 py-2 text-left font-mono text-[11px] text-foreground underline decoration-border underline-offset-4 hover:decoration-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                           title={e.command_line ?? e.message}
                         >
                           {e.command_line ?? e.message}
-                        </p>
+                        </button>
                       </td>
                       <td className="px-2 py-1.5">
                         {e.detections.length ? (
@@ -348,8 +335,8 @@ export function DemoPlayer({
                 {lines.map(({ node, depth, accessed }) => (
                   <li
                     key={node.id}
-                    className="flex items-center gap-1.5 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300"
-                    style={{ paddingLeft: `${depth * 14}px` }}
+                    className="flex flex-wrap items-center gap-1.5 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-300"
+                    style={{ paddingInlineStart: Math.min(depth, 6) * 14 }}
                     data-flagged={node.flagged}
                   >
                     {depth > 0 ? (
@@ -357,6 +344,7 @@ export function DemoPlayer({
                     ) : null}
                     <span
                       className={cn(
+                        "min-w-0 break-all",
                         node.flagged ? "font-semibold text-foreground" : "text-muted-foreground",
                       )}
                     >
@@ -390,13 +378,13 @@ export function DemoPlayer({
                 data-testid="severity-current"
                 data-severity={state.severity}
               >
-                {state.severity === "informational" ? c("Quiet") : state.severity}
+                {state.severity === "informational" ? c("Quiet") : severityLabel(state.severity)}
               </span>
               {state.severityHistory.length > 1 ? (
                 <span className="text-xs text-muted-foreground" data-testid="severity-history">
                   {state.severityHistory
                     .slice(1)
-                    .map((h) => h.severity)
+                    .map((h) => severityLabel(h.severity))
                     .join(" → ")}
                 </span>
               ) : null}
@@ -453,6 +441,15 @@ export function DemoPlayer({
                       <Link href={`/detections/${a.rule}`} className="text-primary hover:underline">
                         {c("Rule")}
                       </Link>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-[11px]"
+                        aria-haspopup="dialog"
+                        onClick={(event) => openEvidence(a.event_id, event.currentTarget)}
+                      >
+                        {c("Inspect evidence")}
+                      </Button>
                     </p>
                   </li>
                 ))}

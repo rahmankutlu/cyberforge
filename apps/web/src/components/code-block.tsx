@@ -11,7 +11,7 @@ export function CopyButton({
   className,
   label,
 }: {
-  text: string;
+  text: string | (() => string);
   className?: string;
   label?: string;
 }) {
@@ -23,10 +23,10 @@ export function CopyButton({
       variant="ghost"
       size="sm"
       className={className}
-      aria-label={c("{{label}} to clipboard", { label: resolvedLabel })}
+      aria-label={copied ? c("Copied") : c("{{label}} to clipboard", { label: resolvedLabel })}
       onClick={async () => {
         try {
-          await navigator.clipboard.writeText(text);
+          await navigator.clipboard.writeText(typeof text === "string" ? text : text());
           setCopied(true);
           window.setTimeout(() => setCopied(false), 1500);
         } catch {

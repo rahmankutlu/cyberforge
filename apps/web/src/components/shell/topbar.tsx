@@ -13,7 +13,7 @@ import { FlaskConical, Menu, Search } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { Brand } from "@/components/brand";
+import { Brand, BrandMark } from "@/components/brand";
 import { LanguageSwitcher } from "@/components/i18n/language-switcher";
 import { useLocale } from "@/components/i18n/locale-provider";
 import { SidebarFooter, SidebarNav } from "@/components/shell/sidebar";
@@ -53,17 +53,20 @@ export function Topbar({ demoMode, version }: { demoMode: boolean | null; versio
       </Dialog>
 
       <Link href="/" className="flex items-center lg:hidden" aria-label={t("shell.home")}>
-        <Brand />
+        <Brand className="hidden min-[360px]:flex" />
+        <BrandMark className="min-[360px]:hidden" />
       </Link>
 
       <button
         type="button"
         onClick={() => window.dispatchEvent(new Event(OPEN_PALETTE_EVENT))}
-        className="ml-auto flex h-8 w-full max-w-sm items-center gap-2 rounded-md border border-border bg-card/60 px-2.5 text-left text-[13px] text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring lg:ml-0"
+        className="ml-auto flex size-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-card/60 text-left text-[13px] text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring sm:w-full sm:min-w-0 sm:max-w-sm sm:shrink sm:justify-start sm:px-2.5 lg:ml-0"
         aria-label={t("shell.searchAria")}
       >
-        <Search className="size-3.5" />
-        <span className="flex-1 truncate">{t("shell.searchPlaceholder")}</span>
+        <Search className="size-3.5 shrink-0" />
+        <span className="hidden min-w-0 flex-1 truncate sm:block">
+          {t("shell.searchPlaceholder")}
+        </span>
         <span className="hidden items-center gap-0.5 sm:flex">
           <Kbd>⌘</Kbd>
           <Kbd>K</Kbd>

@@ -21,11 +21,18 @@ Start demo
   → an incident summary is written
 ```
 
-You can Start, Pause, Reset and choose 1x, 2x or 4x speed.
+Start, pause or reset the replay at 1×, 2× or 4× speed. Use the timeline slider or a milestone to jump to a moment and pause there. The slider supports arrow keys and Home/End.
+
+Select an event in the telemetry table or **Inspect evidence** under a SOC alert to pause and examine the original event and its parsed fields. The inspector shows matching rules and the alerts they have raised by that point in the replay.
+
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="assets/screenshots/demo-evidence-light.png">
+  <img alt="A synthetic event in the evidence inspector with parsed fields, the rule it matched and the SOC alert it raised" src="assets/screenshots/demo-evidence-dark.png">
+</picture>
 
 ## Linking to a moment
 
-The page takes query parameters, which is how the README screenshots are produced:
+**Copy replay link** captures the current position and speed. **Copy evidence link** also opens the selected event. The same query parameters drive the README screenshots.
 
 | Parameter  | Meaning                                          | Example                    |
 | ---------- | ------------------------------------------------ | -------------------------- |
@@ -33,6 +40,7 @@ The page takes query parameters, which is how the README screenshots are produce
 | `speed`    | Playback speed: `1`, `2` or `4`                  | `/demo?speed=4`            |
 | `autoplay` | Start playing immediately when set to `1`        | `/demo?autoplay=1&speed=2` |
 | `scenario` | A scenario slug, when more than one is installed | `/demo?scenario=my-demo`   |
+| `event`    | Inspect a visible event at the specified time    | `/demo?t=52&event=evt-1`   |
 
 ## How it is built
 

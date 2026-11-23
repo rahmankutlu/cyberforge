@@ -130,6 +130,17 @@ def extract_stories() -> list[str]:
     return result
 
 
+def extract_demos() -> list[str]:
+    result: list[str] = []
+    for path in sorted((ROOT / "demos").glob("*.yaml")):
+        data = _load(path)
+        result.extend(_strings([data], "title", "summary"))
+        result.extend(_strings(data.get("events", []), "note"))
+        result.extend(_strings(data.get("notes", []), "body"))
+        result.extend(_strings(data.get("containment", []), "label", "detail"))
+    return result
+
+
 def extract_learning() -> list[str]:
     result: list[str] = []
     for path in sorted((ROOT / "packages/security-content/learning").glob("**/*.yaml")):
@@ -211,6 +222,7 @@ def extract_sources() -> set[str]:
     found = (
         extract_labs()
         + extract_stories()
+        + extract_demos()
         + extract_learning()
         + extract_detections()
         + extract_ai_security()
