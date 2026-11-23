@@ -95,4 +95,4 @@ The default demos replay synthetic telemetry. Optional training services have a 
 | Add or improve content        | [Contributing](CONTRIBUTING.md) · [Write a detection](docs/creating-a-detection.md) · [Create a lab](docs/creating-a-lab.md) |
 | Follow changes or get help    | [Changelog](CHANGELOG.md) · [Roadmap](ROADMAP.md) · [Support](SUPPORT.md)                                                    |
 
-Created and maintained by Abdurrahman Kutlu. [GitHub profile](https://github.com/rahmankutlu) · [MIT License](LICENSE) · [Third-party notices](NOTICE.md)
+Created and maintained by Abdurrahman Kutlu. [Website](https://rahmankutlu.com) · [GitHub profile](https://github.com/rahmankutlu) · [MIT License](LICENSE) · [Third-party notices](NOTICE.md)

@@ -11,7 +11,8 @@ All notable changes to CyberForge are documented here. The format follows [Keep 
 
 ### Security
 
-- Updated Next.js and affected transitive dependencies to versions that pass the Node dependency audit.
+- Updated Next.js, web test tooling and affected transitive dependencies to versions that pass the Node dependency audit.
+- Bound source-mode web servers to loopback by default, matching the local API and Docker host bindings.
 
 ## [1.1.0] - 2026-10-05
 

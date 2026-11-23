@@ -69,7 +69,7 @@ pnpm.cmd dev:api  # First terminal
 pnpm.cmd dev:web  # Second terminal
 ```
 
-Open [the dashboard](http://localhost:3000) or [the incident demo](http://localhost:3000/demo). Source development uses SQLite and an in-memory rate limiter.
+Open [the dashboard](http://localhost:3000) or [the incident demo](http://localhost:3000/demo). The source-mode web app and API listen on loopback. The API uses SQLite and an in-memory rate limiter.
 
 ## Your first ten minutes
 
