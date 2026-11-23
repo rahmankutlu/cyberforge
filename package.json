@@ -37,7 +37,7 @@
     "dev:api": "node scripts/dev-api.mjs",
     "build": "pnpm --filter @cyberforge/web build",
     "lint": "pnpm -r --if-present lint && pnpm lint:api",
-    "lint:api": "node scripts/py.mjs -m ruff check apps/api scripts labs",
+    "lint:api": "node scripts/py.mjs -m ruff check --target-version py312 apps/api scripts labs",
     "typecheck": "pnpm -r --if-present typecheck",
     "typecheck:api": "node scripts/py.mjs -m mypy --config-file apps/api/pyproject.toml apps/api/cyberforge",
     "test": "pnpm test:web && pnpm test:api",

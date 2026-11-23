@@ -2,13 +2,13 @@
 
 CyberForge ships a small but real detection library and the tooling to write more.
 
-| Format       | Count | Where                          | How it is used                                                            |
-| ------------ | ----: | ------------------------------ | ------------------------------------------------------------------------- |
-| **Sigma**    |    55 | `detections/sigma/<platform>/` | Validated, translated, **evaluated** against events, and mapped to MITRE. |
-| **YARA**     |     5 | `detections/yara/`             | Syntax-validated (plyara), mapped to MITRE, documented.                   |
-| **Suricata** |     5 | `detections/suricata/`         | Structure-validated, mapped to MITRE, documented.                         |
+| Format       | Where                          | How it is used                                                    |
+| ------------ | ------------------------------ | ----------------------------------------------------------------- |
+| **Sigma**    | `detections/sigma/<platform>/` | Validated, translated, evaluated against events, mapped to MITRE. |
+| **YARA**     | `detections/yara/`             | Syntax-validated (plyara), previewed on synthetic files.          |
+| **Suricata** | `detections/suricata/`         | Structure-validated, previewed on HTTP and DNS telemetry.         |
 
-Sigma is the focus: it is the only format the engine executes, and 10 of the rules are correlations (each shipped in one file with its base rule). Every rule states what it detects, why, its false positives, references, and its ATT&CK tags.
+The SOC evaluates Sigma rules, including correlations that ship with their base rules. The playground also provides teaching evaluators for YARA and Suricata. See the [generated inventory](../README.md#detections-as-code) for the current counts and test coverage.
 
 ## Anatomy of a rule
 
