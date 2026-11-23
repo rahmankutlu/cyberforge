@@ -22,8 +22,12 @@ test.describe("dashboard and cyber range", () => {
     await expect(main(page).getByText(/All telemetry on this page is synthetic/)).toBeVisible();
     await expect(page.getByText("Demo data").first()).toBeVisible();
     await expect(main(page).getByRole("link", { name: /Attack → Log → Detection/ })).toBeVisible();
-    await expect(main(page).getByRole("link", { name: /Live demo/ })).toBeVisible();
+    const demo = main(page).getByRole("link", { name: /Live demo/ });
+    await expect(demo).toBeInViewport();
     await expect(main(page).getByRole("link", { name: /Attack stories/ })).toBeVisible();
+    await demo.click();
+    await expect(page).toHaveURL(/\/demo$/);
+    await expect(main(page).getByRole("heading", { name: "Live demo" })).toBeVisible();
   });
 
   test("shows detection test coverage calculated from the repository", async ({ page }) => {

@@ -137,6 +137,48 @@ export default async function DashboardPage() {
         />
       </div>
 
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {[
+          {
+            href: "/demo",
+            icon: MonitorPlay,
+            title: t("dashboard.card.liveDemoTitle"),
+            text: t("dashboard.card.liveDemoText"),
+          },
+          {
+            href: "/stories",
+            icon: BookOpenCheck,
+            title: t("dashboard.card.storiesTitle"),
+            text: t("dashboard.card.storiesText"),
+          },
+          {
+            href: "/lifecycle",
+            icon: Workflow,
+            title: t("dashboard.card.lifecycleTitle"),
+            text: t("dashboard.card.lifecycleText"),
+          },
+        ].map(({ href, icon: Icon, title, text }) => (
+          <Link
+            key={href}
+            href={href}
+            className="group rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Card className="h-full transition-colors group-hover:border-primary/40">
+              <CardContent className="flex h-full flex-col gap-1.5 p-4">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <Icon className="size-4 text-primary" aria-hidden /> {title}
+                  <ArrowRight
+                    className="ml-auto size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                    aria-hidden
+                  />
+                </p>
+                <p className="text-xs leading-relaxed text-muted-foreground">{text}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2">
           <CardHeader>
@@ -238,48 +280,6 @@ export default async function DashboardPage() {
             </p>
           </CardContent>
         </Card>
-      </div>
-
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
-        {[
-          {
-            href: "/demo",
-            icon: MonitorPlay,
-            title: t("dashboard.card.liveDemoTitle"),
-            text: t("dashboard.card.liveDemoText"),
-          },
-          {
-            href: "/stories",
-            icon: BookOpenCheck,
-            title: t("dashboard.card.storiesTitle"),
-            text: t("dashboard.card.storiesText"),
-          },
-          {
-            href: "/lifecycle",
-            icon: Workflow,
-            title: t("dashboard.card.lifecycleTitle"),
-            text: t("dashboard.card.lifecycleText"),
-          },
-        ].map(({ href, icon: Icon, title, text }) => (
-          <Link
-            key={href}
-            href={href}
-            className="group rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Card className="h-full transition-colors group-hover:border-primary/40">
-              <CardContent className="flex h-full flex-col gap-1.5 p-4">
-                <p className="flex items-center gap-2 text-sm font-semibold">
-                  <Icon className="size-4 text-primary" aria-hidden /> {title}
-                  <ArrowRight
-                    className="ml-auto size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
-                </p>
-                <p className="text-xs leading-relaxed text-muted-foreground">{text}</p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-3">

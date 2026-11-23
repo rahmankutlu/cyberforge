@@ -9,23 +9,25 @@ CyberForge runs entirely on your machine. There are two ways to run it: with Doc
 ```bash
 git clone https://github.com/rahmankutlu/cyberforge.git
 cd cyberforge
-cp .env.example .env
-docker compose up --build
+docker compose --env-file .env.example up --build --wait
 ```
 
 | Service            | URL                                    | Notes                                            |
 | ------------------ | -------------------------------------- | ------------------------------------------------ |
 | Web app            | http://localhost:3000                  | The UI. It proxies `/api/v1` to the API.         |
+| Incident demo      | http://localhost:3000/demo             | An 80-second synthetic incident replay.          |
 | API                | http://localhost:8000                  | Bound to `127.0.0.1` only.                       |
 | API docs           | http://localhost:8000/docs             | Interactive OpenAPI.                             |
 | Health / readiness | http://localhost:8000/health, `/ready` | `/ready` checks the database, content and cache. |
 
-On first start the API migrates the database, loads and validates all content, syncs it into PostgreSQL and, in demo mode, seeds synthetic activity. It takes a few seconds.
+On first start Compose downloads and builds the images. The API then migrates the database, syncs validated content into PostgreSQL and seeds synthetic activity in demo mode. The command returns once the services are ready.
+
+To customize the configuration, copy `.env.example` to `.env` with `cp .env.example .env` on macOS or Linux, or `Copy-Item .env.example .env` in PowerShell. Edit `.env` and omit `--env-file .env.example` from the Compose commands below to use your settings.
 
 ### Optional: the vulnerable lab containers
 
 ```bash
-docker compose --profile labs up --build
+docker compose --env-file .env.example --profile labs up --build --wait
 ```
 
 This adds **Acme Portal**, an intentionally vulnerable web app used by labs 01-07, and a gateway on `http://127.0.0.1:8081`. The app has no published port and lives on an internal Docker network with no internet access. Its access log is shipped to CyberForge, so the detections fire on your own activity. Every lab also works without it, through the _Run safe simulation_ button.
@@ -33,27 +35,41 @@ This adds **Acme Portal**, an intentionally vulnerable web app used by labs 01-0
 ### Stopping and resetting
 
 ```bash
-docker compose down            # stop
-docker compose down -v         # stop and delete the database volume
+docker compose --env-file .env.example --profile labs down      # stop
+docker compose --env-file .env.example --profile labs down -v   # stop and delete the database volume
 ```
 
 Settings → _Reset demo data_ re-seeds synthetic activity without touching the volume.
 
 ## Option 2: From source
 
-**You need:** Node.js 22+, pnpm 10, Python 3.12+.
+**You need:** Node.js 22+, pnpm 10, Python 3.12+ and a local clone of the repository.
+
+### macOS and Linux
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 
 python -m venv apps/api/.venv
-apps/api/.venv/bin/pip install -e "apps/api[dev]"        # Windows: apps\api\.venv\Scripts\pip
+apps/api/.venv/bin/python -m pip install -e "apps/api[dev]"
 
 pnpm dev:api     # FastAPI on http://localhost:8000, SQLite in .data/, auto-migrated and seeded
 pnpm dev:web     # Next.js on http://localhost:3000 (in a second terminal)
 ```
 
-No PostgreSQL or Redis is needed in this mode: the API uses SQLite and an in-memory rate limiter. (`pnpm` is available through `corepack enable` if you do not have it.)
+### Windows PowerShell
+
+```powershell
+pnpm.cmd install --frozen-lockfile
+
+python -m venv apps/api/.venv
+.\apps\api\.venv\Scripts\python.exe -m pip install -e "apps/api[dev]"
+
+pnpm.cmd dev:api  # First terminal
+pnpm.cmd dev:web  # Second terminal
+```
+
+Open [the dashboard](http://localhost:3000) or [the incident demo](http://localhost:3000/demo). Source development uses SQLite and an in-memory rate limiter.
 
 ## Your first ten minutes
 

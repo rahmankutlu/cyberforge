@@ -48,3 +48,5 @@ Animations and transitions are switched off during capture, so an image never ca
 ## Recording a video for a talk or a post
 
 For a live recording, open `/demo?autoplay=1&speed=1` in a browser window sized to your slide, and use your operating system's recorder. The demo's timing is fixed, so a second take looks the same as the first. `/demo?t=52` opens the demo paused at a good still frame.
+
+The [social preview image](assets/social-preview.png) is a 1280 × 640 PNG for sharing a link to the repository. It uses a capture of the incident demo at 52 seconds.

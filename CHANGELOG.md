@@ -4,6 +4,15 @@ All notable changes to CyberForge are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Changed
+
+- Put the demo and guided investigations near the top of the dashboard, and added a first-investigation walkthrough to the README.
+- Simplified Docker setup for Windows, macOS and Linux and documented the PowerShell source setup.
+
+### Security
+
+- Updated Next.js and affected transitive dependencies to versions that pass the Node dependency audit.
+
 ## [1.1.0] - 2026-10-05
 
 ### Added
