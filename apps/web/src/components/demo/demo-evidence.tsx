@@ -14,17 +14,21 @@ import {
   TabsList,
   TabsTrigger,
 } from "@cyberforge/ui";
-import { ArrowUpRight, X } from "lucide-react";
+import { ArrowUpRight, Crosshair, X } from "lucide-react";
 import Link from "next/link";
 
 import { SeverityBadge } from "@/components/badges";
 import { CodeBlock, CopyButton } from "@/components/code-block";
 import { useLocale } from "@/components/i18n/locale-provider";
+import { buildQuery } from "@/lib/api";
 
 export function DemoEvidence({
   event,
   alerts,
   time,
+  scenario,
+  elapsed,
+  speed,
   copyLink,
   onClose,
   restoreFocus,
@@ -32,6 +36,9 @@ export function DemoEvidence({
   event: DemoEvent;
   alerts: DemoAlert[];
   time: string;
+  scenario: string;
+  elapsed: number;
+  speed: number;
   copyLink: () => string;
   onClose: () => void;
   restoreFocus: () => void;
@@ -123,14 +130,23 @@ export function DemoEvidence({
                       {alert?.title ?? rule}{" "}
                       <ArrowUpRight className="size-3 shrink-0" aria-hidden />
                     </Link>
-                    {alert ? (
-                      <span className="flex items-center gap-2">
-                        <span className="font-mono text-[11px] text-muted-foreground">
-                          {alert.id}
-                        </span>
-                        <SeverityBadge severity={alert.severity as Severity} />
-                      </span>
-                    ) : null}
+                    <span className="flex flex-wrap items-center gap-2">
+                      {alert ? (
+                        <>
+                          <span className="font-mono text-[11px] text-muted-foreground">
+                            {alert.id}
+                          </span>
+                          <SeverityBadge severity={alert.severity as Severity} />
+                        </>
+                      ) : null}
+                      <Button asChild variant="outline" size="sm">
+                        <Link
+                          href={`/detections/playground${buildQuery({ dataset: `demo:${scenario}:${event.id}`, rule, t: elapsed, speed })}`}
+                        >
+                          <Crosshair /> {c("Trace match")}
+                        </Link>
+                      </Button>
+                    </span>
                   </li>
                 );
               })}

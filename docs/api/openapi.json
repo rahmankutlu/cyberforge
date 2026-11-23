@@ -2656,7 +2656,7 @@
             "required": true,
             "schema": {
               "type": "string",
-              "maxLength": 96,
+              "maxLength": 128,
               "title": "Slug"
             }
           }
@@ -5423,7 +5423,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 96
+                "maxLength": 128
               },
               {
                 "type": "null"
@@ -8722,7 +8722,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "maxLength": 96
+                "maxLength": 128
               },
               {
                 "type": "null"

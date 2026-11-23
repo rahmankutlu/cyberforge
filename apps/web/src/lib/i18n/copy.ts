@@ -664,6 +664,13 @@ export const trCopy = {
   "Evidence views": "Kanıt görünümleri",
   "Event type": "Olay türü",
   "Matching rules": "Eşleşen kurallar",
+  "Trace match": "Eşleşmeyi incele",
+  "Demo replay": "Demo oynatımı",
+  "Back to replay evidence": "Demo kanıtına dön",
+  "Replay evidence · Event {{number}}. Earlier events are included for correlation.":
+    "Demo kanıtı · Olay {{number}}. Önceki olaylar korelasyon için dahil edildi.",
+  "Replay evidence is unavailable. Choose a curated dataset to continue.":
+    "Demo kanıtı bulunamadı. Devam etmek için hazır bir veri kümesi seçin.",
   "No detection matched this event.": "Bu olayla eşleşen tespit yok.",
   "Detection pipeline": "Tespit işlem hattı",
   "Event ingestion": "Olay alımı",

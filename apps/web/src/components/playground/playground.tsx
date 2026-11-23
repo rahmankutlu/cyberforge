@@ -27,7 +27,7 @@ import {
   cn,
 } from "@cyberforge/ui";
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
-import { FlaskConical, Languages, Play, Save } from "lucide-react";
+import { ArrowLeft, FlaskConical, Languages, Play, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -75,8 +75,14 @@ export interface PlaygroundProps {
   initialContent: string;
   initialFormat: RuleFormat;
   initialDataset: string;
+  initialRule?: string;
   presets: { slug: string; title: string; format: RuleFormat }[];
   datasets: PlaygroundDataset[];
+  replaySource?: {
+    dataset: PlaygroundDatasetDetail;
+    focusedIndex: number;
+    returnHref: string;
+  } | null;
 }
 
 interface RunBody {
@@ -131,14 +137,17 @@ export function Playground({
   initialContent,
   initialFormat,
   initialDataset,
+  initialRule,
   presets,
   datasets,
+  replaySource,
 }: PlaygroundProps) {
   const { c } = useLocale();
   const router = useRouter();
   const [content, setContent] = useState(initialContent);
   const [format, setFormat] = useState<RuleFormat>(initialFormat);
   const [source, setSource] = useState(initialDataset);
+  const [ruleSlug, setRuleSlug] = useState(initialRule);
   const [customEvents, setCustomEvents] = useState(SAMPLE_EVENTS);
   const [customFile, setCustomFile] = useState(SAMPLE_FILE);
   const [filter, setFilter] = useState<Filter>("all");
@@ -152,11 +161,15 @@ export function Playground({
   const runSeq = useRef(0);
 
   const isCustom = source === CUSTOM;
-  const dataset = datasets.find((d) => d.slug === source) ?? null;
+  const replay = source === replaySource?.dataset.slug ? replaySource : null;
+  const dataset = replay?.dataset ?? datasets.find((d) => d.slug === source);
+  const sources = replaySource ? [...datasets, replaySource.dataset] : datasets;
 
   const detail = useQuery({
     queryKey: ["pg-dataset", source],
-    queryFn: () => apiGet<PlaygroundDatasetDetail>(`/playground/datasets/${source}`),
+    queryFn: () =>
+      apiGet<PlaygroundDatasetDetail>(`/playground/datasets/${encodeURIComponent(source)}`),
+    initialData: replay?.dataset,
     enabled: !isCustom,
     staleTime: Infinity,
   });
@@ -244,7 +257,13 @@ export function Playground({
       if (seq !== runSeq.current) return;
       setLastRun({ body, result });
       const firstMatch = result.results.find((r) => r.verdict === "matched");
-      setSelected(firstMatch?.index ?? (result.results.length ? 0 : null));
+      setSelected((current) => {
+        if (replay && body.dataset === replay.dataset.slug) {
+          const focused = current ?? replay.focusedIndex;
+          if (result.results.some(({ index }) => index === focused)) return focused;
+        }
+        return firstMatch?.index ?? (result.results.length ? 0 : null);
+      });
       setRightTab("trace");
     },
     onError: (e: Error) => toast.error(c("Could not run the rule"), { description: e.message }),
@@ -289,22 +308,31 @@ export function Playground({
     if (typeof window === "undefined" || isCustom) return;
     const url = new URL(window.location.href);
     url.searchParams.set("dataset", source);
+    if (ruleSlug) url.searchParams.set("rule", ruleSlug);
     window.history.replaceState(null, "", url);
-  }, [source, isCustom]);
+  }, [source, isCustom, ruleSlug]);
+
+  function clearRun() {
+    ++runSeq.current;
+    setLastRun(null);
+    setSelected(null);
+  }
 
   const load = useMutation({
     mutationFn: (slug: string) => apiGet<RuleDetail>(`/detections/${slug}`),
     onSuccess: (rule) => {
       setContent(rule.content);
       setFormat(rule.format);
+      setRuleSlug(rule.slug);
       const suited = datasets.find((d) => d.expected_rules.some((r) => r.slug === rule.slug));
       const keep = datasets.find((d) => d.slug === source);
       const wanted = rule.format === "yara" ? "files" : "events";
       const next =
-        suited ?? (keep?.kind === wanted ? keep : datasets.find((d) => d.kind === wanted));
+        (wanted === "events" ? replay?.dataset : null) ??
+        suited ??
+        (keep?.kind === wanted ? keep : datasets.find((d) => d.kind === wanted));
       if (next) setSource(next.slug);
-      setLastRun(null);
-      setSelected(null);
+      clearRun();
       autoRan.current = false;
       toast.message(`Loaded ${rule.title}`);
     },
@@ -322,8 +350,7 @@ export function Playground({
 
   const changeFormat = (next: RuleFormat) => {
     setFormat(next);
-    setLastRun(null);
-    setSelected(null);
+    clearRun();
     if (!isCustom) {
       const wanted = next === "yara" ? "files" : "events";
       if (dataset?.kind !== wanted) {
@@ -368,6 +395,29 @@ export function Playground({
       className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,1.3fr)]"
       data-testid="playground"
     >
+      {replay ? (
+        <div
+          className="col-span-full flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3"
+          data-testid="replay-evidence-context"
+        >
+          <div className="min-w-0">
+            <p className="break-words text-sm font-semibold">{replay.dataset.name}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {c(
+                "Replay evidence · Event {{number}}. Earlier events are included for correlation.",
+                {
+                  number: replay.focusedIndex + 1,
+                },
+              )}
+            </p>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link href={replay.returnHref}>
+              <ArrowLeft /> {c("Back to replay evidence")}
+            </Link>
+          </Button>
+        </div>
+      ) : null}
       {/* LEFT: rule */}
       <section aria-label={c("Rule editor")} className="min-w-0">
         <Card className="p-4">
@@ -592,9 +642,8 @@ export function Playground({
                   value={source}
                   onChange={(e) => {
                     setSource(e.target.value);
-                    setLastRun(null);
-                    setSelected(null);
-                    autoRan.current = true;
+                    clearRun();
+                    autoRan.current = e.target.value !== replaySource?.dataset.slug;
                   }}
                   className="mt-1"
                   data-testid="dataset-select"
@@ -608,7 +657,7 @@ export function Playground({
                           : c("File datasets (YARA)")
                       }
                     >
-                      {datasets
+                      {sources
                         .filter((d) => d.kind === kind)
                         .map((d) => (
                           <option
@@ -627,13 +676,19 @@ export function Playground({
                   className="space-y-2 rounded-lg border border-border bg-muted/30 p-3 text-xs"
                   data-testid="dataset-info"
                 >
-                  <p className="text-muted-foreground">{dataset.description}</p>
+                  {dataset.description ? (
+                    <p className="text-muted-foreground">{dataset.description}</p>
+                  ) : null}
                   <p className="flex flex-wrap items-center gap-1.5">
-                    <Badge variant="outline">{dataset.source_type}</Badge>
+                    <Badge variant="outline">
+                      {replay ? c("Demo replay") : dataset.source_type}
+                    </Badge>
                     <Badge variant="outline">
                       {dataset.item_count} {dataset.kind === "files" ? "files" : "events"}
                     </Badge>
-                    <Badge variant="outline">{dataset.difficulty}</Badge>
+                    {dataset.difficulty ? (
+                      <Badge variant="outline">{dataset.difficulty}</Badge>
+                    ) : null}
                     {dataset.mitre.map((m) => (
                       <Link key={m.id} href={`/mitre/${m.id}`} title={m.name ?? undefined}>
                         <Badge variant="outline" className="font-mono hover:bg-muted">

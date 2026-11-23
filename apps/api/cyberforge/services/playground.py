@@ -89,6 +89,29 @@ def dataset_items(ds: PlaygroundDataset) -> list[Item]:
     return _event_items(ds.events)
 
 
+def replay_items(events: list[dict[str, Any]], through: float) -> list[Item]:
+    """Keep the replay's recorded fields and absolute times, including simultaneous events."""
+    return [
+        Item(
+            index=index,
+            kind="event",
+            title=str(event["command_line"] or event["message"])[:240],
+            offset=event["t"],
+            timestamp=datetime.fromisoformat(event["timestamp"]),
+            category=event["category"],
+            source=event["source"],
+            host=event["host"],
+            user=event["user"],
+            raw=event["raw"],
+            fields=event["fields"],
+            logsource=dict(telemetry.CATEGORIES[event["category"]].logsource),
+            note=event["note"],
+        )
+        for index, event in enumerate(events)
+        if event["t"] <= through
+    ]
+
+
 def _event_items(events: list[ScenarioEvent]) -> list[Item]:
     items: list[Item] = []
     expanded = simulation.expand(events)

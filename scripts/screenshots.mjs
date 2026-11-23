@@ -152,6 +152,20 @@ const shots = [
     },
   },
   {
+    name: "replay-trace",
+    path: "/demo?t=52",
+    wait: "[data-testid=demo-alerts]",
+    prepare: async (page) => {
+      await page
+        .getByTestId("alert-row")
+        .first()
+        .getByRole("button", { name: "Inspect evidence" })
+        .click();
+      await page.getByRole("dialog").getByRole("link", { name: "Trace match" }).click();
+      await page.getByTestId("match-outcome").waitFor();
+    },
+  },
+  {
     name: "rule-quality",
     path: "/detections/win-encoded-powershell-command",
     wait: "[data-testid=quality-card]",

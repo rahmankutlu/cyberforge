@@ -44,3 +44,10 @@ export function matchNeedles(data: PlaygroundExplain | undefined): string[] {
     .filter((c) => c.matched && c.kind === "content")
     .map((c) => c.pattern);
 }
+export function parseReplayDataset(value: string | undefined) {
+  const match = /^demo:([a-z0-9]+(?:-[a-z0-9]+)*):evt-([1-9][0-9]*)$/.exec(value ?? "");
+  if (!match || !value || value.length > 128) return null;
+  const focusedIndex = Number(match[2]) - 1;
+  if (!Number.isSafeInteger(focusedIndex)) return null;
+  return { scenario: match[1]!, event: `evt-${match[2]}`, focusedIndex };
+}

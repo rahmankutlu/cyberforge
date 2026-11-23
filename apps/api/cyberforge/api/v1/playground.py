@@ -4,17 +4,19 @@ from __future__ import annotations
 
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from cyberforge.api.deps import BundleDep, SessionDep
+from cyberforge.api.deps import BundleDep, SessionDep, demo_scripts
+from cyberforge.content.loader import ContentBundle
 from cyberforge.models import MitreTechnique
 from cyberforge.services import playground
 
 router = APIRouter(prefix="/playground", tags=["playground"])
 
 Format = Literal["sigma", "yara", "suricata"]
+DATASET_REF_MAX_LENGTH = 128
 
 
 class DatasetOut(BaseModel):
@@ -37,7 +39,7 @@ class DatasetDetail(DatasetOut):
 class RunRequest(BaseModel):
     content: str = Field(min_length=1, max_length=65536)
     format: Format = "sigma"
-    dataset: str | None = Field(None, max_length=96)
+    dataset: str | None = Field(None, max_length=DATASET_REF_MAX_LENGTH)
     events: list[dict[str, Any]] | None = Field(None, max_length=500)
     files: list[dict[str, Any]] | None = Field(None, max_length=50)
 
@@ -72,12 +74,53 @@ def list_datasets(bundle: BundleDep, session: SessionDep) -> list[dict[str, Any]
     return [_dataset_out(bundle, ds, session) for ds in bundle.playground_datasets]
 
 
+def _replay(
+    slug: str, request: Request, bundle: ContentBundle
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    _, _, reference = slug.partition(":")
+    scenario, _, evidence = reference.partition(":")
+    script = demo_scripts(request, bundle).get(scenario) if evidence else None
+    if script is not None:
+        event = next((event for event in script["events"] if event["id"] == evidence), None)
+        if event is not None:
+            return script, event
+    raise HTTPException(404, "Replay evidence not found")
+
+
 @router.get(
     "/datasets/{slug}", response_model=DatasetDetail, summary="A dataset with its events or files"
 )
 def get_dataset(
-    slug: Annotated[str, Path(max_length=96)], bundle: BundleDep, session: SessionDep
+    slug: Annotated[str, Path(max_length=DATASET_REF_MAX_LENGTH)],
+    request: Request,
+    bundle: BundleDep,
+    session: SessionDep,
 ) -> dict[str, Any]:
+    if slug.startswith("demo:"):
+        script, event = _replay(slug, request, bundle)
+        items = playground.replay_items(script["events"], event["t"])
+        matches = set(event["detections"])
+        rules = [rule for rule in bundle.rules if rule.slug in matches]
+        techniques = {key for rule in rules for key in rule.technique_ids}
+        return {
+            "slug": slug,
+            "name": script["title"],
+            "description": "",
+            "source_type": "Demo replay",
+            "kind": "events",
+            "difficulty": "",
+            "item_count": len(items),
+            "mitre": [
+                {"id": technique["id"], "name": technique["name"]}
+                for technique in script["techniques"]
+                if technique["id"] in techniques
+            ],
+            "expected_rules": [
+                {"slug": rule.slug, "title": rule.title, "format": rule.format} for rule in rules
+            ],
+            "try_this": [],
+            "items": [item.public() for item in items],
+        }
     ds = next((d for d in bundle.playground_datasets if d.slug == slug), None)
     if ds is None:
         raise HTTPException(404, "Dataset not found")
@@ -86,9 +129,12 @@ def get_dataset(
     return out
 
 
-def _items(body: RunRequest, bundle: BundleDep) -> list[playground.Item]:
+def _items(body: RunRequest, request: Request, bundle: ContentBundle) -> list[playground.Item]:
     try:
         if body.dataset:
+            if body.dataset.startswith("demo:"):
+                script, event = _replay(body.dataset, request, bundle)
+                return playground.replay_items(script["events"], event["t"])
             ds = next((d for d in bundle.playground_datasets if d.slug == body.dataset), None)
             if ds is None:
                 raise HTTPException(404, "Dataset not found")
@@ -101,8 +147,10 @@ def _items(body: RunRequest, bundle: BundleDep) -> list[playground.Item]:
 
 
 @router.post("/run", summary="Run a rule over a dataset or custom samples")
-def run_rule(body: RunRequest, bundle: BundleDep, session: SessionDep) -> dict[str, Any]:
-    items = _items(body, bundle)
+def run_rule(
+    body: RunRequest, request: Request, bundle: BundleDep, session: SessionDep
+) -> dict[str, Any]:
+    items = _items(body, request, bundle)
     known = dict(session.execute(select(MitreTechnique.id, MitreTechnique.name)).all())
     try:
         return playground.run(body.format, body.content, items, known)
@@ -111,8 +159,8 @@ def run_rule(body: RunRequest, bundle: BundleDep, session: SessionDep) -> dict[s
 
 
 @router.post("/explain", summary="Explain why a rule did or did not match one event")
-def explain_match(body: ExplainRequest, bundle: BundleDep) -> dict[str, Any]:
-    items = _items(body, bundle)
+def explain_match(body: ExplainRequest, request: Request, bundle: BundleDep) -> dict[str, Any]:
+    items = _items(body, request, bundle)
     try:
         return playground.explain(body.format, body.content, items, body.index)
     except playground.PlaygroundError as exc:
