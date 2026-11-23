@@ -189,7 +189,7 @@ export function DemoPlayer({
       ) : null}
       {/* Pipeline */}
       <ol
-        className="flex flex-wrap items-stretch gap-y-2 rounded-lg border border-border bg-card p-1.5"
+        className="grid grid-cols-3 gap-1 rounded-lg border border-border bg-card p-1.5 sm:flex sm:flex-wrap sm:items-stretch sm:gap-x-0 sm:gap-y-2"
         aria-label={c("Detection pipeline")}
         data-testid="demo-pipeline"
         data-stage={state.stage}
@@ -198,15 +198,16 @@ export function DemoPlayer({
           const Icon = stage.icon;
           const active = state.stage === stage.key;
           return (
-            <li key={stage.key} className="flex items-center" data-stage={stage.key}>
+            <li key={stage.key} className="flex min-w-0 items-center" data-stage={stage.key}>
               <div
                 className={cn(
-                  "min-w-[6.25rem] rounded-md px-2.5 py-1.5 transition-colors duration-300",
+                  "min-w-0 flex-1 rounded-md px-2 py-1.5 transition-colors duration-300 sm:min-w-[6.25rem] sm:px-2.5",
                   active ? "bg-primary/15" : "",
                 )}
               >
                 <p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                  <Icon className="size-3" aria-hidden /> {localizeKnownCopy(locale, stage.label)}
+                  <Icon className="size-3 shrink-0" aria-hidden />{" "}
+                  {localizeKnownCopy(locale, stage.label)}
                 </p>
                 <p className="truncate text-[13px] font-semibold tabular-nums">
                   {counts[stage.key] || "-"}
@@ -214,7 +215,7 @@ export function DemoPlayer({
               </div>
               {i < STAGES.length - 1 ? (
                 <ChevronRight
-                  className="mx-0.5 size-3.5 shrink-0 text-muted-foreground/60"
+                  className="mx-0.5 hidden size-3.5 shrink-0 text-muted-foreground/60 sm:block"
                   aria-hidden
                 />
               ) : null}

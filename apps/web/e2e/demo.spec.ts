@@ -201,5 +201,9 @@ test.describe("demo mode", () => {
     const evidence = page.getByRole("dialog", { name: "Olay kanıtı" });
     await expect(evidence).toBeInViewport({ ratio: 1 });
     await expect(evidence.getByRole("tab", { name: "Ham olay" })).toBeVisible();
+    await evidence.getByRole("tab", { name: "Ayrıştırılmış alanlar" }).click();
+    expect(await evidence.evaluate((dialog) => dialog.scrollWidth)).toBeLessThanOrEqual(
+      await evidence.evaluate((dialog) => dialog.clientWidth),
+    );
   });
 });

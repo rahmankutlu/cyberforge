@@ -47,13 +47,13 @@ export function DemoEvidence({
     >
       <DialogContent
         hideClose
-        className="top-1/2 max-h-[calc(100dvh-2rem)] max-w-2xl -translate-y-1/2 overflow-y-auto"
+        className="top-1/2 max-h-[calc(100dvh-2rem)] max-w-2xl -translate-y-1/2 grid-cols-1 overflow-y-auto"
         onCloseAutoFocus={(event) => {
           event.preventDefault();
           restoreFocus();
         }}
       >
-        <DialogHeader className="pr-8">
+        <DialogHeader className="min-w-0 pr-8">
           <DialogTitle className="text-base">{c("Event evidence")}</DialogTitle>
           <DialogDescription className="break-words">{event.message}</DialogDescription>
         </DialogHeader>
@@ -82,7 +82,7 @@ export function DemoEvidence({
           ))}
         </dl>
 
-        <Tabs defaultValue="raw">
+        <Tabs defaultValue="raw" className="min-w-0">
           <TabsList aria-label={c("Evidence views")}>
             <TabsTrigger value="raw">{c("Raw event")}</TabsTrigger>
             <TabsTrigger value="parsed">{c("Parsed fields")}</TabsTrigger>
