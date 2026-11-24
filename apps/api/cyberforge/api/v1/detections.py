@@ -12,7 +12,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from cyberforge.api.deps import BundleDep, PageDep, SessionDep, detection_health, escape_like
-from cyberforge.content.loader import _SURICATA, ContentBundle, _suricata_options
+from cyberforge.content.loader import ContentBundle
 from cyberforge.content.schemas import ScenarioEvent
 from cyberforge.db import utcnow
 from cyberforge.models import Alert, DetectionRule, Lab, MitreTechnique, lab_rules
@@ -48,6 +48,7 @@ from cyberforge.services import (
     sigma_pipelines,
     sigma_service,
     simulation,
+    suricata_lite,
     telemetry,
 )
 from cyberforge.services.sigma_engine import EvalEvent, SigmaEngine, SigmaEngineError, compile_rule
@@ -296,26 +297,17 @@ def _validate_yara(content: str) -> tuple[list[str], list[str], dict[str, Any] |
 
 
 def _validate_suricata(content: str) -> tuple[list[str], list[str], dict[str, Any] | None]:
-    line = next(
-        (
-            ln.strip()
-            for ln in content.splitlines()
-            if ln.strip() and not ln.lstrip().startswith("#")
-        ),
-        "",
-    )
-    match = _SURICATA.match(line)
-    if not match:
-        return ["Not a valid Suricata rule. Expected: action proto src -> dst (options;)"], [], None
-    opts = _suricata_options(match.group(5))
-    errors = [f"Missing required option: {k}" for k in ("msg", "sid") if not opts.get(k)]
-    tech = re.search(r"mitre_technique_id\s+(T\d{4}(?:\.\d{3})?)", opts.get("metadata", ""))
+    try:
+        rule = suricata_lite.parse(content)
+    except suricata_lite.SuricataError as exc:
+        return [str(exc)], [], None
+    tech = re.search(r"mitre_technique_id\s+(T\d{4}(?:\.\d{3})?)", rule.metadata or "")
     warnings = [] if tech else ["No metadata mitre_technique_id"]
     return (
-        errors,
+        [],
         warnings,
         {
-            "title": opts.get("msg", "").strip('"'),
+            "title": rule.msg,
             "level": "medium",
             "description": "",
             "author": "",

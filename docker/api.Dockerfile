@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.19
 # CyberForge API. Build context: the repository root (content files are baked into the image).
 #   docker build -f docker/api.Dockerfile -t cyberforge-api .
 
@@ -29,7 +29,7 @@ ENV PATH="/opt/venv/bin:${PATH}" \
 WORKDIR /app
 
 # Content the API loads at start-up: labs, detections, datasets, MITRE data, learning content, docs.
-COPY labs /app/content/labs
+COPY --exclude=web/vulnerable-app labs /app/content/labs
 COPY detections /app/content/detections
 COPY datasets /app/content/datasets
 COPY mitre/attack.json mitre/atlas.json /app/content/mitre/

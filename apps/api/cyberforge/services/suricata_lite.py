@@ -133,12 +133,14 @@ def parse(rule: str) -> SuricataExplanation:
         raise SuricataError(fail)
     opts = _options(tail.rstrip()[:-1])
     first = dict(reversed(opts))
-    if not first.get("msg") or not first.get("sid"):
+    msg = first.get("msg", "").removeprefix('"').removesuffix('"')
+    sid = first.get("sid", "")
+    if not msg or not sid:
         raise SuricataError("Rule needs both msg and sid")
     return SuricataExplanation(
         action=action, protocol=proto, source=source.strip(), direction="->",
-        destination=destination.strip(), msg=first.get("msg", "").strip('"'),
-        sid=first.get("sid", ""), classtype=first.get("classtype"), metadata=first.get("metadata"),
+        destination=destination.strip(), msg=msg, sid=sid,
+        classtype=first.get("classtype"), metadata=first.get("metadata"),
         options=[{"name": k, "value": v} for k, v in opts],
     )  # fmt: skip
 

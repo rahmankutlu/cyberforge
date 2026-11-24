@@ -14,8 +14,8 @@ authors:
 repository-code: "https://github.com/rahmankutlu/cyberforge"
 url: "https://github.com/rahmankutlu/cyberforge"
 license: MIT
-version: 1.1.0
-date-released: "2026-10-05"
+version: 1.2.0
+date-released: "2026-11-24"
 keywords:
   - cybersecurity
   - detection engineering

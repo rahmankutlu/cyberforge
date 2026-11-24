@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v7
       # atlas.mitre.org is a single-page app: a crawler gets 404 for every technique page that
       # opens in a browser, so those links are excluded instead of failing the check each week.
-      - uses: lycheeverse/lychee-action@v2
+      - uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
         with:
           args: >-
             --no-progress --max-concurrency 4 --accept 200,206,429

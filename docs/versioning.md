@@ -4,14 +4,16 @@ CyberForge follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html). F
 
 ## The public contract
 
-| Surface              | Where it is defined                                                             | Guard in CI                                   |
-| -------------------- | ------------------------------------------------------------------------------- | --------------------------------------------- |
-| REST API (`/api/v1`) | [`docs/api/openapi.json`](api/openapi.json), generated from the code            | `pnpm openapi:check` fails on any difference  |
-| Content file formats | JSON Schemas in [`schemas/`](../schemas)                                        | `pnpm schemas:check`, `pnpm validate:content` |
-| Command line         | `python -m cyberforge` sub-commands, options and exit codes                     | Pytest                                        |
-| Configuration        | Environment variables in [`.env.example`](../.env.example)                      | Pytest, Docker smoke test                     |
-| Container images     | `cyberforge-api`, `cyberforge-web`, `cyberforge-lab-web` tags `X.Y.Z` and `X.Y` | Release workflow                              |
-| Database             | Alembic migrations upgrade forward within 1.x                                   | CI upgrade, downgrade, upgrade on PostgreSQL  |
+| Surface              | Where it is defined                                                  | Guard in CI                                   |
+| -------------------- | -------------------------------------------------------------------- | --------------------------------------------- |
+| REST API (`/api/v1`) | [`docs/api/openapi.json`](api/openapi.json), generated from the code | `pnpm openapi:check` fails on any difference  |
+| Content file formats | JSON Schemas in [`schemas/`](../schemas)                             | `pnpm schemas:check`, `pnpm validate:content` |
+| Command line         | `python -m cyberforge` sub-commands, options and exit codes          | Pytest                                        |
+| Configuration        | Environment variables in [`.env.example`](../.env.example)           | Pytest, Docker smoke test                     |
+| Container images     | `cyberforge-api` and `cyberforge-web` tags `X.Y.Z` and `X.Y`         | Release workflow                              |
+| Database             | Alembic migrations upgrade forward within 1.x                        | CI upgrade, downgrade, upgrade on PostgreSQL  |
+
+Starting in 1.2.0, published builds cover the web app and API. The optional vulnerable lab service builds from source through the local Compose profile. The existing `cyberforge-lab-web` tags are historical.
 
 ## What counts as compatible
 

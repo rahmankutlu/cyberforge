@@ -306,6 +306,16 @@ def test_detections_list_detail_validate_and_translate(client: TestClient) -> No
     assert client.post(
         "/api/v1/detections/validate", json={"format": "suricata", "content": suri}
     ).json()["valid"]
+    quoted = r'alert http any any -> any any (msg:"Cloud; \"console\""; sid:100;)'
+    checked = client.post(
+        "/api/v1/detections/validate", json={"format": "suricata", "content": quoted}
+    ).json()
+    assert checked["valid"] and checked["meta"]["title"] == r'Cloud; \"console\"'
+    oversized = 'alert http any any -> any any (msg:"' + "a" * 9000 + '"; sid:100;)'
+    rejected = client.post(
+        "/api/v1/detections/validate", json={"format": "suricata", "content": oversized}
+    ).json()
+    assert not rejected["valid"] and "longer than" in rejected["errors"][0]
 
     tr = client.post(
         "/api/v1/detections/translate",
