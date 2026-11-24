@@ -15,7 +15,7 @@ Replay an incident. Explain the detection. Investigate the alert.
 [![Release](https://img.shields.io/github/v/release/rahmankutlu/cyberforge)](https://github.com/rahmankutlu/cyberforge/releases/latest)
 [![License: MIT](https://img.shields.io/github/license/rahmankutlu/cyberforge)](LICENSE)
 
-[Quick start](#quick-start) · [First investigation](#try-your-first-investigation) · [Features](#features) · [Architecture](#architecture) · [Documentation](#documentation) · [Contributing](#contributing)
+[Open the browser demo](https://rahmankutlu.github.io/cyberforge/) · [Quick start](#quick-start) · [First investigation](#try-your-first-investigation) · [Features](#features) · [Architecture](#architecture) · [Documentation](#documentation) · [Contributing](#contributing)
 
 </div>
 
@@ -67,6 +67,8 @@ docker compose --env-file .env.example up --build --wait
 The database starts with labs, synthetic telemetry, alerts and incidents. See [Getting started](docs/getting-started.md) for PowerShell commands, configuration and a Docker-free setup with SQLite.
 
 ## Try your first investigation
+
+Use the [browser demo](https://rahmankutlu.github.io/cyberforge/) to step through three synthetic CloudTrail sign-ins and see which fields triggered the Sigma rule. The walkthrough below uses the full local lab.
 
 1. **Watch a synthetic incident unfold.** Open [Live demo](http://localhost:3000/demo) and press **Start demo**. Jump to **First alert** and select **Inspect evidence** to see its source event. Choose **Trace match** to open that event and its rule in the playground.
 2. **Explain a match.** Open the [Detection playground](http://localhost:3000/detections/playground), choose **Suspicious PowerShell simulation**, load **PowerShell Launched With Encoded Command**, and run the rule. Select a matched event to see the fields and condition behind the result.

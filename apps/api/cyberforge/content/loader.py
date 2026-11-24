@@ -37,7 +37,7 @@ from cyberforge.content.schemas import (
     TrackDoc,
 )
 from cyberforge.content.stories import StoryDoc
-from cyberforge.services import sigma_service
+from cyberforge.services import sigma_service, suricata_lite
 from cyberforge.services.telemetry import known_category
 
 T = TypeVar("T", bound=BaseModel)
@@ -305,9 +305,6 @@ def _load_yara(root: Path, issues: list[ContentIssue]) -> list[LoadedRule]:
     return rules
 
 
-_SURICATA = re.compile(r"^(alert|drop|pass|reject)\s+(\S+)\s+(.+?)\s+->\s+(.+?)\s+\((.*)\)\s*$")
-
-
 def _load_suricata(root: Path, issues: list[ContentIssue]) -> list[LoadedRule]:
     rules: list[LoadedRule] = []
     for path in sorted((root / "detections" / "suricata").glob("*.rules")):
@@ -315,30 +312,25 @@ def _load_suricata(root: Path, issues: list[ContentIssue]) -> list[LoadedRule]:
         for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
             if not line.strip() or line.lstrip().startswith("#"):
                 continue
-            match = _SURICATA.match(line.strip())
-            if not match:
-                issues.append(ContentIssue(f"{rel}:{lineno}", "not a valid Suricata rule header"))
+            try:
+                rule = suricata_lite.parse(line)
+            except suricata_lite.SuricataError as exc:
+                issues.append(ContentIssue(f"{rel}:{lineno}", str(exc)))
                 continue
-            options = _suricata_options(match.group(5))
-            sid = options.get("sid")
-            msg = options.get("msg", "").strip('"')
-            if not sid or not msg:
-                issues.append(ContentIssue(f"{rel}:{lineno}", "rule needs both msg and sid"))
-                continue
-            meta = options.get("metadata", "")
+            meta = rule.metadata or ""
             technique = re.search(r"mitre_technique_id\s+(T\d{4}(?:\.\d{3})?)", meta)
             severity = re.search(r"severity\s+(\w+)", meta)
             rules.append(
                 LoadedRule(
-                    slug=f"suricata-{sid}",
+                    slug=f"suricata-{rule.sid}",
                     format="suricata",
-                    title=msg,
+                    title=rule.msg,
                     level=severity.group(1).lower() if severity else "medium",
                     status="experimental",
-                    description=f"Suricata {match.group(1)} rule ({match.group(2)}): {msg}",
+                    description=f"Suricata {rule.action} rule ({rule.protocol}): {rule.msg}",
                     content=line.strip(),
-                    logsource={"kind": "network", "protocol": match.group(2)},
-                    tags=[options["classtype"]] if "classtype" in options else [],
+                    logsource={"kind": "network", "protocol": rule.protocol},
+                    tags=[rule.classtype] if rule.classtype else [],
                     technique_ids=[technique.group(1)] if technique else [],
                     false_positives=[],
                     references=[],
@@ -348,15 +340,6 @@ def _load_suricata(root: Path, issues: list[ContentIssue]) -> list[LoadedRule]:
                 )
             )
     return rules
-
-
-def _suricata_options(body: str) -> dict[str, str]:
-    """Split `key:value; key2:value2;` respecting quoted strings (first occurrence wins)."""
-    options: dict[str, str] = {}
-    for token in re.findall(r'(?:[^;"\\]|\\.|"(?:[^"\\]|\\.)*")+', body):
-        key, _, value = token.strip().partition(":")
-        options.setdefault(key.strip(), value.strip())
-    return options
 
 
 # --- everything else --------------------------------------------------------------------------

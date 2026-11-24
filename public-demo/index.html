@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Follow a CloudTrail detection from synthetic telemetry to the exact Sigma match trace."
+    />
+    <meta name="theme-color" content="#0a0c10" />
+    <title>CyberForge · Detection demo</title>
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./demo.css" />
+    <script type="module" src="./demo.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="shell topbar-inner">
+        <a class="brand" href="./"
+          ><img src="./icon.svg" alt="" width="35" height="35" />CyberForge</a
+        >
+        <nav aria-label="Project">
+          <a href="https://github.com/rahmankutlu/cyberforge"
+            >GitHub <span aria-hidden="true">↗</span></a
+          >
+          <a href="https://github.com/rahmankutlu/cyberforge#quick-start"
+            >Run locally <span aria-hidden="true">↗</span></a
+          >
+        </nav>
+      </div>
+    </header>
+
+    <main class="shell">
+      <div class="intro">
+        <p class="eyebrow">Detection playground</p>
+        <h1>Why did this rule fire?</h1>
+        <p>
+          Replay three synthetic AWS CloudTrail sign-ins. See which fields made the Sigma detection
+          match.
+        </p>
+      </div>
+      <noscript><p>Enable JavaScript to inspect the detection trace.</p></noscript>
+      <section id="replay" aria-label="CloudTrail replay" hidden>
+        <div class="replay-bar">
+          <div>
+            <h2>CloudTrail replay</h2>
+            <p id="progress"></p>
+          </div>
+          <button type="button" id="play">Play replay</button>
+        </div>
+        <div class="seek">
+          <label for="seek">Seek to event</label>
+          <input id="seek" type="range" min="1" step="1" value="1" />
+        </div>
+        <div class="timeline" id="timeline" role="group" aria-label="Select an event"></div>
+        <div class="details">
+          <section class="panel" aria-labelledby="evidence-title">
+            <h2 id="evidence-title">Event evidence</h2>
+            <p id="timestamp"></p>
+            <pre id="evidence" tabindex="0" aria-label="CloudTrail event fields"></pre>
+          </section>
+          <section class="panel" aria-labelledby="trace-title">
+            <div class="trace-header">
+              <h2 id="trace-title">Sigma match trace</h2>
+              <span id="verdict" role="status"></span>
+            </div>
+            <p id="rule-title"></p>
+            <div class="checks">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Field</th>
+                    <th scope="col">Expected</th>
+                    <th scope="col">Observed</th>
+                    <th scope="col">Result</th>
+                  </tr>
+                </thead>
+                <tbody id="checks"></tbody>
+              </table>
+            </div>
+            <p class="condition">Condition <code id="condition"></code></p>
+          </section>
+        </div>
+        <details class="panel source">
+          <summary>View the Sigma rule</summary>
+          <pre id="rule-content" tabindex="0" aria-label="Sigma rule YAML"></pre>
+        </details>
+      </section>
+      <p id="load-error" role="alert" hidden>The demo could not load. Refresh to try again.</p>
+    </main>
+    <footer class="shell footer">
+      <span>Read-only demo · Synthetic telemetry</span>
+      <a href="https://github.com/rahmankutlu/cyberforge/releases/latest"
+        >Latest release <span aria-hidden="true">↗</span></a
+      >
+    </footer>
+  </body>
+</html>
