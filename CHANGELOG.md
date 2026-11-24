@@ -4,6 +4,10 @@ All notable changes to CyberForge are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+### Changed
+
+- Expanded the public CloudTrail demo into a guided investigation with eight events, six Sigma detections, replay controls, a filterable queue and a triage question.
+
 ## [1.2.1] - 2026-11-24
 
 ### Fixed

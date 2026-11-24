@@ -9,20 +9,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Follow a CloudTrail detection from synthetic telemetry to the exact Sigma match trace."
+      content="Investigate a synthetic AWS CloudTrail incident from initial telemetry to the exact Sigma match trace."
     />
-    <meta name="theme-color" content="#0a0c10" />
-    <title>CyberForge · Detection demo</title>
+    <meta name="theme-color" content="#111c30" />
+    <title>CyberForge · Cloud access investigation</title>
     <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./demo.css" />
     <script type="module" src="./demo.js"></script>
   </head>
   <body>
+    <a class="skip" href="#main">Skip to investigation</a>
     <header class="topbar">
       <div class="shell topbar-inner">
-        <a class="brand" href="./"
-          ><img src="./icon.svg" alt="" width="35" height="35" />CyberForge</a
-        >
+        <a class="brand" href="./">
+          <img src="./icon.svg" alt="" width="34" height="34" />
+          CyberForge
+        </a>
         <nav aria-label="Project">
           <a href="https://github.com/rahmankutlu/cyberforge"
             >GitHub <span aria-hidden="true">↗</span></a
@@ -34,63 +36,213 @@
       </div>
     </header>
 
-    <main class="shell">
-      <div class="intro">
-        <p class="eyebrow">Detection playground</p>
-        <h1>Why did this rule fire?</h1>
-        <p>
-          Replay three synthetic AWS CloudTrail sign-ins. See which fields made the Sigma detection
-          match.
-        </p>
-      </div>
-      <noscript><p>Enable JavaScript to inspect the detection trace.</p></noscript>
-      <section id="replay" aria-label="CloudTrail replay" hidden>
-        <div class="replay-bar">
+    <main class="shell" id="main" tabindex="-1">
+      <header class="case-header">
+        <div>
+          <p class="source-label">
+            <span></span>AWS CloudTrail <span class="separator">/</span> Incident replay
+          </p>
+          <h1>Cloud access investigation</h1>
+          <p class="case-description">
+            Follow changes to identities, access and audit logging. Inspect the evidence behind each
+            detection.
+          </p>
+        </div>
+        <dl class="metrics" id="metrics" hidden>
           <div>
-            <h2>CloudTrail replay</h2>
-            <p id="progress"></p>
+            <dt>Events</dt>
+            <dd id="event-count"></dd>
           </div>
-          <button type="button" id="play">Play replay</button>
-        </div>
-        <div class="seek">
-          <label for="seek">Seek to event</label>
-          <input id="seek" type="range" min="1" step="1" value="1" />
-        </div>
-        <div class="timeline" id="timeline" role="group" aria-label="Select an event"></div>
-        <div class="details">
-          <section class="panel" aria-labelledby="evidence-title">
-            <h2 id="evidence-title">Event evidence</h2>
-            <p id="timestamp"></p>
-            <pre id="evidence" tabindex="0" aria-label="CloudTrail event fields"></pre>
-          </section>
-          <section class="panel" aria-labelledby="trace-title">
-            <div class="trace-header">
-              <h2 id="trace-title">Sigma match trace</h2>
-              <span id="verdict" role="status"></span>
+          <div>
+            <dt>Detections</dt>
+            <dd id="detection-count"></dd>
+          </div>
+          <div>
+            <dt>Reviewed</dt>
+            <dd id="review-count"></dd>
+          </div>
+        </dl>
+      </header>
+
+      <noscript><p>Enable JavaScript to replay the incident and inspect its evidence.</p></noscript>
+      <p id="load-error" role="alert" hidden>
+        The investigation could not load. Refresh to try again.
+      </p>
+
+      <div id="workspace" hidden>
+        <section class="replay" aria-labelledby="replay-title">
+          <header class="replay-header">
+            <div>
+              <h2 id="replay-title">Incident timeline</h2>
+              <p class="replay-hint" id="replay-state"></p>
             </div>
-            <p id="rule-title"></p>
-            <div class="checks">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">Field</th>
-                    <th scope="col">Expected</th>
-                    <th scope="col">Observed</th>
-                    <th scope="col">Result</th>
-                  </tr>
-                </thead>
-                <tbody id="checks"></tbody>
-              </table>
+            <div class="controls">
+              <label class="speed"
+                ><span class="sr-only">Replay speed</span>
+                <select id="speed">
+                  <option value="1">1×</option>
+                  <option value="2">2×</option>
+                  <option value="4">4×</option>
+                </select>
+              </label>
+              <button class="play" id="play" type="button">
+                <span aria-hidden="true" id="play-icon">▶</span
+                ><span id="play-label">Play replay</span>
+              </button>
             </div>
-            <p class="condition">Condition <code id="condition"></code></p>
+          </header>
+          <div class="chart" id="chart" role="group" aria-label="Timeline events"></div>
+          <div class="replay-footer">
+            <div class="legend" aria-label="Timeline severity">
+              <span><i data-severity="baseline"></i>Baseline</span>
+              <span><i data-severity="medium"></i>Medium</span>
+              <span><i data-severity="high"></i>High</span>
+              <span><i data-severity="critical"></i>Critical</span>
+            </div>
+            <div class="seek">
+              <label for="seek">Replay position</label>
+              <input id="seek" type="range" min="1" step="1" value="1" />
+              <span id="position"></span>
+            </div>
+          </div>
+        </section>
+
+        <div class="investigation">
+          <section class="panel queue" aria-labelledby="queue-title">
+            <header class="queue-header">
+              <h2 id="queue-title">Event queue</h2>
+              <p id="queue-count"></p>
+            </header>
+            <div class="filters" role="group" aria-label="Filter the event queue">
+              <button type="button" id="filter-all" aria-pressed="true">All events</button>
+              <button type="button" id="filter-detections" aria-pressed="false">Detections</button>
+            </div>
+            <ol id="events" class="event-list"></ol>
+            <p id="queue-empty" class="empty" hidden>
+              Detections will appear as the replay advances.
+            </p>
+          </section>
+
+          <section class="panel inspector" aria-labelledby="event-title">
+            <header class="inspector-header">
+              <div>
+                <p class="inspector-time" id="timestamp"></p>
+                <h2 id="event-title"></h2>
+              </div>
+              <div class="inspector-actions">
+                <span class="badge" id="event-severity"></span>
+                <button class="review" id="review" type="button" aria-pressed="false">
+                  Mark reviewed
+                </button>
+              </div>
+            </header>
+            <div class="tabs" role="tablist" aria-label="Investigation details">
+              <button
+                id="tab-evidence"
+                type="button"
+                role="tab"
+                aria-controls="panel-evidence"
+                aria-selected="true"
+              >
+                Evidence
+              </button>
+              <button
+                id="tab-trace"
+                type="button"
+                role="tab"
+                aria-controls="panel-trace"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                Sigma trace
+              </button>
+              <button
+                id="tab-brief"
+                type="button"
+                role="tab"
+                aria-controls="panel-brief"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                Case brief
+              </button>
+            </div>
+            <div
+              class="tab-panel"
+              id="panel-evidence"
+              role="tabpanel"
+              aria-labelledby="tab-evidence"
+              tabindex="0"
+            >
+              <p class="event-note" id="event-note"></p>
+              <dl class="evidence-grid" id="evidence-fields"></dl>
+              <details class="disclosure">
+                <summary>Raw event fields</summary>
+                <pre id="evidence-json" tabindex="0" aria-label="CloudTrail event JSON"></pre>
+              </details>
+              <button class="text-button" type="button" id="open-trace">
+                Open Sigma trace <span aria-hidden="true">→</span>
+              </button>
+            </div>
+            <div
+              class="tab-panel"
+              id="panel-trace"
+              role="tabpanel"
+              aria-labelledby="tab-trace"
+              tabindex="0"
+              hidden
+            >
+              <div class="trace-heading">
+                <h3 id="rule-title"></h3>
+                <span class="badge" id="verdict"></span>
+              </div>
+              <p class="condition">Condition <code id="condition"></code></p>
+              <div id="trace-groups"></div>
+              <div
+                class="techniques"
+                id="techniques"
+                aria-label="MITRE ATT&amp;CK techniques"
+              ></div>
+              <details class="disclosure">
+                <summary>View rule YAML</summary>
+                <pre id="rule-yaml" tabindex="0" aria-label="Sigma rule YAML"></pre>
+              </details>
+            </div>
+            <div
+              class="tab-panel"
+              id="panel-brief"
+              role="tabpanel"
+              aria-labelledby="tab-brief"
+              tabindex="0"
+              hidden
+            >
+              <h3>Find the loss of visibility</h3>
+              <p class="event-note">
+                Which event most directly shows that CloudTrail stopped recording activity for the
+                trail?
+              </p>
+              <div class="answers" role="group" aria-label="Choose supporting evidence">
+                <button type="button" aria-pressed="false" data-answer="ConsoleLogin">
+                  Root console sign-in
+                </button>
+                <button type="button" aria-pressed="false" data-answer="PutBucketAcl">
+                  Bucket access widened
+                </button>
+                <button type="button" aria-pressed="false" data-answer="StopLogging">
+                  Audit trail stopped
+                </button>
+              </div>
+              <p class="feedback" id="feedback" role="status"></p>
+              <button class="text-button" id="jump-to-audit" type="button" hidden>
+                Inspect audit trail evidence <span aria-hidden="true">→</span>
+              </button>
+              <h3 class="brief-heading">Review status</h3>
+              <p class="event-note" id="brief-status"></p>
+            </div>
           </section>
         </div>
-        <details class="panel source">
-          <summary>View the Sigma rule</summary>
-          <pre id="rule-content" tabindex="0" aria-label="Sigma rule YAML"></pre>
-        </details>
-      </section>
-      <p id="load-error" role="alert" hidden>The demo could not load. Refresh to try again.</p>
+        <p class="sr-only" id="announcement" role="status"></p>
+      </div>
     </main>
     <footer class="shell footer">
       <span>Read-only demo · Synthetic telemetry</span>

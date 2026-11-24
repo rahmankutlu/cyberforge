@@ -68,7 +68,7 @@ The database starts with labs, synthetic telemetry, alerts and incidents. See [G
 
 ## Try your first investigation
 
-Use the [browser demo](https://rahmankutlu.github.io/cyberforge/) to step through three synthetic CloudTrail sign-ins and see which fields triggered the Sigma rule. The walkthrough below uses the full local lab.
+Use the [browser demo](https://rahmankutlu.github.io/cyberforge/) to investigate a synthetic CloudTrail incident. Replay the timeline, filter six detections, inspect their evidence and Sigma traces, then try a guided triage question. The walkthrough below uses the full local lab.
 
 1. **Watch a synthetic incident unfold.** Open [Live demo](http://localhost:3000/demo) and press **Start demo**. Jump to **First alert** and select **Inspect evidence** to see its source event. Choose **Trace match** to open that event and its rule in the playground.
 2. **Explain a match.** Open the [Detection playground](http://localhost:3000/detections/playground), choose **Suspicious PowerShell simulation**, load **PowerShell Launched With Encoded Command**, and run the rule. Select a matched event to see the fields and condition behind the result.
