@@ -123,7 +123,7 @@ jobs:
           arm64=$(cat "digests/digest-${IMAGE_NAME}-arm64/digest")
           [[ "$amd64" =~ ^sha256:[a-f0-9]{64}$ && "$arm64" =~ ^sha256:[a-f0-9]{64}$ ]]
           version="${GITHUB_REF_NAME#v}"
-          docker buildx imagetools create --tag "$IMAGE:$version" --tag "$IMAGE:${version%.*}" \
+          docker buildx imagetools create --tag "$IMAGE:$version" --tag "$IMAGE:${version%.*}" --tag "$IMAGE:latest" \
             "$IMAGE@$amd64" "$IMAGE@$arm64"
           digest=$(docker buildx imagetools inspect "$IMAGE:$version" --format '{{.Manifest.Digest}}')
           [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
