@@ -32,25 +32,25 @@ jobs:
 
   images:
     needs: verify
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
     permissions:
       contents: read
       packages: write
-      id-token: write
-      attestations: write
     strategy:
+      fail-fast: false
       matrix:
+        name: [api, web]
+        arch: [amd64, arm64]
         include:
-          - name: api
-            dockerfile: docker/api.Dockerfile
-          - name: web
-            dockerfile: docker/web.Dockerfile
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
         with:
@@ -65,30 +65,77 @@ jobs:
             org.opencontainers.image.authors=Abdurrahman Kutlu <info@rahmankutlu.com>
             org.opencontainers.image.vendor=Abdurrahman Kutlu
             org.opencontainers.image.url=https://rahmankutlu.com
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
       - id: push
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: .
-          file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          file: docker/${{ matrix.name }}.Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          outputs: type=image,name=ghcr.io/${{ github.repository_owner }}/cyberforge-${{ matrix.name }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          cache-from: type=gha,scope=${{ matrix.name }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}-${{ matrix.arch }}
           provenance: true
           sbom: true
+      - name: Record the image digest
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.digest }}
+        run: printf '%s\n' "$IMAGE_DIGEST" > digest
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: digest-${{ matrix.name }}-${{ matrix.arch }}
+          path: digest
+          retention-days: 7
+          if-no-files-found: error
+          overwrite: true
+
+  image-index:
+    needs: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    strategy:
+      matrix:
+        name: [api, web]
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/cyberforge-${{ matrix.name }}
+    steps:
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: digest-${{ matrix.name }}-*
+          path: digests
+      - name: Publish the multi-platform image index
+        id: index
+        env:
+          IMAGE_NAME: ${{ matrix.name }}
+        run: |
+          amd64=$(cat "digests/digest-${IMAGE_NAME}-amd64/digest")
+          arm64=$(cat "digests/digest-${IMAGE_NAME}-arm64/digest")
+          [[ "$amd64" =~ ^sha256:[a-f0-9]{64}$ && "$arm64" =~ ^sha256:[a-f0-9]{64}$ ]]
+          version="${GITHUB_REF_NAME#v}"
+          docker buildx imagetools create --tag "$IMAGE:$version" --tag "$IMAGE:${version%.*}" --tag "$IMAGE:latest" \
+            "$IMAGE@$amd64" "$IMAGE@$arm64"
+          digest=$(docker buildx imagetools inspect "$IMAGE:$version" --format '{{.Manifest.Digest}}')
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with:
-          subject-name: ghcr.io/${{ github.repository_owner }}/cyberforge-${{ matrix.name }}
-          subject-digest: ${{ steps.push.outputs.digest }}
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.index.outputs.digest }}
           push-to-registry: true
 
   github-release:
-    needs: images
+    needs: image-index
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

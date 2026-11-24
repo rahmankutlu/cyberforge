@@ -4,6 +4,13 @@ All notable changes to CyberForge are documented here. The format follows [Keep 
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-11-24
+
+### Fixed
+
+- Build Linux AMD64 and ARM64 images on native GitHub runners. Publish each multi-platform tag after both architectures have built, with an SBOM and provenance.
+- This release includes the public CloudTrail detection demo, replay evidence tracing and Suricata parser hardening listed in the 1.2.0 changelog.
+
 ## [1.2.0] - 2026-11-24
 
 ### Added
